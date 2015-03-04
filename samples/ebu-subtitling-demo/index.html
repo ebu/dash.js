@@ -1,0 +1,30 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Dash.js Test Code</title>
+
+</head>
+<body>
+<h1>Dash.js Test Code</h1>
+
+<div>
+    <video id="videoPlayer" controls="true"></video>
+</div>
+
+<script src="../../dist/dash.all.js"></script>
+
+
+<script>
+            (function(){
+                var url = "manifest.mpd";
+                var context = new Dash.di.DashContext();
+                var player = new MediaPlayer(context);
+                player.startup();
+                player.attachView(document.querySelector("#videoPlayer"));
+                player.attachSource(url);
+            })();
+       </script>
+
+</body>
+</html>
