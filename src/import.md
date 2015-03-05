@@ -28,9 +28,6 @@
 <script src="streaming/MediaPlayer.js"></script>
 <script src="streaming/Context.js"></script>
 <script src="streaming/ErrorHandler.js"></script>
-<script src="streaming/Capabilities.js"></script>
-<script src="streaming/EventBus.js"></script>
-<script src="streaming/Debug.js"></script>
 <script src="streaming/RequestModifierExtensions.js"></script>
 <script src="streaming/VideoModel.js"></script>
 <script src="streaming/vo/FragmentRequest.js"></script>
@@ -63,6 +60,13 @@
 <script src="streaming/EventController.js"></script>
 <script src="streaming/URIQueryAndFragmentModel.js"></script>
 <script src="streaming/vo/URIFragmentData.js"></script>
+
+<!--Utils -->
+
+<script src="streaming/utils/Capabilities.js"></script>
+<script src="streaming/utils/EventBus.js"></script>
+<script src="streaming/utils/Debug.js"></script>
+<script src="streaming/utils/CustomTimeRanges.js"></script>
 
 <!--Rules -->
 <script src="streaming/rules/SwitchRequest.js"></script>
