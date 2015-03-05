@@ -9,8 +9,8 @@
 
    <!-- Subtitles -->
   <AdaptationSet segmentAlignment="true" lang="en" subsegmentStartsWithSAP="1">
-   <Representation id="1" mimeType="application/mp4" codecs="stpp" startWithSAP="1" bandwidth="1158">
-    <BaseURL>http://solenebuet.com/subtitles/caption_dashinit.mp4</BaseURL>
+   <Representation id="1" mimeType="application/ttml+xml" codecs="stpp" startWithSAP="1" bandwidth="1158">
+    <BaseURL>http://localhost:8080/samples/ebu-subtitling-demo/caption_dashinit.mp4</BaseURL>
     <SegmentBase indexRangeExact="true" indexRange="707-774">
       <Initialization range="0-706"/>
     </SegmentBase>
