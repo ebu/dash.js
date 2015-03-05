@@ -345,7 +345,7 @@ var TFHD_BASE_DATA_OFFSET_PRESENT_FLAG_INDEX =0,
                     sampleCompostionTimeOffset=0;
                 }
                 sampleList.push({'dts' : sampleDts,
-                                 'cts' : (sampleDts+sampleCompostionTimeOffset), 
+                                 'cts' : (sampleDts+sampleCompostionTimeOffset),
                                  'duration' :sampleDuration,
                                  'offset':moofPosition+dataOffset,
                                  'size' :sampleSize});
