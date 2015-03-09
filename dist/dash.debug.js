@@ -5580,7 +5580,9 @@ MediaPlayer.utils.TTMLParser = function() {
         return r[0];
     }, internalParse = function(data) {
         var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, nsttp, text, i, j;
+        console.warn(data);
         ttml = converter.xml_str2json(data);
+        console.warn(ttml);
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;

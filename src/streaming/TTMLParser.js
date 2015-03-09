@@ -114,8 +114,9 @@ MediaPlayer.utils.TTMLParser = function () {
                 i,
                 j;
 
+            console.warn(data);
             ttml = converter.xml_str2json(data);
-
+            console.warn(ttml);
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
                 throw errorMsg;
