@@ -3297,7 +3297,7 @@ Dash.dependencies.DashManifestExtensions.prototype = {
     getIsTypeOf: function(adaptation, type) {
         "use strict";
         var i, len, col = adaptation.ContentComponent_asArray, mimeTypeRegEx = type !== "text" ? new RegExp(type) : new RegExp("(vtt|ttml)"), representation, result = false, found = false;
-        if (adaptation.Representation_asArray.length > 0 && adaptation.Representation_asArray[0].hasOwnProperty("codecs") && adaptation.Representation_asArray[0]["codecs"] == "stpp") {
+        if (adaptation.Representation_asArray.length > 0 && adaptation.Representation_asArray[0].hasOwnProperty("codecs") && adaptation.Representation_asArray[0].codecs == "stpp") {
             return type == "fragmentedText";
         }
         if (col) {
@@ -4055,7 +4055,7 @@ Dash.dependencies.FragmentExtensions = function() {
             timescale: timescale
         };
     }, parseTFHD = function(ab) {
-        var d = new DataView(ab), pos = 0, base_media_decode_time, version, size, type, sampleDuration, sampleCount, sampleSize, sampleList, flags, flagsBits, tfhd, i, c;
+        var d = new DataView(ab), pos = 0, size, type, flags, flagsBits, tfhd, i, c;
         while (type !== "tfhd" && pos < d.byteLength) {
             size = d.getUint32(pos);
             pos += 4;
@@ -4107,7 +4107,7 @@ Dash.dependencies.FragmentExtensions = function() {
         }
         return tfhd;
     }, getMediaTimescaleFromMoov = function(ab) {
-        var d = new DataView(ab), pos = 0, base_media_decode_time, version, size, type, i, c;
+        var d = new DataView(ab), pos = 0, version, size, type, i, c;
         while (type !== "mdhd" && pos < d.byteLength) {
             size = d.getUint32(pos);
             pos += 4;
@@ -4131,7 +4131,7 @@ Dash.dependencies.FragmentExtensions = function() {
         }
         return d.getUint32(pos, false);
     }, getSamplesInfo = function(ab) {
-        var d = new DataView(ab), pos = 0, base_media_decode_time, version, size, type, sampleDuration, sampleCompostionTimeOffset, sampleCount, sampleSize, sampleDts, sampleList, flags, flagsBits, i, c, moofPosition, tfhd, tfdt, dataOffset;
+        var d = new DataView(ab), pos = 0, size, type, sampleDuration, sampleCompostionTimeOffset, sampleCount, sampleSize, sampleDts, sampleList, flags, flagsBits, i, c, moofPosition, tfhd, tfdt, dataOffset;
         tfhd = parseTFHD(ab);
         tfdt = parseTFDT(ab);
         while (type !== "trun" && pos < d.byteLength) {
@@ -5554,7 +5554,7 @@ MediaPlayer.utils.TTMLParser = function() {
         timeParts = timingStr.split(":");
         parsedTime = parseFloat(timeParts[0]) * SECONDS_IN_HOUR + parseFloat(timeParts[1]) * SECONDS_IN_MIN + parseFloat(timeParts[2]);
         if (timeParts[3]) {
-            frameRate = ttml.tt.frameRate;
+            frameRate = ttml["tt@ttp:frameRate"];
             if (frameRate && !isNaN(frameRate)) {
                 parsedTime += parseFloat(timeParts[3]) / frameRate;
             } else {
@@ -5563,14 +5563,15 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return parsedTime;
     }, passStructuralConstraints = function() {
-        var passed = false, hasTt = ttml.hasOwnProperty("tt"), hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false, hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false, hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false, hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false, hasProfile = hasHead ? ttml.tt.head.hasOwnProperty("profile") : false;
+        var passed = false, hasTt = ttml.hasOwnProperty("tt"), hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false, hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false, hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false, hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
         if (hasTt && hasHead && hasLayout && hasStyling && hasBody) {
             passed = true;
         }
         return passed;
     }, getNamespacePrefix = function(json, ns) {
+        var array = Object.keys(json);
         var r = Object.keys(json).filter(function(k) {
-            return k.split(":")[0] === "xmlns" && json[k] === ns;
+            return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
         }).map(function(k) {
             return k.split(":")[1];
         });
@@ -5579,52 +5580,52 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return r[0];
     }, internalParse = function(data) {
-        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, nsttp, text, i, j;
-        console.warn(data);
-        ttml = converter.xml_str2json(data);
-        console.warn(ttml);
+        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, nsttp, text, i, j, k;
+        ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
         }
-        nsttp = getNamespacePrefix(ttml.tt, "http://www.w3.org/ns/ttml#parameter");
-        if (ttml.tt.hasOwnProperty(nsttp + ":frameRate")) {
-            ttml.tt.frameRate = parseInt(ttml.tt[nsttp + ":frameRate"], 10);
+        nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
+        if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
+            ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
         }
-        if (ttml.tt.body.div_asArray) {
-            cues = ttml.tt.body.div_asArray[0].p_asArray;
+        if (ttml.tt.body.div) {
+            cues = ttml.tt.body.div;
         } else {
-            cues = ttml.tt.body.p_asArray;
+            cues = ttml.tt.body;
         }
+        cues = [].concat(cues);
         if (!cues || cues.length === 0) {
             errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
         for (i = 0; i < cues.length; i += 1) {
             cue = cues[i];
-            startTime = parseTimings(cue.begin);
-            endTime = parseTimings(cue.end);
+            startTime = parseTimings(cue["p@begin"]);
+            endTime = parseTimings(cue["p@end"]);
             if (isNaN(startTime) || isNaN(endTime)) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            if (cue["smpte:backgroundImage"] != undefined) {
+            if (cue["smpte:backgroundImage"] !== undefined) {
                 var images = ttml.tt.head.metadata.image_asArray;
                 for (j = 0; j < images.length; j += 1) {
-                    if ("#" + images[j]["xml:id"] == cue["smpte:backgroundImage"]) {
+                    if ("#" + images[j]["p@xml:id"] == cue["smpte:backgroundImage"]) {
                         captionArray.push({
                             start: startTime,
                             end: endTime,
+                            id: images[j]["p@xml:id"],
                             data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
                             type: "image"
                         });
                     }
                 }
             } else {
-                if (cue.span_asArray) {
-                    text = cue.span_asArray[0].__text;
-                } else {
-                    text = cue.__text;
+                cue.p = [].concat(cue.p);
+                text = "";
+                for (k = 0; k < cue.p.length; k += 1) {
+                    text += cue.p[k]["span"] || cue.p[k];
                 }
                 captionArray.push({
                     start: startTime,
@@ -5658,6 +5659,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
         append: function(bytes, appendedBytesInfo) {
             var self = this, result, label, lang, samplesInfo, i, ccContent;
             if (mimeType == "fragmentedText") {
+                var fragmentExt;
                 if (!this.initializationSegmentReceived) {
                     this.initializationSegmentReceived = true;
                     label = mediaInfo.id;
@@ -5665,7 +5667,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     this.textTrackExtensions = self.getTextTrackExtensions();
                     this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     self.eventBus.dispatchEvent({
-                        type: "updateend"
+                        type: MediaPlayer.events.TEXT_TRACK_ADDED
                     });
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
@@ -5678,8 +5680,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         }
                         samplesInfo[i].cts -= this.firstSubtitleStart;
                         this.buffered.add(samplesInfo[i].cts / this.timescale, (samplesInfo[i].cts + samplesInfo[i].duration) / this.timescale);
-                        ccContent = UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset + samplesInfo[i].size)));
-                        parser = this.system.getObject("ttmlParser");
+                        ccContent = window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset + samplesInfo[i].size)));
+                        var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
                             this.textTrackExtensions.addCaptions(this.firstSubtitleStart / this.timescale, result);
@@ -5687,14 +5689,14 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     }
                 }
             } else {
-                ccContent = UTF8.decode(bytes);
+                ccContent = window.UTF8.decode(bytes);
                 try {
                     result = self.getParser().parse(ccContent);
                     label = mediaInfo.id;
                     lang = mediaInfo.lang;
                     self.getTextTrackExtensions().addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     self.eventBus.dispatchEvent({
-                        type: "updateend"
+                        type: MediaPlayer.events.TEXT_TRACK_ADDED
                     });
                 } catch (e) {
                     self.errHandler.closedCaptionsError(e, "parse", ccContent);
@@ -8111,18 +8113,19 @@ MediaPlayer.utils.TextTrackExtensions = function() {
                 if (currentItem.type == "image") {
                     cue = new Cue(currentItem.start - timeOffset, currentItem.end - timeOffset, "");
                     cue.image = currentItem.data;
-                    cue.id = item;
+                    cue.id = currentItem.id;
                     cue.size = 0;
                     cue.type = "image";
                     cue.onenter = function() {
                         var img = new Image();
                         img.id = "ttmlImage_" + this.id;
                         img.src = this.image;
-                        img.style.cssText = "z-index: 2147483648 ;pointer-events: none ;display: block; left: 0px; width: 100%; height: 100%; top: 0px; visibility: visible !important; position: absolute !important;";
+                        img.className = "cue-image";
                         video.parentNode.appendChild(img);
                     };
                     cue.onexit = function() {
                         var imgs = video.parentNode.childNodes;
+                        var i;
                         for (i = 0; i < imgs.length; i++) {
                             if (imgs[i].id == "ttmlImage_" + this.id) {
                                 video.parentNode.removeChild(imgs[i]);
@@ -10824,7 +10827,7 @@ MediaPlayer.utils.CustomTimeRanges = function() {
         length: 0,
         add: function(start, end) {
             var i = 0;
-            for (i = 0; i < this.customTimeRangeArray.length && start > this.customTimeRangeArray[i].start; i++) {}
+            for (i = 0; i < this.customTimeRangeArray.length && start > this.customTimeRangeArray[i].start; i++) ;
             this.customTimeRangeArray.splice(i, 0, {
                 start: start,
                 end: end

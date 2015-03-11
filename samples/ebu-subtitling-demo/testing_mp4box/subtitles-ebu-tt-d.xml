@@ -15,7 +15,7 @@
 	</head>
 	<body>
 		<div xml:id="SGN0">
-			<p begin="00:00:00.000" end="00:00:10.000" style="defaultStyle" region="defaultRegion" xml:id="sub1">Hello, I am a EBU-TT-D subtitle 1</p>
+			<p begin="00:00:00.000" end="00:00:10.000" style="defaultStyle" region="defaultRegion" xml:id="sub1">Hello, <span style = "defaultStyle"> I am a </span> EBU-TT-D <span style = "defaultStyle">subtitle </span> 1</p>
 			<p begin="00:00:10.000" end="00:00:20.000" style="defaultStyle" region="defaultRegion" xml:id="sub2">Hello, I am a EBU-TT-D subtitle 2</p>
             <p begin="00:00:20.000" end="00:00:30.000" style="defaultStyle" region="defaultRegion" xml:id="sub3">Hello, I am a EBU-TT-D subtitle 3</p>
 		</div>

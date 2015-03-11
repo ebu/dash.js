@@ -34,6 +34,7 @@ module.exports = function(grunt) {
         files: {
           "../dist/dash.all.js": [
             "../src/lib/xml2json.js",
+            "../src/lib/xml2json_henriko.js",
             "../src/lib/objectiron.js",
             "../src/lib/dijon.js",
             "../src/lib/Math.js",

@@ -51,7 +51,7 @@ MediaPlayer.utils.TTMLParser = function () {
             //  - A ttp:frameRate attribute must be present on the tt element.
             //  - A ttp:frameRateMultiplier attribute may be present on the tt element.
             if (timeParts[3]) {
-                frameRate = ttml.tt.frameRate;
+                frameRate = ttml['tt@ttp:frameRate'];
 
                 if (frameRate && !isNaN(frameRate)) {
                     parsedTime += parseFloat(timeParts[3]) / frameRate;
@@ -86,14 +86,14 @@ MediaPlayer.utils.TTMLParser = function () {
                if (passed) {
                 passed = hasProfile && (ttml.tt.head.profile.use === "http://www.w3.org/ns/ttml/profile/sdp-us");
             }*/
-
             return passed;
         },
 
         getNamespacePrefix = function(json, ns) {
+            var array = Object.keys(json);
             var r = Object.keys(json)
                 .filter(function(k){
-                    return k.split(":")[0] === "xmlns" && json[k] === ns;
+                    return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
                 }).map(function(k){
                     return k.split(":")[1];
                 });
@@ -114,52 +114,57 @@ MediaPlayer.utils.TTMLParser = function () {
                 nsttp,
                 text,
                 i,
-                j;
+                j,
+                k;
 
-            console.warn(data);
-            ttml = converter.xml_str2json(data);
-            console.warn(ttml);
+            ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
                 throw errorMsg;
             }
 
-            nsttp = getNamespacePrefix(ttml.tt, "http://www.w3.org/ns/ttml#parameter");
+            nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
 
-            if (ttml.tt.hasOwnProperty(nsttp + ":frameRate")) {
-                ttml.tt.frameRate = parseInt(ttml.tt[nsttp + ":frameRate"], 10);
+            if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
+                ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
             }
 
-            if(ttml.tt.body.div_asArray){
-                cues = ttml.tt.body.div_asArray[0].p_asArray;
+
+
+            if(ttml.tt.body.div){
+                cues = ttml.tt.body.div;
             }else{
-                cues = ttml.tt.body.p_asArray;
+                cues = ttml.tt.body;
             }
+
+            cues = [].concat(cues);
 
             if (!cues || cues.length === 0) {
                 errorMsg = "TTML document does not contain any cues";
                 throw errorMsg;
             }
 
+
             for (i = 0; i < cues.length; i += 1) {
                 cue = cues[i];
-                startTime = parseTimings(cue.begin);
-                endTime = parseTimings(cue.end);
-
+                startTime = parseTimings(cue['p@begin']);
+                endTime = parseTimings(cue['p@end']);
                 if (isNaN(startTime) || isNaN(endTime)) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
 
-                if(cue["smpte:backgroundImage"]!==undefined)
+                //TODO adapt images cues with the new parser.
+                if(cue["smpte:backgroundImage"]!== undefined)
                 {
                     var images = ttml.tt.head.metadata.image_asArray;
                     for (j = 0; j < images.length; j += 1) {
-                        if(("#"+images[j]["xml:id"]) == cue["smpte:backgroundImage"]) {
+                        if(("#"+images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
                             captionArray.push({
                                 start: startTime,
                                 end: endTime,
-                                id:images[j]["xml:id"],
+                                id:images[j]["p@xml:id"],
                                 data: "data:image/"+images[j].imagetype.toLowerCase()+";base64, " + images[j].__text,
                                 type: "image"
                             });
@@ -168,11 +173,12 @@ MediaPlayer.utils.TTMLParser = function () {
                 }
                 else
                 {
-                    if(cue.span_asArray){
-                        text=cue.span_asArray[0].__text;
-                    }else{
-                        text=cue.__text;
+                    cue.p = [].concat(cue.p);
+                    text = "";
+                    for(k = 0; k < cue.p.length; k += 1){
+                        text += cue.p[k]['span'] || cue.p[k];
                     }
+
                     captionArray.push({
                         start: startTime,
                         end: endTime,
