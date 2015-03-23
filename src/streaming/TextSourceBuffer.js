@@ -37,7 +37,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 samplesInfo,
                 i,
                 ccContent;
-
             if(mimeType=="fragmentedText"){
                 var fragmentExt;
                 if(!this.initializationSegmentReceived){
@@ -51,24 +50,22 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                     this.timescale= fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
                 }else{
                     fragmentExt = self.system.getObject("fragmentExt");
-
                     samplesInfo=fragmentExt.getSamplesInfo(bytes.buffer);
+
                     for(i= 0 ; i<samplesInfo.length ;i++) {
-                        if(!this.firstSubtitleStart){
-                            this.firstSubtitleStart=samplesInfo[0].cts-appendedBytesInfo.startTime*this.timescale;
-                        }
-                        samplesInfo[i].cts-=this.firstSubtitleStart;
-                        this.buffered.add(samplesInfo[i].cts/this.timescale,(samplesInfo[i].cts+samplesInfo[i].duration)/this.timescale);
+
+                        this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
 
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset,samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            this.textTrackExtensions.addCaptions(this.firstSubtitleStart/this.timescale,result);
+                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale,samplesInfo[i].duration/this.timescale,result);
                         } catch(e) {
                             //empty cue ?
                         }
                     }
+
                 }
             }else{
                 ccContent=window.UTF8.decode(bytes);

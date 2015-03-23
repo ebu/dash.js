@@ -30,19 +30,19 @@ MediaPlayer.utils.TextTrackExtensions = function () {
             this.track.default = isDefaultTrack;
             this.track.mode = "showing";
             this.video=video;
-            this.addCaptions(0, captionData);
+            this.addCaptions(0,0, captionData);
             return this.track;
         },
 
-        addCaptions: function(timeOffset, captionData) {
+        addCaptions: function(dts, duration, captionData) {
+
             for(var item in captionData) {
                 var cue;
                 var currentItem = captionData[item];
                 var video=this.video;
-
                 //image subtitle extracted from TTML
                 if(currentItem.type=="image"){
-                    cue = new Cue(currentItem.start-timeOffset, currentItem.end-timeOffset, "");
+                    cue = new Cue(dts, dts+duration, "");
                     cue.image=currentItem.data;
                     cue.id=currentItem.id;
                     cue.size=0; //discard the native display for this subtitles
@@ -66,7 +66,7 @@ MediaPlayer.utils.TextTrackExtensions = function () {
                     };
                 }
                 else{
-                    cue = new Cue(currentItem.start, currentItem.end, currentItem.data);
+                    cue = new Cue(dts, dts+duration, currentItem.data);
                     if(currentItem.styles){
                         if (currentItem.styles.align !== undefined && cue.hasOwnProperty("align")) {
                             cue.align = currentItem.styles.align;

@@ -5675,16 +5675,12 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     fragmentExt = self.system.getObject("fragmentExt");
                     samplesInfo = fragmentExt.getSamplesInfo(bytes.buffer);
                     for (i = 0; i < samplesInfo.length; i++) {
-                        if (!this.firstSubtitleStart) {
-                            this.firstSubtitleStart = samplesInfo[0].cts - appendedBytesInfo.startTime * this.timescale;
-                        }
-                        samplesInfo[i].cts -= this.firstSubtitleStart;
-                        this.buffered.add(samplesInfo[i].cts / this.timescale, (samplesInfo[i].cts + samplesInfo[i].duration) / this.timescale);
+                        this.buffered.add(samplesInfo[i].dts / this.timescale, (samplesInfo[i].dts + samplesInfo[i].duration) / this.timescale);
                         ccContent = window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset + samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
-                            this.textTrackExtensions.addCaptions(this.firstSubtitleStart / this.timescale, result);
+                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
                         } catch (e) {}
                     }
                 }
@@ -8102,16 +8098,16 @@ MediaPlayer.utils.TextTrackExtensions = function() {
             this.track.default = isDefaultTrack;
             this.track.mode = "showing";
             this.video = video;
-            this.addCaptions(0, captionData);
+            this.addCaptions(0, 0, captionData);
             return this.track;
         },
-        addCaptions: function(timeOffset, captionData) {
+        addCaptions: function(dts, duration, captionData) {
             for (var item in captionData) {
                 var cue;
                 var currentItem = captionData[item];
                 var video = this.video;
                 if (currentItem.type == "image") {
-                    cue = new Cue(currentItem.start - timeOffset, currentItem.end - timeOffset, "");
+                    cue = new Cue(dts, dts + duration, "");
                     cue.image = currentItem.data;
                     cue.id = currentItem.id;
                     cue.size = 0;
@@ -8133,7 +8129,7 @@ MediaPlayer.utils.TextTrackExtensions = function() {
                         }
                     };
                 } else {
-                    cue = new Cue(currentItem.start, currentItem.end, currentItem.data);
+                    cue = new Cue(dts, dts + duration, currentItem.data);
                     if (currentItem.styles) {
                         if (currentItem.styles.align !== undefined && cue.hasOwnProperty("align")) {
                             cue.align = currentItem.styles.align;
