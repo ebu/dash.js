@@ -3,7 +3,7 @@
  * included below. This software may be subject to other third party and contributor
  * rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2014-2015, Cable Television Laboratories, Inc.
+ * Copyright (c) 2013, Dash Industry Forum.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -13,7 +13,7 @@
  *  * Redistributions in binary form must reproduce the above copyright notice,
  *  this list of conditions and the following disclaimer in the documentation and/or
  *  other materials provided with the distribution.
- *  * Neither the name of Cable Television Laboratories, Inc. nor the names of its
+ *  * Neither the name of Dash Industry Forum nor the names of its
  *  contributors may be used to endorse or promote products derived from this software
  *  without specific prior written permission.
  *
@@ -320,7 +320,18 @@ MediaPlayer.models.ProtectionModel_01b = function () {
                 throw new Error("Can not create sessions until you have selected a key system");
             }
 
-            // TODO: Detect duplicate init data
+            // Check for duplicate initData.
+            var i;
+            for (i = 0; i < sessions.length; i++) {
+                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
+                    return;
+                }
+            }
+            for (i = 0; i < pendingSessions.length; i++) {
+                if (this.protectionExt.initDataEquals(initData, pendingSessions[i].initData)) {
+                    return;
+                }
+            }
 
             // Determine if creating a new session is allowed
             if (moreSessionsAllowed || sessions.length === 0) {
