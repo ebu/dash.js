@@ -5724,6 +5724,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
             this.buffered = this.system.getObject("customTimeRanges");
             this.initializationSegmentReceived = false;
             this.timescale = 9e4;
+            console.warn("Video Element: " + this.videoModel.getElement());
         },
         append: function(bytes, appendedBytesInfo) {
             var self = this, result, label, lang, samplesInfo, i, ccContent;
@@ -7032,6 +7033,7 @@ MediaPlayer.dependencies.PlaybackController = function() {
             timeToEnd: this.getTimeToStreamEnd()
         });
     }, onPlaybackProgress = function() {
+        this.log("<video> progress");
         var ranges = videoModel.getElement().buffered, lastRange, bufferEndTime, remainingUnbufferedDuration;
         if (ranges.length) {
             lastRange = ranges.length - 1;

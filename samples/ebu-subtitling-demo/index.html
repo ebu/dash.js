@@ -3,7 +3,19 @@
 
 <head>
     <title>Dash.js Test Code</title>
-
+    <style>
+        #overlay {
+        position: absolute;
+        top: 100px;
+        color: #FFF;
+        text-align: center;
+        font-size: 20px;
+        background-color: rgba(221, 221, 221, 0.3);
+        width: 640px;
+        padding: 10px 0;
+        z-index: 2147483647;
+        }
+    </style>
 </head>
 <body>
 <h1>Dash.js Test Code</h1>
@@ -11,13 +23,13 @@
 <div>
     <video id="videoPlayer" controls="true"></video>
 </div>
-
+<div id="overlay">This is HTML overlay on top of the video! </div>
 <script src="http://localhost:8080/dist/dash.all.js"></script>
 
 
 <script>
             (function(){
-                var url = "http://localhost:8080/samples/ebu-subtitling-demo/tests-dash-10s/subs-random/test-dash-10s-subs-rand-dashavc264/manifest-test-dash-10s-subs-rand-dashavc264.mpd";
+                var url = "http://localhost:8080/samples/ebu-subtitling-demo/test-dash-10s-subs-rand-dashavc264/manifest-test-dash-10s-subs-rand-dashavc264.mpd";
                 var context = new Dash.di.DashContext();
                 var player = new MediaPlayer(context);
                 player.startup();
