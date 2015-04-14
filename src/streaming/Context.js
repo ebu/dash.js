@@ -74,6 +74,7 @@ MediaPlayer.di.Context = function () {
 
             this.system.mapSingleton('requestModifierExt', MediaPlayer.dependencies.RequestModifierExtensions);
             this.system.mapSingleton('textSourceBuffer', MediaPlayer.dependencies.TextSourceBuffer);
+            this.system.mapSingleton('textSourceBufferExt', MediaPlayer.dependencies.TextSourceBufferExtensions);
             this.system.mapSingleton('mediaSourceExt', MediaPlayer.dependencies.MediaSourceExtensions);
             this.system.mapSingleton('sourceBufferExt', MediaPlayer.dependencies.SourceBufferExtensions);
             this.system.mapSingleton('abrController', MediaPlayer.dependencies.AbrController);

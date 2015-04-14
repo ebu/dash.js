@@ -32,8 +32,8 @@ MediaPlayer.utils.TTMLParser = function () {
     "use strict";
 
     /*
-    * This TTML parser follows "TTML Simple Delivery Profile for Closed Captions (US)" spec - http://www.w3.org/TR/ttml10-sdp-us/
-    * */
+     * This TTML parser follows "TTML Simple Delivery Profile for Closed Captions (US)" spec - http://www.w3.org/TR/ttml10-sdp-us/
+     * */
 
     var SECONDS_IN_HOUR = 60 * 60,
         SECONDS_IN_MIN = 60,
@@ -48,6 +48,7 @@ MediaPlayer.utils.TTMLParser = function () {
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/,
         ttml,
 
+
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
                 timeParts,
@@ -61,8 +62,8 @@ MediaPlayer.utils.TTMLParser = function () {
             timeParts = timingStr.split(":");
 
             parsedTime = (parseFloat(timeParts[0]) * SECONDS_IN_HOUR +
-                parseFloat(timeParts[1]) * SECONDS_IN_MIN +
-                parseFloat(timeParts[2]));
+            parseFloat(timeParts[1]) * SECONDS_IN_MIN +
+            parseFloat(timeParts[2]));
 
             // R0031 -For time expressions that use the hh:mm:ss:ff format, the following constraints apply:
             //  - A ttp:frameRate attribute must be present on the tt element.
@@ -87,9 +88,9 @@ MediaPlayer.utils.TTMLParser = function () {
                 hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false,
                 hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false,
                 hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
-                /* extend the support to other profiles
-                hasProfile = hasHead ? ttml.tt.head.hasOwnProperty("profile") : false;
-                */
+            /* extend the support to other profiles
+             hasProfile = hasHead ? ttml.tt.head.hasOwnProperty("profile") : false;
+             */
 
             // R001 - A document must contain a tt element.
             // R002 - A document must contain both a head and body element.
@@ -100,9 +101,9 @@ MediaPlayer.utils.TTMLParser = function () {
 
             // R0008 - A document must contain a ttp:profile element where the use attribute of that element is specified as http://www.w3.org/ns/ttml/profile/sdp-us.
             /* extend the support to other profiles
-               if (passed) {
-                passed = hasProfile && (ttml.tt.head.profile.use === "http://www.w3.org/ns/ttml/profile/sdp-us");
-            }*/
+             if (passed) {
+             passed = hasProfile && (ttml.tt.head.profile.use === "http://www.w3.org/ns/ttml/profile/sdp-us");
+             }*/
             return passed;
         },
 
@@ -128,6 +129,9 @@ MediaPlayer.utils.TTMLParser = function () {
                 cue,
                 startTime,
                 endTime,
+                cueStyleID,
+                cueStyle,
+                ttmlStylings,
                 nsttp,
                 text,
                 i,
@@ -135,6 +139,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 k;
 
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+            ttmlStylings = ttml.tt.head.styling;
 
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
@@ -167,6 +172,46 @@ MediaPlayer.utils.TTMLParser = function () {
                 cue = cues[i];
                 startTime = parseTimings(cue['p@begin']);
                 endTime = parseTimings(cue['p@end']);
+                cueStyleID = cue['p@style'];
+
+                // Find the right style for our cue
+                for(j = 0; j < ttmlStylings.length; j++){
+                    var currStyle = ttmlStylings[j];
+                    if(currStyle['style@xml:id'] === cueStyleID){
+                        cueStyle = currStyle;
+                    }
+                }
+                //Clean and prepare the cueStyle
+
+                var cueStyleKeys = Object.keys(cueStyle);
+                var styleProperties = [];
+                for(k = 0; k < cueStyleKeys.length; k++){
+                    styleProperties[k] = cueStyleKeys[k];
+                    styleProperties[k] = styleProperties[k].replace("style@tts:", "");
+                    styleProperties[k] = styleProperties[k].replace("style@xml:", "");
+                    styleProperties[k] = styleProperties[k].toLowerCase();
+                    if(styleProperties[k].indexOf("font") > -1 || styleProperties[k].indexOf("line") > -1 || styleProperties[k].indexOf("text") > -1){
+                        styleProperties[k] = styleProperties[k].substr(0,4) + "-" + styleProperties[k].substr(4);
+                    } else if (styleProperties[k].indexOf("background") > -1){
+                        styleProperties[k] = styleProperties[k].substr(0,10) + "-" + styleProperties[k].substr(10);
+
+                    } else if (styleProperties[k].indexOf("unicode") > -1) {
+                        styleProperties[k] = styleProperties[k].substr(0, 7) + "-" + styleProperties[k].substr(7);
+
+                    }
+
+                    if(styleProperties[k] === "font-family"){
+                        styleProperties[k] = styleProperties[k] + ": " + '"' + cueStyle[cueStyleKeys[k]] + '"' + ";";
+                    } else {
+                        styleProperties[k] = styleProperties[k] + ": " + cueStyle[cueStyleKeys[k]] + ";";
+                    }
+
+                    if(styleProperties[k] .indexOf("style:") > -1 || styleProperties[k] .indexOf("id:") > -1){
+                        styleProperties.splice(k, 1);
+                        cueStyleKeys.splice(k, 1);
+                    }
+                }
+
                 if (isNaN(startTime) || isNaN(endTime)) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
@@ -183,7 +228,8 @@ MediaPlayer.utils.TTMLParser = function () {
                                 end: endTime,
                                 id:images[j]["p@xml:id"],
                                 data: "data:image/"+images[j].imagetype.toLowerCase()+";base64, " + images[j].__text,
-                                type: "image"
+                                type: "image",
+                                style: styleProperties
                             });
                         }
                     }
@@ -199,13 +245,14 @@ MediaPlayer.utils.TTMLParser = function () {
                         start: startTime,
                         end: endTime,
                         data: text,
-                        type: "text"
+                        type: "text",
+                        style: styleProperties
                     });
                 }
             }
 
             return captionArray;
-    };
+        };
 
     return {
         parse: internalParse

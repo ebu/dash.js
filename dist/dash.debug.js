@@ -1584,6 +1584,7 @@ MediaPlayer.di.Context = function() {
             this.system.mapSingleton("ksClearKey", MediaPlayer.dependencies.protection.KeySystem_ClearKey);
             this.system.mapSingleton("requestModifierExt", MediaPlayer.dependencies.RequestModifierExtensions);
             this.system.mapSingleton("textSourceBuffer", MediaPlayer.dependencies.TextSourceBuffer);
+            this.system.mapSingleton("textSourceBufferExt", MediaPlayer.dependencies.TextSourceBufferExtensions);
             this.system.mapSingleton("mediaSourceExt", MediaPlayer.dependencies.MediaSourceExtensions);
             this.system.mapSingleton("sourceBufferExt", MediaPlayer.dependencies.SourceBufferExtensions);
             this.system.mapSingleton("abrController", MediaPlayer.dependencies.AbrController);
@@ -5649,8 +5650,9 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return r[0];
     }, internalParse = function(data) {
-        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, nsttp, text, i, j, k;
+        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueStyle, ttmlStylings, nsttp, text, i, j, k;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+        ttmlStylings = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
@@ -5673,6 +5675,37 @@ MediaPlayer.utils.TTMLParser = function() {
             cue = cues[i];
             startTime = parseTimings(cue["p@begin"]);
             endTime = parseTimings(cue["p@end"]);
+            cueStyleID = cue["p@style"];
+            for (j = 0; j < ttmlStylings.length; j++) {
+                var currStyle = ttmlStylings[j];
+                if (currStyle["style@xml:id"] === cueStyleID) {
+                    cueStyle = currStyle;
+                }
+            }
+            var cueStyleKeys = Object.keys(cueStyle);
+            var styleProperties = [];
+            for (k = 0; k < cueStyleKeys.length; k++) {
+                styleProperties[k] = cueStyleKeys[k];
+                styleProperties[k] = styleProperties[k].replace("style@tts:", "");
+                styleProperties[k] = styleProperties[k].replace("style@xml:", "");
+                styleProperties[k] = styleProperties[k].toLowerCase();
+                if (styleProperties[k].indexOf("font") > -1 || styleProperties[k].indexOf("line") > -1 || styleProperties[k].indexOf("text") > -1) {
+                    styleProperties[k] = styleProperties[k].substr(0, 4) + "-" + styleProperties[k].substr(4);
+                } else if (styleProperties[k].indexOf("background") > -1) {
+                    styleProperties[k] = styleProperties[k].substr(0, 10) + "-" + styleProperties[k].substr(10);
+                } else if (styleProperties[k].indexOf("unicode") > -1) {
+                    styleProperties[k] = styleProperties[k].substr(0, 7) + "-" + styleProperties[k].substr(7);
+                }
+                if (styleProperties[k] === "font-family") {
+                    styleProperties[k] = styleProperties[k] + ": " + '"' + cueStyle[cueStyleKeys[k]] + '"' + ";";
+                } else {
+                    styleProperties[k] = styleProperties[k] + ": " + cueStyle[cueStyleKeys[k]] + ";";
+                }
+                if (styleProperties[k].indexOf("style:") > -1 || styleProperties[k].indexOf("id:") > -1) {
+                    styleProperties.splice(k, 1);
+                    cueStyleKeys.splice(k, 1);
+                }
+            }
             if (isNaN(startTime) || isNaN(endTime)) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
@@ -5686,7 +5719,8 @@ MediaPlayer.utils.TTMLParser = function() {
                             end: endTime,
                             id: images[j]["p@xml:id"],
                             data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
-                            type: "image"
+                            type: "image",
+                            style: styleProperties
                         });
                     }
                 }
@@ -5700,7 +5734,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     start: startTime,
                     end: endTime,
                     data: text,
-                    type: "text"
+                    type: "text",
+                    style: styleProperties
                 });
             }
         }
@@ -5724,7 +5759,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
             this.buffered = this.system.getObject("customTimeRanges");
             this.initializationSegmentReceived = false;
             this.timescale = 9e4;
-            console.warn("Video Element: " + this.videoModel.getElement());
         },
         append: function(bytes, appendedBytesInfo) {
             var self = this, result, label, lang, samplesInfo, i, ccContent;
@@ -5735,6 +5769,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     label = mediaInfo.id;
                     lang = mediaInfo.lang;
                     this.textTrackExtensions = self.getTextTrackExtensions();
+                    this.textSourceBufferExt = self.getTextSourceBufferExtensions();
+                    this.textSourceBufferExt.initialize(self.videoModel);
                     this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     self.eventBus.dispatchEvent({
                         type: MediaPlayer.events.TEXT_TRACK_ADDED
@@ -5750,6 +5786,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
+                            console.warn("Result: ", result);
+                            this.textSourceBufferExt.addCaptionToPlaylist(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
                             this.textTrackExtensions.addCaptions(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
                         } catch (e) {}
                     }
@@ -5783,6 +5821,9 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
         },
         getTextTrackExtensions: function() {
             return this.system.getObject("textTrackExtensions");
+        },
+        getTextSourceBufferExtensions: function() {
+            return this.system.getObject("textSourceBufferExt");
         },
         addEventListener: function(type, listener, useCapture) {
             this.eventBus.addEventListener(type, listener, useCapture);
@@ -7033,7 +7074,6 @@ MediaPlayer.dependencies.PlaybackController = function() {
             timeToEnd: this.getTimeToStreamEnd()
         });
     }, onPlaybackProgress = function() {
-        this.log("<video> progress");
         var ranges = videoModel.getElement().buffered, lastRange, bufferEndTime, remainingUnbufferedDuration;
         if (ranges.length) {
             lastRange = ranges.length - 1;
@@ -8243,6 +8283,70 @@ MediaPlayer.dependencies.SourceBufferExtensions.QUOTA_EXCEEDED_ERROR_CODE = 22;
 MediaPlayer.dependencies.SourceBufferExtensions.eventList = {
     ENAME_SOURCEBUFFER_REMOVE_COMPLETED: "sourceBufferRemoveCompleted",
     ENAME_SOURCEBUFFER_APPEND_COMPLETED: "sourceBufferAppendCompleted"
+};
+
+MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
+    var cue, playlist, video;
+    function addStyleToCaption(style) {
+        if (style) {
+            var styleBlock = "position: absolute; \n";
+            for (var i = 0; i < style.length; i++) {
+                styleBlock += style[i] + "\n";
+            }
+            styleBlock = "#videoCaption{ " + "\n" + styleBlock + "}";
+            var headElement = document.head || document.getElementsByTagName("head")[0];
+            var styleElement = document.createElement("style");
+            styleElement.type = "text/css";
+            styleElement.id = "captions";
+            if (styleElement.styleSheet) {
+                styleElement.styleSheet.cssText = styleBlock;
+            } else {
+                styleElement.appendChild(document.createTextNode(styleBlock));
+            }
+            headElement.appendChild(styleElement);
+        }
+    }
+    return {
+        initialize: function(videoModel) {
+            video = videoModel;
+            this.listen();
+            playlist = new Array();
+        },
+        listen: function() {
+            video.listen("timeupdate", this.onCaption);
+        },
+        addCaptionToPlaylist: function(dts, duration, caption) {
+            var newCue = {};
+            newCue.decode = dts;
+            newCue.duration = duration;
+            newCue.data = caption;
+            playlist.push(newCue);
+        },
+        onCaption: function() {
+            if (playlist.length !== 0) {
+                var time = video.getCurrentTime();
+                cue = playlist[0];
+                var diff = Math.abs(time - cue.data[0].start);
+                for (var i = 0; i < playlist.length; i++) {
+                    if (time >= playlist[i].data[0].start) {
+                        var newDiff = Math.abs(time - playlist[i].data[0].start);
+                        if (newDiff < diff) {
+                            diff = newDiff;
+                            cue = playlist[i];
+                        }
+                        addStyleToCaption(cue.data[0].style);
+                    }
+                }
+                document.getElementById("videoCaption").innerHTML = cue.data[0].data;
+            } else {
+                return;
+            }
+        }
+    };
+};
+
+MediaPlayer.dependencies.TextSourceBufferExtensions.prototype = {
+    constructor: MediaPlayer.dependencies.TextSourceBufferExtensions
 };
 
 MediaPlayer.utils.TextTrackExtensions = function() {

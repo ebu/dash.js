@@ -1,5 +1,4 @@
-*.mp4
-*.m4s
+
 
 #################
 ## Node.js
@@ -180,3 +179,5 @@ pip-log.txt
 # Mac crap
 .DS_Store
 
+*.mp4
+*.m4s
