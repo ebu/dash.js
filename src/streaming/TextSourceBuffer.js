@@ -44,7 +44,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
             mediaInfo = bufferController.streamProcessor.getCurrentTrack().mediaInfo;
             this.buffered =  this.system.getObject("customTimeRanges");
             this.initializationSegmentReceived= false;
-            this.timescale= 90000;
+            this.timescale = 90000;
         },
         append: function (bytes,appendedBytesInfo) {
             var self = this,
@@ -60,16 +60,16 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                     this.initializationSegmentReceived=true;
                     label = mediaInfo.id;
                     lang = mediaInfo.lang;
-                    this.textTrackExtensions=self.getTextTrackExtensions();
+                    this.textTrackExtensions = self.getTextTrackExtensions();
                     this.textSourceBufferExt = self.getTextSourceBufferExtensions();
                     this.textSourceBufferExt.initialize(self.videoModel);
                     this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
                     fragmentExt = self.system.getObject("fragmentExt");
-                    this.timescale= fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
+                    this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
                 }else{
                     fragmentExt = self.system.getObject("fragmentExt");
-                    samplesInfo=fragmentExt.getSamplesInfo(bytes.buffer);
+                    samplesInfo = fragmentExt.getSamplesInfo(bytes.buffer);
 
                     for(i= 0 ; i<samplesInfo.length ;i++) {
 
@@ -79,7 +79,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            console.warn("Result: ", result);
                             this.textSourceBufferExt.addCaptionToPlaylist(samplesInfo[i].dts/this.timescale,samplesInfo[i].duration/this.timescale,result);
                             this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale,samplesInfo[i].duration/this.timescale,result);
                         } catch(e) {

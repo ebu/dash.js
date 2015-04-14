@@ -5650,7 +5650,7 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return r[0];
     }, internalParse = function(data) {
-        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueStyle, ttmlStylings, nsttp, text, i, j, k;
+        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueStyle, ttmlStylings, nsttp, text;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlStylings = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
@@ -5671,39 +5671,42 @@ MediaPlayer.utils.TTMLParser = function() {
             errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
-        for (i = 0; i < cues.length; i += 1) {
+        for (var i = 0; i < cues.length; i += 1) {
             cue = cues[i];
             startTime = parseTimings(cue["p@begin"]);
             endTime = parseTimings(cue["p@end"]);
             cueStyleID = cue["p@style"];
-            for (j = 0; j < ttmlStylings.length; j++) {
+            for (var j = 0; j < ttmlStylings.length; j++) {
                 var currStyle = ttmlStylings[j];
                 if (currStyle["style@xml:id"] === cueStyleID) {
                     cueStyle = currStyle;
                 }
             }
-            var cueStyleKeys = Object.keys(cueStyle);
             var styleProperties = [];
-            for (k = 0; k < cueStyleKeys.length; k++) {
-                styleProperties[k] = cueStyleKeys[k];
-                styleProperties[k] = styleProperties[k].replace("style@tts:", "");
-                styleProperties[k] = styleProperties[k].replace("style@xml:", "");
-                styleProperties[k] = styleProperties[k].toLowerCase();
-                if (styleProperties[k].indexOf("font") > -1 || styleProperties[k].indexOf("line") > -1 || styleProperties[k].indexOf("text") > -1) {
-                    styleProperties[k] = styleProperties[k].substr(0, 4) + "-" + styleProperties[k].substr(4);
-                } else if (styleProperties[k].indexOf("background") > -1) {
-                    styleProperties[k] = styleProperties[k].substr(0, 10) + "-" + styleProperties[k].substr(10);
-                } else if (styleProperties[k].indexOf("unicode") > -1) {
-                    styleProperties[k] = styleProperties[k].substr(0, 7) + "-" + styleProperties[k].substr(7);
-                }
-                if (styleProperties[k] === "font-family") {
-                    styleProperties[k] = styleProperties[k] + ": " + '"' + cueStyle[cueStyleKeys[k]] + '"' + ";";
-                } else {
-                    styleProperties[k] = styleProperties[k] + ": " + cueStyle[cueStyleKeys[k]] + ";";
-                }
-                if (styleProperties[k].indexOf("style:") > -1 || styleProperties[k].indexOf("id:") > -1) {
-                    styleProperties.splice(k, 1);
-                    cueStyleKeys.splice(k, 1);
+            for (var key in cueStyle) {
+                if (cueStyle.hasOwnProperty(key)) {
+                    var property = cueStyle[key];
+                    var propertyName;
+                    key = key.replace("style@tts:", "");
+                    key = key.replace("style@xml:", "");
+                    key = key.toLowerCase();
+                    if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
+                        key = key.substr(0, 4) + "-" + key.substr(4);
+                    } else if (key.indexOf("background") > -1) {
+                        key = key.substr(0, 10) + "-" + key.substr(10);
+                    } else if (key.indexOf("unicode") > -1) {
+                        key = key.substr(0, 7) + "-" + key.substr(7);
+                    }
+                    if (key.indexOf("style") > -1 || key.indexOf("id") > -1) {
+                        continue;
+                    }
+                    var result;
+                    if (key === "font-family") {
+                        result = key + ': "' + property + '";';
+                    } else {
+                        result = key + ": " + property + ";";
+                    }
+                    styleProperties.push(result);
                 }
             }
             if (isNaN(startTime) || isNaN(endTime)) {
@@ -5712,7 +5715,7 @@ MediaPlayer.utils.TTMLParser = function() {
             }
             if (cue["smpte:backgroundImage"] !== undefined) {
                 var images = ttml.tt.head.metadata.image_asArray;
-                for (j = 0; j < images.length; j += 1) {
+                for (var j = 0; j < images.length; j += 1) {
                     if ("#" + images[j]["p@xml:id"] == cue["smpte:backgroundImage"]) {
                         captionArray.push({
                             start: startTime,
@@ -5727,7 +5730,7 @@ MediaPlayer.utils.TTMLParser = function() {
             } else {
                 cue.p = [].concat(cue.p);
                 text = "";
-                for (k = 0; k < cue.p.length; k += 1) {
+                for (var k = 0; k < cue.p.length; k += 1) {
                     text += cue.p[k]["span"] || cue.p[k];
                 }
                 captionArray.push({
@@ -5786,7 +5789,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
-                            console.warn("Result: ", result);
                             this.textSourceBufferExt.addCaptionToPlaylist(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
                             this.textTrackExtensions.addCaptions(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
                         } catch (e) {}
@@ -8294,23 +8296,15 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
                 styleBlock += style[i] + "\n";
             }
             styleBlock = "#videoCaption{ " + "\n" + styleBlock + "}";
-            var headElement = document.head || document.getElementsByTagName("head")[0];
-            var styleElement = document.createElement("style");
-            styleElement.type = "text/css";
-            styleElement.id = "captions";
-            if (styleElement.styleSheet) {
-                styleElement.styleSheet.cssText = styleBlock;
-            } else {
-                styleElement.appendChild(document.createTextNode(styleBlock));
-            }
-            headElement.appendChild(styleElement);
+            var styleElement = document.getElementsByTagName("style")[0];
+            styleElement.innerHTML = "#container {             position: relative;            }            #videoOverlay {            z-index:2147483647;            position:absolute;            top:0px;            left:0px;            width:100%;            height:100%;            }            #videoPlayer {            position: absolute;            z-index: -1;            }" + styleBlock;
         }
     }
     return {
         initialize: function(videoModel) {
             video = videoModel;
             this.listen();
-            playlist = new Array();
+            playlist = [];
         },
         listen: function() {
             video.listen("timeupdate", this.onCaption);
@@ -8334,12 +8328,12 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
                             diff = newDiff;
                             cue = playlist[i];
                         }
+                        document.getElementById("videoCaption").innerHTML = cue.data[0].data;
                         addStyleToCaption(cue.data[0].style);
+                    } else {
+                        return;
                     }
                 }
-                document.getElementById("videoCaption").innerHTML = cue.data[0].data;
-            } else {
-                return;
             }
         }
     };

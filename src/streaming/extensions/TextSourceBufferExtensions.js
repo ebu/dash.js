@@ -45,28 +45,34 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                 styleBlock += style[i] + "\n";
 
             }
+
             styleBlock = "#videoCaption{ " + "\n" + styleBlock + "}";
 
-            var headElement  = document.head || document.getElementsByTagName('head')[0];
-            var styleElement = document.createElement('style');
-            styleElement.type = 'text/css';
-            styleElement.id = 'captions';
-            if (styleElement.styleSheet){
-                styleElement.styleSheet.cssText = styleBlock;
-            } else {
-                styleElement.appendChild(document.createTextNode(styleBlock));
-            }
-
-            headElement.appendChild(styleElement);
+            var styleElement = document.getElementsByTagName('style')[0];
+            styleElement.innerHTML = "#container { \
+            position: relative;\
+            }\
+            #videoOverlay {\
+            z-index:2147483647;\
+            position:absolute;\
+            top:0px;\
+            left:0px;\
+            width:100%;\
+            height:100%;\
+            }\
+            #videoPlayer {\
+            position: absolute;\
+            z-index: -1;\
+            }" + styleBlock;
         }
     }
 
-    return{
+    return {
 
         initialize: function (videoModel) {
             video = videoModel;
             this.listen();
-            playlist = new Array();
+            playlist = [];
 
         },
 
@@ -90,25 +96,21 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                 var time = video.getCurrentTime();
                 cue      = playlist[0];
                 var diff = Math.abs(time - cue.data[0].start);
-                for (var i                                        = 0; i < playlist.length; i++) {
-                    if (time >= playlist[i].data[0].start) {
-
-                        var newDiff = Math.abs(time - playlist[i].data[0].start);
-                        if (newDiff < diff) {
-                            diff = newDiff;
-                            cue  = playlist[i];
+                    for (var i = 0; i < playlist.length; i++) {
+                        if (time >= playlist[i].data[0].start) {
+                            var newDiff = Math.abs(time - playlist[i].data[0].start);
+                            if (newDiff < diff) {
+                                diff = newDiff;
+                                cue  = playlist[i];
+                            }
+                            document.getElementById("videoCaption").innerHTML = cue.data[0].data;
+                            addStyleToCaption(cue.data[0].style);
+                        } else {
+                            return;
                         }
-                        addStyleToCaption(cue.data[0].style);
                     }
-                }
-
-                document.getElementById("videoCaption").innerHTML = cue.data[0].data;
-            } else {
-                return;
             }
-
         }
-
     };
 };
 

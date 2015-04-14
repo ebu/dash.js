@@ -133,10 +133,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 cueStyle,
                 ttmlStylings,
                 nsttp,
-                text,
-                i,
-                j,
-                k;
+                text;
 
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
             ttmlStylings = ttml.tt.head.styling;
@@ -168,14 +165,14 @@ MediaPlayer.utils.TTMLParser = function () {
             }
 
 
-            for (i = 0; i < cues.length; i += 1) {
+            for (var i = 0; i < cues.length; i += 1) {
                 cue = cues[i];
                 startTime = parseTimings(cue['p@begin']);
                 endTime = parseTimings(cue['p@end']);
                 cueStyleID = cue['p@style'];
 
                 // Find the right style for our cue
-                for(j = 0; j < ttmlStylings.length; j++){
+                for(var j = 0; j < ttmlStylings.length; j++){
                     var currStyle = ttmlStylings[j];
                     if(currStyle['style@xml:id'] === cueStyleID){
                         cueStyle = currStyle;
@@ -183,32 +180,37 @@ MediaPlayer.utils.TTMLParser = function () {
                 }
                 //Clean and prepare the cueStyle
 
-                var cueStyleKeys = Object.keys(cueStyle);
                 var styleProperties = [];
-                for(k = 0; k < cueStyleKeys.length; k++){
-                    styleProperties[k] = cueStyleKeys[k];
-                    styleProperties[k] = styleProperties[k].replace("style@tts:", "");
-                    styleProperties[k] = styleProperties[k].replace("style@xml:", "");
-                    styleProperties[k] = styleProperties[k].toLowerCase();
-                    if(styleProperties[k].indexOf("font") > -1 || styleProperties[k].indexOf("line") > -1 || styleProperties[k].indexOf("text") > -1){
-                        styleProperties[k] = styleProperties[k].substr(0,4) + "-" + styleProperties[k].substr(4);
-                    } else if (styleProperties[k].indexOf("background") > -1){
-                        styleProperties[k] = styleProperties[k].substr(0,10) + "-" + styleProperties[k].substr(10);
 
-                    } else if (styleProperties[k].indexOf("unicode") > -1) {
-                        styleProperties[k] = styleProperties[k].substr(0, 7) + "-" + styleProperties[k].substr(7);
+                for(var key in cueStyle){
+                    if(cueStyle.hasOwnProperty(key)) {
+                        var property = cueStyle[key];
+                        var propertyName;
 
-                    }
+                        key = key.replace("style@tts:", "");
+                        key = key.replace("style@xml:", "");
+                        key = key.toLowerCase();
 
-                    if(styleProperties[k] === "font-family"){
-                        styleProperties[k] = styleProperties[k] + ": " + '"' + cueStyle[cueStyleKeys[k]] + '"' + ";";
-                    } else {
-                        styleProperties[k] = styleProperties[k] + ": " + cueStyle[cueStyleKeys[k]] + ";";
-                    }
+                        if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
+                            key = key.substr(0, 4) + "-" + key.substr(4);
+                        } else if (key.indexOf("background") > -1) {
+                            key = key.substr(0, 10) + "-" + key.substr(10);
+                        } else if (key.indexOf("unicode") > -1) {
+                            key = key.substr(0, 7) + "-" + key.substr(7);
+                        }
 
-                    if(styleProperties[k] .indexOf("style:") > -1 || styleProperties[k] .indexOf("id:") > -1){
-                        styleProperties.splice(k, 1);
-                        cueStyleKeys.splice(k, 1);
+                        if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
+                            continue;
+                        }
+
+                        var result;
+                        if (key === "font-family") {
+                            result = key + ': "' + property + '";';
+                        } else {
+                            result = key + ": " + property + ";";
+                        }
+
+                        styleProperties.push(result);
                     }
                 }
 
@@ -221,7 +223,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 if(cue["smpte:backgroundImage"]!== undefined)
                 {
                     var images = ttml.tt.head.metadata.image_asArray;
-                    for (j = 0; j < images.length; j += 1) {
+                    for (var j = 0; j < images.length; j += 1) {
                         if(("#"+images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
                             captionArray.push({
                                 start: startTime,
@@ -238,7 +240,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 {
                     cue.p = [].concat(cue.p);
                     text = "";
-                    for(k = 0; k < cue.p.length; k += 1){
+                    for(var k = 0; k < cue.p.length; k += 1){
                         text += cue.p[k]['span'] || cue.p[k];
                     }
                     captionArray.push({
