@@ -5650,9 +5650,8 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return r[0];
     }, internalParse = function(data) {
-        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueStyle, ttmlStylings, nsttp, text;
+        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueRegionID, cueStyle, cueRegion, ttmlStylings, ttmlLayout, nsttp, text;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
-        ttmlStylings = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
@@ -5671,22 +5670,37 @@ MediaPlayer.utils.TTMLParser = function() {
             errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
+        ttmlLayout = ttml.tt.head.layout;
+        ttmlStylings = ttml.tt.head.styling;
+        if (!Array.isArray(ttmlLayout)) {
+            ttmlLayout = [ ttmlLayout ];
+        } else if (!Array.isArray(ttmlStylings)) {
+            ttmlStylings = [ ttmlStylings ];
+        }
+        console.warn("TTML Layout", ttmlLayout);
         for (var i = 0; i < cues.length; i += 1) {
             cue = cues[i];
             startTime = parseTimings(cue["p@begin"]);
             endTime = parseTimings(cue["p@end"]);
             cueStyleID = cue["p@style"];
+            cueRegionID = cue["p@region"];
             for (var j = 0; j < ttmlStylings.length; j++) {
                 var currStyle = ttmlStylings[j];
                 if (currStyle["style@xml:id"] === cueStyleID) {
                     cueStyle = currStyle;
                 }
             }
+            for (var j = 0; j < ttmlLayout.length; j++) {
+                var currReg = ttmlLayout[j];
+                if (currReg["region@xml:id"] === cueRegionID) {
+                    cueRegion = currReg;
+                }
+            }
+            console.warn("Cue Region", cueRegion);
             var styleProperties = [];
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     var property = cueStyle[key];
-                    var propertyName;
                     key = key.replace("style@tts:", "");
                     key = key.replace("style@xml:", "");
                     key = key.toLowerCase();
@@ -8288,17 +8302,15 @@ MediaPlayer.dependencies.SourceBufferExtensions.eventList = {
 };
 
 MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
+    "use strict";
     var cue, playlist, video;
     function addStyleToCaption(style) {
-        if (style) {
-            var styleBlock = "position: absolute; \n";
-            for (var i = 0; i < style.length; i++) {
-                styleBlock += style[i] + "\n";
-            }
-            styleBlock = "#videoCaption{ " + "\n" + styleBlock + "}";
-            var styleElement = document.getElementsByTagName("style")[0];
-            styleElement.innerHTML = "#container {             position: relative;            }            #videoOverlay {            z-index:2147483647;            position:absolute;            top:0px;            left:0px;            width:100%;            height:100%;            }            #videoPlayer {            position: absolute;            z-index: -1;            }" + styleBlock;
+        var styleBlock = "";
+        for (var i = 0; i < style.length; i++) {
+            styleBlock += style[i] + "\n";
         }
+        var styleElement = document.getElementsByTagName("style")[0];
+        styleElement.innerHTML = "#container {             position: relative;            display:inline-block;            }            #videoPlayer {            position: relative;            z-index: 1;            }            #captionContainer{            position: absolute;            z-index: 2147483647;            top: 0;            width: 100%;            }            #caption{" + styleBlock + "}";
     }
     return {
         initialize: function(videoModel) {
@@ -8308,6 +8320,7 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
         },
         listen: function() {
             video.listen("timeupdate", this.onCaption);
+            video.listen("webkitfullscreenchange", this.onFullscreen);
         },
         addCaptionToPlaylist: function(dts, duration, caption) {
             var newCue = {};
@@ -8328,14 +8341,19 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
                             diff = newDiff;
                             cue = playlist[i];
                         }
-                        document.getElementById("videoCaption").innerHTML = cue.data[0].data;
-                        addStyleToCaption(cue.data[0].style);
+                        document.getElementById("caption").innerHTML = cue.data[0].data;
+                        if (cue.data[0].style) {
+                            addStyleToCaption(cue.data[0].style);
+                        }
                     } else {
-                        return;
+                        continue;
                     }
                 }
+            } else {
+                return;
             }
-        }
+        },
+        onFullscreen: function() {}
     };
 };
 

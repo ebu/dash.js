@@ -30,6 +30,7 @@
  */
 
 MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
+    "use strict";
 
     var cue,
         playlist,
@@ -37,39 +38,40 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
 
     function addStyleToCaption(style) {
-        if(style) {
-            var styleBlock = "position: absolute; \n";
+            var styleBlock = "";
 
+            // Add each CSS property to a CSS block.
             for (var i = 0; i < style.length; i++){
-
                 styleBlock += style[i] + "\n";
-
             }
 
-            styleBlock = "#videoCaption{ " + "\n" + styleBlock + "}";
-
             var styleElement = document.getElementsByTagName('style')[0];
-            styleElement.innerHTML = "#container { \
+            // We replace the current style with the new cue style.
+            styleElement.innerHTML =
+            "#container { \
             position: relative;\
-            }\
-            #videoOverlay {\
-            z-index:2147483647;\
-            position:absolute;\
-            top:0px;\
-            left:0px;\
-            width:100%;\
-            height:100%;\
+            display:inline-block;\
             }\
             #videoPlayer {\
+            position: relative;\
+            z-index: 1;\
+            }\
+            #captionContainer{\
             position: absolute;\
-            z-index: -1;\
-            }" + styleBlock;
-        }
+            z-index: 2147483647;\
+            top: 0;\
+            width: 100%;\
+            }\
+            #caption{"
+            + styleBlock + "}";
+
     }
 
     return {
 
         initialize: function (videoModel) {
+            // Initialization of the videoModel, the playlist and we start listening the event we need.
+
             video = videoModel;
             this.listen();
             playlist = [];
@@ -77,12 +79,17 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
         },
 
         listen: function(){
-            video.listen('timeupdate', this.onCaption);
 
+            // Check every ms which cue should be played.
+            video.listen('timeupdate', this.onCaption);
+            // Check if we're going full screen to make the proper modifications.
+            video.listen('webkitfullscreenchange', this.onFullscreen);
         },
 
         addCaptionToPlaylist: function (dts, duration, caption) {
+
             var newCue = {};
+            // Record the cue Info for its parsing and displaying.
             newCue.decode = dts;
             newCue.duration = duration;
             newCue.data = caption;
@@ -92,25 +99,45 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
 
         onCaption: function() {
+            // Check if we have a cue to play
             if (playlist.length !== 0) {
                 var time = video.getCurrentTime();
                 cue      = playlist[0];
                 var diff = Math.abs(time - cue.data[0].start);
+                    // Function to determine the cue that should play at the video current time.
                     for (var i = 0; i < playlist.length; i++) {
+                        // Check that the start of the cue we test is at least after or equal to the current time
+                        // So the cue chosen should always be the right one in the timeline, even when seeking
                         if (time >= playlist[i].data[0].start) {
+
                             var newDiff = Math.abs(time - playlist[i].data[0].start);
+
                             if (newDiff < diff) {
                                 diff = newDiff;
                                 cue  = playlist[i];
                             }
-                            document.getElementById("videoCaption").innerHTML = cue.data[0].data;
-                            addStyleToCaption(cue.data[0].style);
+                            // When the cue is found, we apply its text, style and positioning.
+                            document.getElementById("caption").innerHTML = cue.data[0].data;
+
+                            if(cue.data[0].style) {
+                                addStyleToCaption(cue.data[0].style);
+                            }
+
                         } else {
-                            return;
+                            // We check for another cue in the list
+                            continue;
                         }
                     }
+            } else {
+                // Nothing to be played.
+                return;
             }
+        },
+
+        onFullscreen: function(){
+
         }
+
     };
 };
 

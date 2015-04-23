@@ -4,42 +4,16 @@
 <head>
     <title>Dash.js Test Code</title>
     <style>
-        #container {
-        position: relative;
-        }
-
-        #videoOverlay {
-            z-index:2147483647;
-            position:absolute;
-            top:0px;
-            left:0px;
-            width:100%;
-            height:100%;
-        }
-
-        #videoPlayer {
-            position: absolute;
-            top: 0px;
-            left: 0px;
-            z-index: -1;
-        }
-
-        #videoCaption{
-            position: absolute;
-            z-index: 2147483647;
-            font-size: 2vw;
-        }
-
     </style>
 </head>
 <body>
 <h1>Dash.js Test Code</h1>
 
 <div id="container">
-    <div id="videoOverlay">
+
         <video id="videoPlayer" controls="true"></video>
-        <div id="videoCaption"></div>
-    </div>
+        <div id="captionContainer"><div id="caption"></div></div>
+
 </div>
 <script src="http://localhost:8080/dist/dash.all.js"></script>
 

@@ -108,7 +108,6 @@ MediaPlayer.utils.TTMLParser = function () {
         },
 
         getNamespacePrefix = function(json, ns) {
-            var array = Object.keys(json);
             var r = Object.keys(json)
                 .filter(function(k){
                     return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
@@ -123,20 +122,23 @@ MediaPlayer.utils.TTMLParser = function () {
 
         internalParse = function(data) {
             var captionArray = [],
-                converter = new X2JS([], "", false),
                 errorMsg,
                 cues,
                 cue,
                 startTime,
                 endTime,
                 cueStyleID,
+                cueRegionID,
                 cueStyle,
+                cueRegion,
                 ttmlStylings,
+                ttmlLayout,
                 nsttp,
                 text;
 
+
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
-            ttmlStylings = ttml.tt.head.styling;
+
 
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
@@ -165,11 +167,22 @@ MediaPlayer.utils.TTMLParser = function () {
             }
 
 
+            ttmlLayout = ttml.tt.head.layout;
+            ttmlStylings = ttml.tt.head.styling;
+
+            if(!Array.isArray(ttmlLayout)){
+                ttmlLayout = [ttmlLayout];
+            } else if(!Array.isArray(ttmlStylings)){
+                ttmlStylings = [ttmlStylings];
+            }
+
+            console.warn("TTML Layout", ttmlLayout);
             for (var i = 0; i < cues.length; i += 1) {
                 cue = cues[i];
                 startTime = parseTimings(cue['p@begin']);
                 endTime = parseTimings(cue['p@end']);
                 cueStyleID = cue['p@style'];
+                cueRegionID = cue['p@region'];
 
                 // Find the right style for our cue
                 for(var j = 0; j < ttmlStylings.length; j++){
@@ -178,6 +191,17 @@ MediaPlayer.utils.TTMLParser = function () {
                         cueStyle = currStyle;
                     }
                 }
+
+                // Find the right region for our cue
+                for(var j = 0; j < ttmlLayout.length; j++){
+                    var currReg = ttmlLayout[j];
+                    if(currReg['region@xml:id'] === cueRegionID){
+                        cueRegion = currReg;
+                    }
+                }
+                console.warn("Cue Region", cueRegion);
+
+
                 //Clean and prepare the cueStyle
 
                 var styleProperties = [];
@@ -185,7 +209,6 @@ MediaPlayer.utils.TTMLParser = function () {
                 for(var key in cueStyle){
                     if(cueStyle.hasOwnProperty(key)) {
                         var property = cueStyle[key];
-                        var propertyName;
 
                         key = key.replace("style@tts:", "");
                         key = key.replace("style@xml:", "");
