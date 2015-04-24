@@ -136,22 +136,26 @@ MediaPlayer.utils.TTMLParser = function () {
                 nsttp,
                 text;
 
+            // **** Check the document Structure ***
 
+            // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
 
-
+            //Check that the document follow the proper constraints.
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
                 throw errorMsg;
             }
 
+            //Get the namespace prefixe.
             nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
 
+            // Set the framerate.
             if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
                 ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
             }
 
-
+            // *** Extract the cues ***
 
             if(ttml.tt.body.div){
                 cues = ttml.tt.body.div;
@@ -176,7 +180,6 @@ MediaPlayer.utils.TTMLParser = function () {
                 ttmlStylings = [ttmlStylings];
             }
 
-            console.warn("TTML Layout", ttmlLayout);
             for (var i = 0; i < cues.length; i += 1) {
                 cue = cues[i];
                 startTime = parseTimings(cue['p@begin']);
@@ -184,28 +187,33 @@ MediaPlayer.utils.TTMLParser = function () {
                 cueStyleID = cue['p@style'];
                 cueRegionID = cue['p@region'];
 
+                if (isNaN(startTime) || isNaN(endTime)) {
+                    errorMsg = "TTML document has incorrect timing value";
+                    throw errorMsg;
+                }
+
                 // Find the right style for our cue
-                for(var j = 0; j < ttmlStylings.length; j++){
-                    var currStyle = ttmlStylings[j];
-                    if(currStyle['style@xml:id'] === cueStyleID){
-                        cueStyle = currStyle;
+                if(cueStyleID) {
+                    for (var j = 0; j < ttmlStylings.length; j++) {
+                        var currStyle = ttmlStylings[j];
+                        if (currStyle['style@xml:id'] === cueStyleID) {
+                            cueStyle = currStyle;
+                        }
                     }
                 }
 
                 // Find the right region for our cue
-                for(var j = 0; j < ttmlLayout.length; j++){
-                    var currReg = ttmlLayout[j];
-                    if(currReg['region@xml:id'] === cueRegionID){
-                        cueRegion = currReg;
+                if(cueRegionID) {
+                    for (var j = 0; j < ttmlLayout.length; j++) {
+                        var currReg = ttmlLayout[j];
+                        if (currReg['region@xml:id'] === cueRegionID) {
+                            cueRegion = currReg;
+                        }
                     }
                 }
-                console.warn("Cue Region", cueRegion);
 
-
-                //Clean and prepare the cueStyle
-
-                var styleProperties = [];
-
+                // Extract the style for the cue
+                var styleAndRegionProperties = [];
                 for(var key in cueStyle){
                     if(cueStyle.hasOwnProperty(key)) {
                         var property = cueStyle[key];
@@ -233,7 +241,37 @@ MediaPlayer.utils.TTMLParser = function () {
                             result = key + ": " + property + ";";
                         }
 
-                        styleProperties.push(result);
+                        styleAndRegionProperties.push(result);
+                    }
+                }
+
+                // Extract the region for the cue
+                for(var key in cueRegion){
+                    if(cueRegion.hasOwnProperty(key)) {
+
+                        var property = cueRegion[key];
+
+                        key = key.replace("region@tts:", "");
+                        key = key.replace("region@xml:", "");
+                        key = key.toLowerCase();
+
+                        if (key.indexOf("extent") > -1) {
+                            var coords = property.split(/\s/);
+                            styleAndRegionProperties.push("width: " + coords[0] + ';');
+                            styleAndRegionProperties.push("height :" + coords[1] + ';');
+                        }  else if (key.indexOf("origin") > -1) {
+                            var coords = property.split(/\s/);
+                            styleAndRegionProperties.push("left: " + coords[0] + ';');
+                            styleAndRegionProperties.push("top :" + coords[1] + ';');
+                            styleAndRegionProperties.push("position: absolute");
+                        } else if (key.indexOf("displayAlign: ") > -1){
+                            styleAndRegionProperties.push(""
+                        }else {
+                                var result
+                            };
+                            result = key + ':' + property + ';';
+                            styleAndRegionProperties.push(result);
+                        }
                     }
                 }
 
@@ -254,7 +292,7 @@ MediaPlayer.utils.TTMLParser = function () {
                                 id:images[j]["p@xml:id"],
                                 data: "data:image/"+images[j].imagetype.toLowerCase()+";base64, " + images[j].__text,
                                 type: "image",
-                                style: styleProperties
+                                style: styleAndRegionProperties
                             });
                         }
                     }
@@ -271,7 +309,7 @@ MediaPlayer.utils.TTMLParser = function () {
                         end: endTime,
                         data: text,
                         type: "text",
-                        style: styleProperties
+                        style: styleAndRegionProperties
                     });
                 }
             }

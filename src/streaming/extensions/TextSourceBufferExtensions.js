@@ -38,31 +38,27 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
 
     function addStyleToCaption(style) {
-            var styleBlock = "";
+        var styleBlock = "";
 
-            // Add each CSS property to a CSS block.
-            for (var i = 0; i < style.length; i++){
-                styleBlock += style[i] + "\n";
-            }
+        // Add each CSS property to a CSS block.
+        for (var i = 0; i < style.length; i++){
+            styleBlock += style[i] +';'+ "\n";
+        }
 
-            var styleElement = document.getElementsByTagName('style')[0];
-            // We replace the current style with the new cue style.
-            styleElement.innerHTML =
+        var styleElement = document.getElementsByTagName('style')[0];
+        // We replace the current style with the new cue style.
+        styleElement.innerHTML =
             "#container { \
             position: relative;\
-            display:inline-block;\
+            display:inline-flex;\
+            overflow: hidden;\
             }\
             #videoPlayer {\
             position: relative;\
             z-index: 1;\
             }\
-            #captionContainer{\
-            position: absolute;\
-            z-index: 2147483647;\
-            top: 0;\
-            width: 100%;\
-            }\
-            #caption{"
+            #caption{\
+            z-index: 2147483647;"
             + styleBlock + "}";
 
     }
@@ -86,14 +82,14 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
             video.listen('webkitfullscreenchange', this.onFullscreen);
         },
 
-        addCaptionToPlaylist: function (dts, duration, caption) {
+        addCaptionsToPlaylist: function (dts, duration, captions) {
 
-            var newCue = {};
-            // Record the cue Info for its parsing and displaying.
-            newCue.decode = dts;
-            newCue.duration = duration;
-            newCue.data = caption;
-            playlist.push(newCue);
+            var newCues = {};
+            // Record the cues Info for its parsing and displaying.
+            newCues.decode = dts;
+            newCues.duration = duration;
+            newCues.data = captions;
+            playlist.push(newCues);
 
         },
 
@@ -104,30 +100,30 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                 var time = video.getCurrentTime();
                 cue      = playlist[0];
                 var diff = Math.abs(time - cue.data[0].start);
-                    // Function to determine the cue that should play at the video current time.
-                    for (var i = 0; i < playlist.length; i++) {
-                        // Check that the start of the cue we test is at least after or equal to the current time
-                        // So the cue chosen should always be the right one in the timeline, even when seeking
-                        if (time >= playlist[i].data[0].start) {
+                // Function to determine the cue that should play at the video current time.
+                for (var i = 0; i < playlist.length; i++) {
+                    // Check that the start of the cue we test is at least after or equal to the current time
+                    // So the cue chosen should always be the right one in the timeline, even when seeking
+                    if (time >= playlist[i].data[0].start) {
 
-                            var newDiff = Math.abs(time - playlist[i].data[0].start);
+                        var newDiff = Math.abs(time - playlist[i].data[0].start);
 
-                            if (newDiff < diff) {
-                                diff = newDiff;
-                                cue  = playlist[i];
-                            }
-                            // When the cue is found, we apply its text, style and positioning.
-                            document.getElementById("caption").innerHTML = cue.data[0].data;
-
-                            if(cue.data[0].style) {
-                                addStyleToCaption(cue.data[0].style);
-                            }
-
-                        } else {
-                            // We check for another cue in the list
-                            continue;
+                        if (newDiff < diff) {
+                            diff = newDiff;
+                            cue  = playlist[i];
                         }
+                        // When the cue is found, we apply its text, style and positioning.
+                        document.getElementById("caption").innerHTML = cue.data[0].data;
+
+                        if(cue.data[0].style) {
+                            addStyleToCaption(cue.data[0].style);
+                        }
+
+                    } else {
+                        // We check for another cue in the list
+                        continue;
                     }
+                }
             } else {
                 // Nothing to be played.
                 return;

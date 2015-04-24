@@ -70,17 +70,16 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 }else{
                     fragmentExt = self.system.getObject("fragmentExt");
                     samplesInfo = fragmentExt.getSamplesInfo(bytes.buffer);
-
                     for(i= 0 ; i<samplesInfo.length ;i++) {
 
                         this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
 
-                        ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset,samplesInfo[i].offset+samplesInfo[i].size)));
+                        ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            this.textSourceBufferExt.addCaptionToPlaylist(samplesInfo[i].dts/this.timescale,samplesInfo[i].duration/this.timescale,result);
-                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale,samplesInfo[i].duration/this.timescale,result);
+                            this.textSourceBufferExt.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
+                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                         } catch(e) {
                             //empty cue ?
                         }
