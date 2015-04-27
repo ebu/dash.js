@@ -75,9 +75,21 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                         this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
 
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
+                        console.warn("CCCONTENT:", ccContent);
                         var parser = this.system.getObject("ttmlParser");
                         try{
-                            result = parser.parse(ccContent);
+                            //result = parser.parse(ccContent);
+                            //var startTime = e.dataReceived.timestamp * 1000;
+                            //var endTime = e.dataReceived.duration * 1000 + startTime;
+                            var ttml = PlayerFramework.parseXml(ccContent);
+
+                            console.warn("TTML:", ttml);
+                            var ttmlParser = new PlayerFramework.TtmlParser();
+
+                            ttmlParser.parseTtml(ttml, 0, 10000);
+
+                            console.warn(ttmlParser.cues);
+
                             this.textSourceBufferExt.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                             this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                         } catch(e) {

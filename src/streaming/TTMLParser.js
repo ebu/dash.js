@@ -136,6 +136,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 nsttp,
                 text;
 
+
             // **** Check the document Structure ***
 
             // Parse the TTML in a JSON object.
@@ -264,11 +265,8 @@ MediaPlayer.utils.TTMLParser = function () {
                             styleAndRegionProperties.push("left: " + coords[0] + ';');
                             styleAndRegionProperties.push("top :" + coords[1] + ';');
                             styleAndRegionProperties.push("position: absolute");
-                        } else if (key.indexOf("displayAlign: ") > -1){
-                            styleAndRegionProperties.push(""
-                        }else {
-                                var result
-                            };
+                        } else {
+                            var result;
                             result = key + ':' + property + ';';
                             styleAndRegionProperties.push(result);
                         }

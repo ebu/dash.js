@@ -5,28 +5,63 @@
     <title>Dash.js Test Code</title>
     <style>
     </style>
+
+    <link rel="stylesheet" href="playerframework.min.css">
+    <link rel="stylesheet" href="style.css">
+
+    <script src="playerframework.debug.js"></script>
 </head>
 <body>
 <h1>Dash.js Test Code</h1>
 
 <div id="container">
 
-        <video id="videoPlayer" controls="true"></video>
+        <video id="videoPlayer" controls="true">
+            <track src="RealPCPride.es.captions.xml" label="English" kind="captions" default />
+        </video>
         <div id="captionContainer"><div id="caption"></div></div>
 
 </div>
-<script src="http://localhost:8080/dist/dash.all.js"></script>
+
+<script src="/dist/dash.all.js"></script>
+
+
+<!-- Option 1: Add track elements directly to the video tag. -->
+<video id="myVideo" class="pf-video" width="450" height="255" controls="controls" poster="http://smf.blob.core.windows.net/samples/videos/blackposter.png">
+    <source src="http://smf.blob.core.windows.net/samples/videos/RealPCPride.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+    <source src="http://smf.blob.core.windows.net/samples/videos/RealPCPride.ogg" type='video/ogg; codecs="theora, vorbis"' />
+    <track src="http://smf.blob.core.windows.net/samples/videos/RealPCPride.en.captions.xml" label="English" kind="captions" default />
+</video>
+
+<script>
+    var myPlayer = new PlayerFramework.Player("myVideo",
+            {
+                // Option 2: Add tracks via the textTracks option.
+                textTracks:
+                        [
+                            {
+                                label: "Spanish",
+                                src: "http://smf.blob.core.windows.net/samples/videos/RealPCPride.es.captions.xml",
+                                kind: "captions"
+                            }
+                        ]
+            });
+</script>
 
 
 <script>
             (function(){
-                var url = "http://localhost:8080/samples/ebu-subtitling-demo/test-dash-10s-subs-rand-dashavc264/manifest-test-dash-10s-subs-rand-dashavc264.mpd";
+                var url = "http://localhost:8080/samples/ebu-subtitling-demo/test-dash-10s-subs-rand-dashavc264/manifest-test-dash-10s-subs-rand-dashavc264-2.mpd";
                 var context = new Dash.di.DashContext();
                 var player = new MediaPlayer(context);
                 player.startup();
                 player.attachView(document.querySelector("#videoPlayer"));
                 player.attachSource(url);
+
+//                var myPlayer = new PlayerFramework.Player("videoPlayer");
             })();
+
+
        </script>
 
 </body>
