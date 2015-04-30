@@ -215,16 +215,14 @@ PlayerFramework.mouseEventProxy = function(element, eventType)
 	///	</param>
 	///	<returns type="Function" />
 
-	if (document.createEvent) {
-	    return PlayerFramework.proxy(this, function(e)
-	    {
-	            var event = document.createEvent("MouseEvents");
-	            event.initMouseEvent(eventType, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
-	            element.dispatchEvent(event);
-	    });
-    } else {
-        return null;
-    }
+	var proxy = PlayerFramework.proxy(this, function(e)
+	{
+		var event = document.createEvent("MouseEvents");
+		event.initMouseEvent(eventType, true, true, window, 0, 0, 0, 0, 0, false, false, false, false, 0, null);
+		element.dispatchEvent(event);
+	});
+
+	return proxy;
 };
 
 PlayerFramework.xhr = function(options, completeCallback, errorCallback)
@@ -232,14 +230,11 @@ PlayerFramework.xhr = function(options, completeCallback, errorCallback)
 	///	<summary>
 	///		Wraps an XMLHttpRequest.
 	///	</summary>
-	///	<param name="options" type="Object">
-	///		The options to use for the request (url, etc.)
-	///	</param>
 	///	<param name="completeCallback" type="Function">
 	///		The function to call when the request has completed.
 	///	</param>
 	///	<param name="errorCallback" type="Function">
-	///		The function to call when the request resulted in an error.
+	///		The function to call when request resulted in an error.
 	///	</param>
 
 	var request = null;
@@ -555,93 +550,6 @@ PlayerFramework.forEach = function(array, fun /*, thisp */)
 	}
 };
 
-PlayerFramework.binarySearch = function (array, value, comparer) {
-    /// <summary>Searches a sorted array for the specified value using the binary search algorithm.</summary>
-    /// <param name="array" type="Array">The array to search.</param>
-    /// <param name="value" type="Object">The value to search for.</param>
-    /// <param name="comparer" type="Function">The comparison function by which the array is sorted.</param>
-    /// <returns type="Number">The lowest index of the value if found, otherwise the insertion point.</returns>
-
-    var left = 0;
-    var right = array.length;
-    var middle, compareResult, found;
-
-    while (left < right) {
-        middle = (left + right) >> 1;
-        compareResult = comparer(value, array[middle]);
-        if (compareResult > 0) {
-            left = middle + 1;
-        } else {
-            right = middle;
-            found = !compareResult;
-        }
-    }
-
-    return found ? left : ~left;
-};
-
-PlayerFramework.binaryInsert = function (array, value, comparer) {
-    /// <summary>Inserts a value into a sorted array if it does not already exist.</summary>
-    /// <param name="array" type="Array">The target array.</param>
-    /// <param name="value" type="Object">The value to insert.</param>
-    /// <param name="comparer" type="Function">The comparison function by which the array is sorted.</param>
-    /// <returns type="Boolean">True if the value was inserted.</returns>
-
-    var index = PlayerFramework.binarySearch(array, value, comparer);
-
-    if (index < 0) {
-        array.splice(-(index + 1), 0, value);
-        return true;
-    }
-
-    return false;
-};
-
-PlayerFramework.getArray = function (obj) {
-    /// <summary>Gets an array from an "enumerable" object.</summary>
-    /// <param name="obj" type="Object">The target object.</param>
-    /// <returns type="Array">The array.</returns>
-
-    if (obj) {
-        if (Array.isArray(obj)) {
-            return obj;
-        } else if (typeof obj.length !== "undefined") {
-            return Array.prototype.slice.call(obj);
-        } else if (typeof obj.first === "function") {
-            var array = [];
-
-            for (var i = obj.first() ; i.hasCurrent; i.moveNext()) {
-                array.push(i.current);
-            }
-
-            return array;
-        }
-    }
-
-    throw invalidArgument;
-};
-
-PlayerFramework.parseXml = function (data) {
-    var xml;
-
-    try {
-        if (window.DOMParser) {
-            var domParser = new DOMParser();
-            xml = domParser.parseFromString(data, "application/xml");
-        }
-        else {
-            xml = new ActiveXObject("Microsoft.XMLDOM");
-            xml.async = false;
-            xml.loadXML(data);
-        }
-    }
-    catch (err) {
-        xml = null;
-    }
-
-    return xml;
-};
-
 PlayerFramework.requestAnimationFrame = (function()
 {
 	///	<summary>
@@ -783,7 +691,7 @@ PlayerFramework.domReady = (function()
 			handlers.push(handler);
 	};
 })();
-﻿(function()
+(function()
 {
 	///	<summary>
 	///		Creates the Class extendable structure used by all objects in the framework.
@@ -857,7 +765,7 @@ PlayerFramework.domReady = (function()
 		return Class;
 	};
 })();
-﻿PlayerFramework.Object = PlayerFramework.Class.extend(
+PlayerFramework.Object = PlayerFramework.Class.extend(
 {
 	init: function(options)
 	{
@@ -925,7 +833,7 @@ PlayerFramework.domReady = (function()
 		PlayerFramework.merge(this.options, userOptions);
 	}
 });
-﻿PlayerFramework.Plugin = PlayerFramework.Object.extend(
+PlayerFramework.Plugin = PlayerFramework.Object.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -952,7 +860,7 @@ PlayerFramework.domReady = (function()
 		this.player = player;
 	}
 });
-﻿PlayerFramework.ModulePlugin = PlayerFramework.Plugin.extend(
+PlayerFramework.ModulePlugin = PlayerFramework.Plugin.extend(
 {
 	init: function(player, options)
 	{
@@ -970,7 +878,7 @@ PlayerFramework.domReady = (function()
 			this.player[this.options.playerExtensionPropertyName] = this;
 	}
 });
-﻿PlayerFramework.MediaPlugin = PlayerFramework.Plugin.extend(
+PlayerFramework.MediaPlugin = PlayerFramework.Plugin.extend(
 {
 	init: function(player, options, playerOptions)
 	{
@@ -1007,7 +915,7 @@ PlayerFramework.domReady = (function()
 		throw new Error("Not implemented.");
 	}
 });
-﻿PlayerFramework.VideoMediaPlugin = PlayerFramework.MediaPlugin.extend(
+PlayerFramework.VideoMediaPlugin = PlayerFramework.MediaPlugin.extend(
 {
 	init: function(player, options, playerOptions)
 	{
@@ -1493,7 +1401,7 @@ PlayerFramework.VideoMediaPlugin.MediaError =
 	MEDIA_ERR_DECODE: 3,
 	MEDIA_ERR_SRC_NOT_SUPPORTED: 4
 };
-﻿PlayerFramework.ControlPlugin = PlayerFramework.ModulePlugin.extend(
+PlayerFramework.ControlPlugin = PlayerFramework.ModulePlugin.extend(
 {
 	init: function(player, options)
 	{
@@ -1659,7 +1567,7 @@ PlayerFramework.VideoMediaPlugin.MediaError =
 		///	</summary>
 	}
 });
-﻿PlayerFramework.Plugins.VideoElementMediaPluginBase = PlayerFramework.VideoMediaPlugin.extend(
+PlayerFramework.Plugins.VideoElementMediaPluginBase = PlayerFramework.VideoMediaPlugin.extend(
 {
 	defaultOptions: function(player, playerOptions)
 	{
@@ -1947,12 +1855,10 @@ PlayerFramework.VideoMediaPlugin.MediaError =
 		///	<param name="type" type="String" />
 		///	<returns type="Boolean" />
 
-	    var videoElement = this.element ? this.element : document.createElement("video");
+		if (this.element)
+			return this.element.canPlayType(type);
 
-	    if (videoElement.canPlayType)
-	        return videoElement.canPlayType(type);
-
-		return false;
+		return document.createElement("video").canPlayType(type);
 	},
 
 	checkSupport: function(callback)
@@ -2157,7 +2063,7 @@ PlayerFramework.VideoMediaPlugin.MediaError =
 // Workaround to make video tag styleable in IE<9: http://ejohn.org/blog/html5-shiv
 // The script or the following line must appear in the head (before the video tag is parsed by IE) for this to work.
 document.createElement("video");
-﻿PlayerFramework.Plugins.SilverlightMediaPluginBase = PlayerFramework.VideoMediaPlugin.extend(
+PlayerFramework.Plugins.SilverlightMediaPluginBase = PlayerFramework.VideoMediaPlugin.extend(
 {
 	defaultOptions: function(player, playerOptions)
 	{
@@ -2196,22 +2102,6 @@ document.createElement("video");
 		}
 
 		this.seekingValue = false;
-	},
-
-	activateTrack: function (track)
-	{
-	    ///	<summary>
-	    ///		Selects a text track on the Silverlight player
-	    ///	</summary>
-	    ///	<param name="track" type="TextTrack">
-	    ///		The text track to be activated.
-	    ///	</param>
-	    try {
-	        this.silverlightPlayer.SelectCaptionStream(track.label);
-	    } catch (err) {
-	        // Ignore failure here for backward compatibility with older xap files that didn't support smooth captions
-	    }
-	    
 	},
 
 	// VideoMediaPlugin Properties
@@ -2501,11 +2391,9 @@ document.createElement("video");
 		///	</summary>
 
 		// Using addEventListener directly instead of PlayerFramework.addEvent because addEventListener will be supported by Silverlight player.
-	    this.silverlightPlayer.addEventListener("ApplicationExit", PlayerFramework.proxy(this, this.onUnloadingMediaPlugin), false);
-	    this.silverlightPlayer.addEventListener("DataReceived", PlayerFramework.proxy(this, this.onDataReceived), false);
+		this.silverlightPlayer.addEventListener("ApplicationExit", PlayerFramework.proxy(this, this.onUnloadingMediaPlugin), false);
 		this.silverlightPlayer.addEventListener("MediaEnded", PlayerFramework.proxy(this, this.onEnded), false);
 		this.silverlightPlayer.addEventListener("MediaFailed", PlayerFramework.proxy(this, this.onMediaFailed), false);
-		this.silverlightPlayer.addEventListener("MediaOpened", PlayerFramework.proxy(this, this.onMediaOpened), false);
 		this.silverlightPlayer.addEventListener("PlayStateChanged", PlayerFramework.proxy(this, this.onPlayStateChanged), false);
 		this.silverlightPlayer.addEventListener("PlaybackPositionChanged", PlayerFramework.proxy(this, this.onTimeUpdate), false);
 		this.silverlightPlayer.addEventListener("VolumeLevelChanged", PlayerFramework.proxy(this, this.onVolumeChange), false);
@@ -2533,31 +2421,7 @@ document.createElement("video");
 		this.element.onErrorCallback = PlayerFramework.proxy(this, this.onElementError);
 	},
 
-    // Event Handlers
-	onDataReceived: function (sender, args)
-	{
-	    ///	<summary>
-	    ///		Notifies the player when text track data has been received.
-	    ///	</summary>
-	    ///	<param name="sender" type="Object">
-	    ///	</param>
-	    ///	<param name="args" type="ScriptDataReceivedInfo">
-	    ///		A scriptable type defined in the Silverlight player, containing the metadata and payload
-        ///     of the text track data chunk just received.
-	    ///	</param>
-
-	    this.player.dispatchEvent(
-        {
-            type: "datareceived",
-            dataReceived: 
-            {
-                data: args.Result.Data,
-                timestamp: args.Result.DataChunk.Timestamp,
-                duration: args.Result.DataChunk.Duration
-            }
-        });
-	},
-
+	// Event Handlers
 	onElementError: function()
 	{
 		///	<summary>
@@ -2626,27 +2490,6 @@ document.createElement("video");
 		}
 	},
 
-	onMediaOpened: function () {
-
-	    ///	<summary>
-	    ///		Called when media is opened. Caption tracks are read from the Silverlight player
-	    ///     and are added to this player.
-	    ///	</summary>
-
-	    try {
-
-	        for (var i = 0; i < this.silverlightPlayer.AvailableCaptionStreams.length; i++) {
-
-	            var captionStream = this.silverlightPlayer.AvailableCaptionStreams[i];
-
-	            this.player.addTextTrack("captions", captionStream.Name, captionStream.Language, true);
-	        }
-
-	    } catch (err) {
-            // Ignore failure here for backward compatibility with older xap files that didn't support smooth captions
-	    }
-	},
-
 	onMediaFailed: function(e)
 	{	
 		///	<summary>
@@ -2695,8 +2538,8 @@ document.createElement("video");
 		///		or if it has completed seeking.
 		///	</summary>
 
-	    var currentSeekTime = Date.now ? Date.now : +new Date;
-        
+		var currentSeekTime = Date.now();
+
 		PlayerFramework.proxy(this, function(previousSeekTime)
 		{
 			window.setTimeout(PlayerFramework.proxy(this, function()
@@ -2775,7 +2618,7 @@ var onSilverlightLoad = function(sender, args)
 	if (silverlightPlayer && element.onLoadCallback)
 		element.onLoadCallback(silverlightPlayer);
 };
-﻿PlayerFramework.StaticContentMediaPlugin = PlayerFramework.MediaPlugin.extend(
+PlayerFramework.StaticContentMediaPlugin = PlayerFramework.MediaPlugin.extend(
 {
 	defaultOptions: function(player, playerOptions)
 	{
@@ -2825,7 +2668,7 @@ var onSilverlightLoad = function(sender, args)
 		callback(true);
 	}
 });
-﻿PlayerFramework.Plugins.PlaylistPlugin = PlayerFramework.ModulePlugin.extend(
+PlayerFramework.Plugins.PlaylistPlugin = PlayerFramework.ModulePlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -3038,7 +2881,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 	ADVANCE_ONLY: 1,
 	ADVANCE_AND_PLAY: 2
 };
-﻿PlayerFramework.TrackPlugin = PlayerFramework.ModulePlugin.extend(
+PlayerFramework.TrackPlugin = PlayerFramework.ModulePlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -3313,7 +3156,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 			PlayerFramework.xhr({ url: textTrack.src }, PlayerFramework.proxy(this, function(result)
 			{
 				textTrack.xml = result.responseXML;
-				this.processTextTrackSource(textTrack, textTrack.xml);
+				this.processTextTrackSource(textTrack);
 		
 				textTrack.readyState = PlayerFramework.TextTrack.ReadyState.LOADED;
 				textTrack.dispatchEvent({ type: "load" });
@@ -3446,7 +3289,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.onCueRemoved({ cue: cue });
 	}
 });
-﻿PlayerFramework.Plugins.TrackDataProviderPlugin = PlayerFramework.ModulePlugin.extend(
+PlayerFramework.Plugins.TrackDataProviderPlugin = PlayerFramework.ModulePlugin.extend(
 {
 	init: function(player, options)
 	{
@@ -3529,7 +3372,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.player.addEventListener("loadedmediaplugin", PlayerFramework.proxy(this, this.onLoadedMediaPlugin), false);
 	},
 
-	addTextTrack: function(kind, label, language, inStream)
+	addTextTrack: function(kind, label, language)
 	{
 		///	<summary>
 		///		Entry point for added a text track as specified by the W3C.
@@ -3548,7 +3391,6 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		textTrack.kind = kind;
 		textTrack.label = label;
 		textTrack.language = language;
-		textTrack.inStream = inStream;
 
 		this.player.textTracks.push(textTrack);
 
@@ -3608,7 +3450,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 			this.activateTextTrack(textTrack);
 	}
 });
-﻿PlayerFramework.Plugins.ChapterTrackPlugin = PlayerFramework.TrackPlugin.extend(
+PlayerFramework.Plugins.ChapterTrackPlugin = PlayerFramework.TrackPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -3752,7 +3594,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.player.currentTime(chapterTime);
 	}
 });
-﻿PlayerFramework.Plugins.TimelineTrackPlugin = PlayerFramework.TrackPlugin.extend(
+PlayerFramework.Plugins.TimelineTrackPlugin = PlayerFramework.TrackPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -3844,7 +3686,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.player.dispatchEvent(e);
 	}
 });
-﻿PlayerFramework.Plugins.CaptionTrackPlugin = PlayerFramework.TrackPlugin.extend(
+PlayerFramework.Plugins.CaptionTrackPlugin = PlayerFramework.TrackPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -3870,16 +3712,8 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		///	<returns type="CaptionTrackPlugin" />
 
 		this._super(player, options);
-	},
 
-	addEventListeners: function () {
-	    ///	<summary>
-	    ///		Adds event listeners to the control's elements.
-	    ///	</summary>
-	    this._super();
-
-	    this.player.addEventListener("ready", PlayerFramework.proxy(this, this.onReady), false);
-	    this.player.addEventListener("datareceived", PlayerFramework.proxy(this, this.onDataReceived), false);
+		this.player.addEventListener("ready", PlayerFramework.proxy(this, this.onReady), false);
 	},
 
 	// Event Handlers
@@ -3956,19 +3790,6 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.player.dispatchEvent(e);
 	},
 
-	onDataReceived: function (e)
-	{
-	    ///	<summary>
-	    ///		Processes in-stream caption data
-	    ///	</summary>
-
-	    var startTime = e.dataReceived.timestamp * 1000;
-	    var endTime = e.dataReceived.duration * 1000 + startTime;
-	    var xml = PlayerFramework.parseXml(e.dataReceived.data);
-
-	    this.processTextTrackSource(this.activeTextTrack, xml, startTime, endTime);
-	},
-
 	onReady: function(e)
 	{
 		///	<summary>
@@ -3989,24 +3810,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 	},
 
 	// Functions
-	activateTextTrack: function (textTrack) {
-
-	    if (textTrack.inStream) {
-
-	        this.player.mediaPlugin.activateTrack(textTrack);
-
-	        textTrack.readyState = PlayerFramework.TextTrack.ReadyState.LOADED;
-	        textTrack.dispatchEvent({ type: "load" });
-
-	        this.showTextTrack(textTrack);
-
-	    } else {
-
-	        this._super(textTrack);
-	    }
-	},
-
-	clearCaptionContainer: function ()
+	clearCaptionContainer: function()
 	{
 		///	<summary>
 		///		Clears the area containing the caption HTML.
@@ -4015,52 +3819,27 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.element.innerHTML = "";
 	},
 
-	processTextTrackSource: function(textTrack, ttml, startTime, endTime)
+	processTextTrackSource: function(textTrack)
 	{
+
 		///	<summary>
 		///		Processes a downloaded text track using a TTML parser.
 		///	</summary>
 		///	<param name="textTrack" type="Object">
 		///		The text track to process.
-	    ///	</param>
-	    ///	<param name="ttml" type="Object">
-	    ///		TTML data to process.
-	    ///	</param>
-	    ///	<param name="startTime" type="Number">
-	    ///		The start time in seconds of the provided TTML. Optional.
-	    ///	</param>
-	    ///	<param name="endTime" type="Number">
-	    ///		The end time in seconds of the provided TTML. Optional.
-	    ///	</param>
+		///	</param>
+        console.warn("hello!");
+		var ttmlParser = new PlayerFramework.TtmlParser();
+		var ttml = ttmlParser.parseTtml(textTrack.xml);
 
-	    var ttmlParser = new PlayerFramework.TtmlParser();
-
-	    ttmlParser.parseTtml(ttml, startTime, endTime);
-
-	    if (!textTrack.cues) {
-	        textTrack.cues = new PlayerFramework.TextTrackCueList();
-	    }
-	    for (var i = 0; i < ttmlParser.cues.length; i++) {
-
-	        var parserCue = ttmlParser.cues[i];
-
-	        var textTrackCue = new PlayerFramework.TextTrackCue(
-            {
-                track: textTrack,
-                id: parserCue.cue.id,
-                startTime: parserCue.startTime,
-                endTime: parserCue.endTime,
-                pauseOnExit: false,
-                text: parserCue.cue.innerHTML,
-                markup: parserCue.cue,
-                uri: parserCue.uri
-            });
-
-	        textTrack.cues.push(textTrackCue);
-	    }
-	}
+        textTrack.cues = new PlayerFramework.TextTrackCueList(
+		{
+			track: textTrack,
+			list: ttml.captions
+		});
+    }
 });
-﻿PlayerFramework.Plugins.ControlStripPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.ControlStripPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -4575,20 +4354,8 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		PlayerFramework.addEvent(document, "mousemove", PlayerFramework.proxy(this, this.onDocumentMouseMove));
 		PlayerFramework.addEvent(document, "mouseup", PlayerFramework.proxy(this, this.onDocumentMouseUp));
 		PlayerFramework.addEvent(document, "keydown", PlayerFramework.proxy(this, this.onDocumentKeyDown));
-
-		var mouseOutProxy = PlayerFramework.mouseEventProxy(this.player, "mouseout");
-		var mouseOverProxy = PlayerFramework.mouseEventProxy(this.player, "mouseover");
-		PlayerFramework.addEvent(this.element, "mouseout", mouseOutProxy ? mouseOutProxy : PlayerFramework.proxy(this, this.onMouseOut));
-		PlayerFramework.addEvent(this.element, "mouseover", mouseOverProxy ? mouseOverProxy : PlayerFramework.proxy(this, this.onMouseOver));
-	},
-
-	onMouseOut: function () {
-	    this.player.dispatchEvent({ type: "mouseout" });
-	},
-
-	onMouseOver: function()
-	{
-	    this.player.dispatchEvent({ type: "mouseover" });
+		PlayerFramework.addEvent(this.element, "mouseover", PlayerFramework.mouseEventProxy(this.player, "mouseover"));
+		PlayerFramework.addEvent(this.element, "mouseout", PlayerFramework.mouseEventProxy(this.player, "mouseout"));
 	},
 
 	createControl: function()
@@ -5112,7 +4879,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		}
 	}
 });
-﻿PlayerFramework.Plugins.ChapterTrackControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.ChapterTrackControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -5305,7 +5072,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		this.controlStripPlugin.updateLayout();
 	}
 });
-﻿PlayerFramework.Plugins.ErrorMessageControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.ErrorMessageControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -5362,7 +5129,6 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 
 		if (!this.element)
 		{
-			// HACK: recover from a common non-error situation in IE
 			if (this.player.networkState() === PlayerFramework.VideoMediaPlugin.NetworkState.NETWORK_NO_SOURCE && window.navigator.appName !== "Microsoft Internet Explorer")
 				this.show(this.options.strings.defaultMessage);
 		}
@@ -5395,7 +5161,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		]);
 	}
 });
-﻿PlayerFramework.Plugins.HyperlinkMediaPlugin = PlayerFramework.StaticContentMediaPlugin.extend(
+PlayerFramework.Plugins.HyperlinkMediaPlugin = PlayerFramework.StaticContentMediaPlugin.extend(
 {
 	defaultOptions: function(player, playerOptions)
 	{
@@ -5490,7 +5256,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		}
 	}
 });
-﻿PlayerFramework.Plugins.MediaRssPlaylistPlugin = PlayerFramework.Plugins.PlaylistPlugin.extend(
+PlayerFramework.Plugins.MediaRssPlaylistPlugin = PlayerFramework.Plugins.PlaylistPlugin.extend(
 {
 	isEnabled: function(player, options)
 	{
@@ -5888,7 +5654,7 @@ PlayerFramework.Plugins.PlaylistPlugin.PlaylistItemEndBehavior =
 		}
 	}
 });
-﻿PlayerFramework.setDefaultOptions(
+PlayerFramework.setDefaultOptions(
 {
 	containerClassName: "pf-container",
 	autoplay: false,
@@ -6201,7 +5967,7 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 		}));
 	}
 });
-﻿PlayerFramework.Plugins.PlaylistControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.PlaylistControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -6692,7 +6458,7 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 		}), 15);
 	}
 });
-﻿PlayerFramework.Plugins.SilverlightMediaPlugin = PlayerFramework.Plugins.SilverlightMediaPluginBase.extend(
+PlayerFramework.Plugins.SilverlightMediaPlugin = PlayerFramework.Plugins.SilverlightMediaPluginBase.extend(
 {
 	defaultOptions: function(player, playerOptions)
 	{
@@ -6700,18 +6466,17 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 		{
 			params:
 			{
-			    source: "http://smf.cloudapp.net/html5/xap/SilverlightPlayer.xap",
+				source: "../xap/SilverlightPlayer.xap",
 				onError: "onSilverlightError",
 				onLoad: "onSilverlightLoad",
-				minRuntimeVersion: "5.0.61118.0",
+				minRuntimeVersion: "4.0.50401.0",
 				autoUpgrade: false,
 				enableGPUAcceleration: true,
 				windowless: true
 			},
 			initParams:
 			{
-			    scriptablename: "Player",
-                captionsvisibility: "hidden",
+				scriptablename: "Player",
 				autoplay: !!playerOptions.autoplay
 			}
 		});
@@ -6783,26 +6548,15 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 			]);
 		}
 
-		var mediaUrl = this.options.initParams.mediaurl;
-        if (!mediaUrl)
-        {
-            mediaUrl = this.getMediaUrl();
+		if (!this.options.initParams.mediaurl)
+		{
 			PlayerFramework.merge(this.options.initParams,
 			{
-			    mediaurl: mediaUrl
+				mediaurl: this.getMediaUrl()
 			});
-        }
-
-        var deliveryMethod = this.options.initParams.deliveryMethod;
-        if (!deliveryMethod) {
-            deliveryMethod = this.getDeliveryMethod(mediaUrl);
-		    PlayerFramework.merge(this.options.initParams,
-			{
-			    deliverymethod: deliveryMethod
-			});
-        }
-
+		}
 		var initParams = "";
+
 		// Concatenate and add the special "InitParams" object param.
 		for(var p in this.options.initParams)
 		{
@@ -6837,15 +6591,6 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 											: this.qualifyURL(firstSupportedSource.src);
 	},
 
-	getDeliveryMethod: function(mediaUrl)
-	{
-	    if (mediaUrl.toLowerCase().indexOf('/manifest') != -1) {
-	        return "AdaptiveStreaming";
-	    } else {
-	        return "ProgressiveDownload";
-	    }
-	},
-
 	escapeHTML: function(s)
 	{
 		return s.split('&').join('&amp;').split('<').join('&lt;').split('"').join('&quot;');
@@ -6858,7 +6603,7 @@ PlayerFramework.Player = PlayerFramework.Object.extend(
 		return el.firstChild.href;
 	}
 });
-﻿PlayerFramework.TextTrack = PlayerFramework.Object.extend(
+PlayerFramework.TextTrack = PlayerFramework.Object.extend(
 {
 	init: function(options)
 	{
@@ -6952,7 +6697,7 @@ PlayerFramework.TextTrack.DisplayPreference =
 	NATIVE: 2,
 	ALL: 3
 };
-﻿PlayerFramework.TextTrackCue = PlayerFramework.Object.extend(
+PlayerFramework.TextTrackCue = PlayerFramework.Object.extend(
 {
 	init: function(options)
 	{
@@ -6995,7 +6740,7 @@ PlayerFramework.TextTrack.DisplayPreference =
 		return this.options.markup;
 	}
 });
-﻿PlayerFramework.TextTrackCueList = function(options)
+PlayerFramework.TextTrackCueList = function(options)
 {
 	///	<summary>
 	///		Initializes a TextTrackCueList that represents a dynamically updating list of text track cues in a given order.
@@ -7043,7 +6788,7 @@ PlayerFramework.TextTrack.DisplayPreference =
 
 	return list;
 };
-﻿PlayerFramework.Plugins.ThrobberControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.ThrobberControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -7198,7 +6943,7 @@ PlayerFramework.TextTrack.DisplayPreference =
 		}), 500);
 	}
 });
-﻿PlayerFramework.Plugins.TimelineTrackControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.TimelineTrackControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -7378,7 +7123,7 @@ PlayerFramework.TextTrack.DisplayPreference =
 		cueElement.style.display = "block";
 	}
 });
-﻿PlayerFramework.Plugins.TrackSelectorControlPlugin = PlayerFramework.ControlPlugin.extend(
+PlayerFramework.Plugins.TrackSelectorControlPlugin = PlayerFramework.ControlPlugin.extend(
 {
 	defaultOptions: function(player)
 	{
@@ -7647,841 +7392,1069 @@ PlayerFramework.TextTrack.DisplayPreference =
 		return style;
 	}
 });
-﻿PlayerFramework.TtmlParser = PlayerFramework.Object.extend(
+PlayerFramework.TtmlParser = PlayerFramework.Object.extend(
 {
-    init: function (options) {
-        /// <summary>
-        ///     Parses a TTML file per the W3C specification: http://www.w3.org/TR/ttaf1-dfxp/
-        ///     Based on a library written by Sean Hayes.
-        /// </summary>
-
-        this._super();
-
-        this.mergeOptions(options,
-        {
-            xmlNamespace: "http://www.w3.org/XML/1998/namespace",
-            xhtmlNamespace: "http://www.w3.org/1999/xhtml",
-            ttmlNamespace: "http://www.w3.org/ns/ttml",
-            ttmlStyleNamespace: "http://www.w3.org/ns/ttml#styling",
-            ttmlMetaNamespace: "http://www.w3.org/ns/ttml#metadata",
-            ttmlNamespaceOld: "http://www.w3.org/2006/10/ttaf1",
-            ttmlStyleNamespaceOld: "http://www.w3.org/2006/10/ttaf1#styling",
-            ttmlMetaNamespaceOld: "http://www.w3.org/2006/10/ttaf1#metadata",
-            smpteNamespace: "http://www.smpte-ra.org/schemas/2052-1/2010/smpte-tt",
-            audioNamespace: "http://www.microsoft.com/enable#media",
-            trackIdPrefix: "",
-            mediaFrameRate: 30,
-            mediaFrameRateMultiplier: 1,
-            mediaSubFrameRate: 1,
-            mediaTickRate: 1000,
-            mediaStart: 0,
-            mediaDuration: Math.pow(2, 53), // maximum JavaScript integer
-            clockTime: /^(\d{2,}):(\d{2}):(\d{2})((?:\.\d{1,})|:(\d{2,}(?:\.\d{1,})?))?$/, // hours ":" minutes ":" seconds ( fraction | ":" frames ( "." sub-frames )? )?
-            offsetTime: /^(\d+(\.\d+)?)(ms|[hmsft])$/ // time-count fraction? metric
-        });
-
-        this.root = null;
-        this.layout = null;
-        this.head = null;
-        this.body = null;
-        this.regions = null;
-
-        // True unless we see a region definition in the TTML.
-        this.usingDefaultRegion = true;
-
-        // Ordered list of events containing times (in ms) and corresponding element.
-        this.ttmlEvents = [];
-
-        // List of audio descriptions.
-        this.descriptions = [];
-
-        // List of cues.
-        this.cues = [];
-
-        // Tree of navigation points.
-        this.navigation = null;
-
-        // Store styles here because IE doesn't support expandos on XML elements.
-        this.styleSetCache = {};
-        this.styleSetId = 0;
-
-        // SMPTE-TT image support.
-        this.imageCache = {};
-
-        // Keep track of the rightmost element at each level, so that we can include left and right links.
-        this.rightMostInLevel = [];
-
-        // TtmlParser Enums
-        this.nodeType = {
-            elementNode: 1,
-            attributeNode: 2,
-            textNode: 3,
-            cdataSectionNode: 4,
-            entityReferenceNode: 5,
-            entityNode: 6,
-            processingInstructionNode: 7,
-            commentNode: 8,
-            documentNode: 9,
-            documentTypeNode: 10,
-            documentFragmentNode: 11,
-            notationNode: 12
-        };
-    },
-
-    parseTtml: function (document, startTime, endTime) {
-        // Parse an XML document and returns its TTML captions, audio descriptions, and navigation points.
-        if (startTime === undefined) startTime = this.options.mediaStart;
-        if (endTime === undefined) endTime = this.options.mediaDuration;
-
-        // Find the tt root node.
-        this.root = this.getElementByTagNameNS(document, "tt", this.options.ttmlNamespace);
-        if (!this.root) {
-            this.options.ttmlNamespace = this.options.ttmlNamespaceOld;
-            this.options.ttmlStyleNamespace = this.options.ttmlStyleNamespaceOld;
-            this.options.ttmlMetaNamespace = this.options.ttmlMetaNamespaceOld;
-            this.root = this.getElementByTagNameNS(document, "tt", this.options.ttmlNamespace);
-        }
-
-        if (this.root) {
-            // Find the head, body, and layout nodes.
-            this.head = this.getElementByTagNameNS(this.root, "head", this.options.ttmlNamespace);
-            this.body = this.getElementByTagNameNS(this.root, "body", this.options.ttmlNamespace);
-            this.layout = this.head ? this.getElementByTagNameNS(this.head, "layout", this.options.ttmlNamespace) : null;
-
-            // TTML that doesn't declare any layout regions uses a default region.
-            if (this.layout) {
-                this.regions = this.getElementsByTagNameNS(this.layout, "region", this.options.ttmlNamespace);
-                this.usingDefaultRegion = (this.regions.length === 0);
-            } else {
-                this.regions = [];
-                this.usingDefaultRegion = true;
-            }
-
-            // Load SMPTE images.
-            this.imageCache = {};
-
-            PlayerFramework.forEach(this.getElementsByTagNameNS(this.root, "image", this.options.smpteNamespace), PlayerFramework.proxy(this, function (image) {
-                var id = this.getAttributeNS(image, "id", this.options.xmlNamespace);
-                if (id !== null) this.imageCache["#" + id] = image.textContent;
-            }));
-
-            // Apply the style inheritance over the tree.
-            this.applyStyling();
-
-            // Apply the time intervals over the tree.
-            this.applyTiming(this.root, { first: startTime, second: endTime }, true);
-
-            // Use the time containment as a structured navigation map.
-            this.navigation = this.getNavigation(this.body);
-
-            // Get the cues.
-            this.cues = this.getCues();
-        }
-    },
-
-    applyTiming: function (element, bound, isParallelContext) {
-        // Walk the tree to determine the absolute start and end times of all the
-        // elements using the TTML subset of the SMIL timing model.
-        // The reference times passed in "bound" are absolute times, the result of
-        // calling this is to set the local start time and end time to absolute times
-        // between these two reference times, based on the begin, end and dur attributes
-        // and to recursively set all of the children.
-
-        var startTime, endTime;
-        var beginAttr = this.getAttributeNS(element, "begin", this.options.ttmlNamespace);
-        var durAttr = this.getAttributeNS(element, "dur", this.options.ttmlNamespace);
-        var endAttr = this.getAttributeNS(element, "end", this.options.ttmlNamespace);
-
-        if (beginAttr !== null) {
-            // Begin attested.
-            startTime = bound.first + this.getTime(beginAttr) + 0.01; // extra time added to fix cues that begin exactly when the previous cue ends
-        } else {
-            startTime = bound.first;
-        }
-
-        if (durAttr !== null && endAttr !== null) {
-            // Both dur and end attested, the minimum interval applies.
-            endTime = Math.min(Math.min(startTime + this.getTime(durAttr), bound.first + this.getTime(endAttr)), bound.second);
-        } else if (endAttr !== null) {
-            // Only end attested.
-            endTime = Math.min(bound.first + this.getTime(endAttr), bound.second);
-        } else if (durAttr !== null) {
-            // Only dur attested.
-            endTime = Math.min(startTime + this.getTime(durAttr), bound.second);
-        } else {
-            // No direct timing attested, so use default based on context.
-            // "par" children have indefinite default duration, truncated by bounds.
-            // "seq" children have zero default duration.
-            if (isParallelContext) {
-                if (startTime <= bound.second) {
-                    endTime = bound.second;
-                } else {
-                    endTime = 0;
-                }
-            }
-        }
-
-        if (endTime < startTime) {
-            endTime = startTime;
-        }
-
-        element.setAttribute("data-time-start", startTime);
-        element.setAttribute("data-time-end", endTime);
-
-        PlayerFramework.binaryInsert(this.ttmlEvents, { tick: startTime, elementScope: element }, this.compareTtmlEvents);
-        PlayerFramework.binaryInsert(this.ttmlEvents, { tick: endTime, elementScope: element }, this.compareTtmlEvents);
-
-        if (this.getAttributeNS(element, "role", this.options.ttmlMetaNamespace)) {
-            var uri = this.getAttributeNS(element, "audio", this.options.audioNamespace);
-            if (uri) {
-                this.descriptions.push({
-                    uri: uri,
-                    startTime: startTime,
-                    endTime: endTime
-                });
-                this.descriptions.sort(this.compareDescriptions);
-            }
-        }
-
-        var seqStartTime = startTime;
-        var timeContext = this.getAttributeNS(element, "timeContainer", this.options.ttmlNamespace);
-
-        PlayerFramework.forEach(this.getChildElements(element), PlayerFramework.proxy(this, function (childElement) {
-            if (timeContext !== "seq") {
-                this.applyTiming(childElement, { first: startTime, second: endTime }, true);
-            } else {
-                this.applyTiming(childElement, { first: seqStartTime, second: endTime }, false);
-                seqStartTime = new Number(this.getAttribute(childElement, "data-time-end"));
-            }
-        }));
-    },
-
-    getTime: function (timeExpression) {
-        // Utility object to handle TTML time expressions. Could be improved, but seems to do the job.
-        // In particular, we are not currently handling TTML parameters for tick rate and so on.
-
-        // NOTE: IE cannot parse time formats containing frames (e.g. "00:00:04.18" works, but not "00:00:04:18")
-        // To overlay custom and native captions for testing purposes, use the CaptionsPlugin.displayMode option.
-
-        var v1 = this.options.clockTime.exec(timeExpression);
-        var v2 = this.options.offsetTime.exec(timeExpression);
-
-        if (v1 != null) {
-            var hours = new Number(v1[1]);
-            var minutes = new Number(v1[2]);
-            var seconds = new Number(v1[3]);
-            var frames = 0;
-
-            if (!isNaN(v1[4])) {
-                seconds += new Number(v1[4]);
-            }
-
-            if (!isNaN(v1[5])) {
-                frames = new Number(v1[5]);
-            }
-
-            return hours * this.getMetricMultiplier("h") + minutes * this.getMetricMultiplier("m") + seconds * this.getMetricMultiplier("s") + frames * this.getMetricMultiplier("f");
-        } else if (v2 != null) {
-            return new Number(v2[1]) * this.getMetricMultiplier(v2[3]);
-        } else {
-            return 0;
-        }
-    },
-
-    getMetricMultiplier: function (timeExpression) {
-        switch (timeExpression) {
-            case "h":
-                return 1000 * 60 * 60;
-            case "m":
-                return 1000 * 60;
-            case "s":
-                return 1000;
-            case "ms":
-                return 1;
-            case "f":
-                return 1000 / this.options.mediaFrameRate;
-            case "t":
-                return 1000 / this.options.mediaTickRate;
-            default:
-                return 0;
-        }
-    },
-
-    compareTtmlEvents: function (a, b) {
-        // Compare TTML events for sorting purposes.
-
-        return a.tick - b.tick;
-    },
-
-    compareDescriptions: function (a, b) {
-        // Compare descriptions for sorting purposes.
-
-        return a.startTime - b.startTime;
-    },
-
-    getNavigation: function (element) {
-        // Navigation elements are marked with the extensions role="x-nav-..."
-        // We want to find the lists of nav-labels, where each label goes in the right level of list.
-        // The structure of this is loosely based on daisy NCK files.
-
-        return this.getNavigationPoint(element, null, 0);
-    },
-
-    getNavigationList: function (element, parent, level) {
-        // A nav list is supposed to be a list of nav points, but a nav point can be a degenerate nav label.
-
-        var list = [];
-        var role = this.getAttributeNS(element, "role", this.options.ttmlMetaNamespace);
-
-        if (role !== null && !PlayerFramework.first(role, function (r) { return r === "x-nav-list"; })) {
-            var childElements = this.getChildElements(element);
-            for (var i = 0; i < childElements.length; i++) {
-                var point = this.getNavigationPoint(childElements[i], parent, level);
-                if (point != null) {
-                    list.push(point);
-                }
-            }
-        }
-
-        return list;
-    },
-
-    getNavigationPoint: function (element, parent, level) {
-        // A nav point is an element tagged with the x-nav-point role, containing one label, and one list.
-        // If the list is empty, then the label can stand on its own for the whole point.
-
-        var label = null;
-        var subtree = [];
-        var node = {};
-
-        // Keep the high tide mark for how deep in the tree we are.
-        if (this.rightMostInLevel.length <= level) {
-            this.rightMostInLevel.push(null);
-        }
-
-        var role = this.getAttributeNS(element, "role", this.options.ttmlMetaNamespace);
-
-        switch (role) {
-            case "x-nav-label": // Degenerate form.
-                label = this.getNavigationLabel(element);
-                break;
-            case "x-nav-point": // Full form contains a label and a list.
-                PlayerFramework.forEach(this.getChildElements(element), PlayerFramework.proxy(this, function (childElement) {
-                    var childRole = this.getAttributeNS(childElement, "role", this.options.ttmlMetaNamespace);
-                    switch (childRole) {
-                        // Should only be one of each. but allow last to win.
-                        case "x-nav-label":  // Contains text, and use its timing.
-                            label = this.getNavigationLabel(childElement);
-                            break;
-                        case "x-nav-list":   // Contains either a list of navPoints.
-                            subtree = this.getNavigationList(childElement, node, level + 1);
-                            break;
-                        default:
-                            break;
-                    }
-                }));
-                break;
-            default:
-                break;  // Ignore anything else.
-        }
-
-        if (label !== null) {
-            node.text = label.text;
-            node.startTime = new Number(label.startTime) / 1000 + 0.01;
-            node.endTime = new Number(label.endTime) / 1000;
-            node.parent = parent;
-            node.left = this.rightMostInLevel[level];
-            node.right = null;
-            node.children = subtree;
-
-            if (this.rightMostInLevel[level] !== null) {
-                this.rightMostInLevel[level].right = node;
-            }
-
-            this.rightMostInLevel[level] = node;
-
-            return node;
-        } else {
-            return null;
-        }
-    },
-
-    getNavigationLabel: function (element) {
-        // A nav label is just text, but we use its timing to create an interval into the media for navigation.
-
-        var role = this.getAttributeNS(element, "role", this.options.ttmlMetaNamespace);
-
-        if (role !== null && !PlayerFramework.first(role, function (r) { return r === "x-nav-label"; })) {
-            return {
-                text: element.innerHTML,
-                startTime: this.getAttribute(element, "data-time-start"),
-                endTime: this.getAttribute(element, "data-time-end")
-            };
-        }
-    },
-
-    getCues: function () {
-        // Get all cues for the set of TTML events.
-        // Unroll using ttmlEvents and getCuesAtTime.
-        // This then makes it easier to use the <track> APIs and also use the same interface for WebVTT, SRT etc.
-
-        var cues = [];
-
-        for (var i = 0; i < this.ttmlEvents.length; i++) {
-            var ttmlEvent = this.ttmlEvents[i];
-
-            if (ttmlEvent.elementScope === this.root) {
-                continue;
-            }
-
-            var ttmlEventCues = this.getCuesAtTime(ttmlEvent.elementScope, ttmlEvent.tick);
-
-            if (i > 0) {
-                for (var j = i - 1; j >= 0; j--) {
-                    var previousTtmlEvent = this.ttmlEvents[j];
-
-                    if (previousTtmlEvent.elementScope === this.root || previousTtmlEvent.elementScope === ttmlEvent.elementScope) {
-                        continue;
-                    }
-
-                    var overlappingCues = this.getCuesAtTime(previousTtmlEvent.elementScope, ttmlEvent.tick);
-
-                    if (overlappingCues.length > 0) {
-                        ttmlEventCues.push(overlappingCues[0]);
-                    } else {
-                        break;
-                    }
-                }
-            }
-
-            for (var k = 0; k < ttmlEventCues.length; k++) {
-                var ttmlEventCue = ttmlEventCues[k];
-                var nextTtmlEvent = this.ttmlEvents[i + 1];
-
-                cues.push({
-                    cue: ttmlEventCue,
-                    startTime: ttmlEvent.tick / 1000,
-                    endTime: (nextTtmlEvent) ? nextTtmlEvent.tick / 1000 : this.options.mediaDuration
-                });
-            }
-        }
-
-        return cues;
-    },
-
-    getCuesAtTime: function (element, tick) {
-        // Get cues for a given time instant.
-
-        var cues = [];
-
-        if (element && this.isTemporallyActive(element, tick)) {
-            if (!this.usingDefaultRegion) {
-                PlayerFramework.forEach(this.regions, PlayerFramework.proxy(this, function (region) {
-                    var cueElement = this.translateMarkup(region, tick);
-
-                    if (cueElement) {
-                        // Create a new subtree for the body element, prune elements not associated
-                        // with the region, and if it's not empty then select it into this region by
-                        // adding it to cue element container.
-
-                        var regionId = this.getAttributeNS(region, "id", this.options.xmlNamespace);
-                        var prunedElement = this.prune(element, regionId, tick);
-
-                        if (prunedElement) {
-                            cueElement.appendChild(prunedElement);
-                        }
-
-                        if (cueElement.getAttribute("data-showBackground") !== "whenActive" && cueElement.innerHTML.trim() !== "") {
-                            cues.push(cueElement);
-                        }
-                    }
-                }));
-            } else {
-                var cueElement = document.createElement("div");
-                cueElement.className = "pf-cue";
-
-                var prunedElement = this.prune(element, "", tick);
-
-                if (prunedElement) {
-                    cueElement.appendChild(prunedElement);
-                }
-
-                if (this.getChildElements(cueElement).length > 0) {
-                    cues.push(cueElement);
-                }
-            }
-        }
-
-        return cues;
-    },
-
-    isTemporallyActive: function (element, tick) {
-        var startTime = Math.round(1000 * parseFloat(this.getAttribute(element, "data-time-start"))) / 1000;
-        var endTime = Math.round(1000 * parseFloat(this.getAttribute(element, "data-time-end"))) / 1000;
-        var time = Math.round(1000 * tick) / 1000;
-
-        return (startTime <= time) && (endTime > time);
-    },
-
-    translateMarkup: function (element, tick) {
-        // Convert elements in TTML to their equivalent in HTML.
-
-        var translation;
-        var name = this.getTagNameEquivalent(element);
-        var htmlName = "";
-        var htmlClass = "";
-        var htmlAttrs = {};
-
-        if (element && this.isTemporallyActive(element, tick)) {
-            switch (name) {
-                case "tt:region":
-                case "tt:tt": // We get this if there is no region.
-                    htmlClass = "pf-cue "; // To simulate the ::cue selector.
-                    htmlName = "div";
-                    break;
-                case "tt:body":
-                case "tt:div":
-                    htmlName = "div";
-                    break;
-                case "tt:p":
-                    htmlName = "p";
-                    break;
-                case "tt:span":
-                    htmlName = "span";
-                    break;
-                case "tt:br":
-                    htmlName = "br";
-                    break;
-                case "":
-                    break;
-                default:
-                    htmlName = name;
-                    PlayerFramework.forEach(element.attributes, function (attribute) { htmlAttrs[attribute.name] = attribute.value; });
-                    break;
-            }
-
-            var roleAttr = this.getAttributeNS(element, "role", this.options.ttmlMetaNamespace);
-            if (roleAttr) htmlClass += roleAttr + " ";
-
-            var classAttr = this.getAttributeNS(element, "class", this.options.xhtmlNamespace);
-            if (classAttr) htmlClass += classAttr + " ";
-
-            // Hack until display:ruby on other elements works.
-            if (roleAttr === "x-ruby") htmlName = "ruby";
-            if (roleAttr === "x-rubybase") htmlName = "rb";
-            if (roleAttr === "x-rubytext") htmlName = "rt";
-
-            // Convert image based captions here; and move the text into its alt.
-            // If I could get inline CSS to work div's then this would be set as style.
-            var imageAttr = this.getAttribute(element, "image");
-            if (imageAttr !== null) htmlName = "img";
-
-            if (htmlName !== "") {
-                translation = document.createElement(htmlName);
-                translation.className = htmlClass.trim();
-
-                // Move ID's over. Use trackIdPrefix to ensure there are no name clases on id's already in target doc.
-                var idAttr = this.getAttributeNS(element, "id", this.options.xmlNamespace);
-                if (idAttr) translation.setAttribute("id", this.options.trackIdPrefix + idAttr);
-
-                // Copy style from element over to html, translating into CSS as we go
-                this.translateStyle(element, translation, tick);
-
-                // If we are copying over html elements, then copy any attributes too.
-                for (var attr in htmlAttrs) {
-                    translation.setAttribute(attr, htmlAttrs[attr]);
-                }
-
-                if (imageAttr !== null) {
-                    translation.setAttribute("src", imageAttr);
-                    translation.setAttribute("alt", element.innerHTML);
-                }
-            }
-        }
-
-        return translation;
-    },
-
-    translateStyle: function (element, htmlElement, tick) {
-        // Convert from TTML style names to CSS.
-
-        // Clone of the base style set.
-        var computedStyleSet = {};
-        var styles = this.styleSetCache[this.getAttribute(element, "__styleSet__")];
-
-        for (var name in styles) {
-            computedStyleSet[name] = styles[name];
-        }
-
-        // Apply inline styles.
-        PlayerFramework.forEach(this.getElementsByTagNameNS(element, "set", this.options.ttmlNamespace), PlayerFramework.proxy(this, function (childElement) {
-            if (this.isTemporallyActive(childElement, tick)) {
-                this.applyInlineStyles(childElement, computedStyleSet);
-            }
-        }));
-
-        // Apply CSS styles.
-        for (var name in computedStyleSet) {
-            var value = computedStyleSet[name];
-            switch (name) {
-                case "origin":
-                    var coords = value.split(/\s/);
-                    htmlElement.style.position = "absolute";
-                    htmlElement.style.left = coords[0];
-                    htmlElement.style.top = coords[1];
-                    break;
-                case "extent":
-                    var coords = value.split(/\s/);
-                    htmlElement.style.width = coords[0];
-                    htmlElement.style.height = coords[1];
-                    break;
-                case "displayAlign":
-                    htmlElement.style.textAlign = value;
-                    break;
-                case "wrapOption":
-                    htmlElement.style.whiteSpace = (value === "nowrap") ? "nowrap" : "normal";
-                    break;
-                default:
-                    htmlElement.style[name] = value;
-                    break;
-            }
-        }
-    },
-
-    applyStyling: function () {
-        // Apply styling to every element in the body.
-
-        var nodes = this.root.getElementsByTagName("*");
-
-        for (var i = 0; i < nodes.length; i++) {
-            this.applyStyle(nodes[i]);
-        }
-    },
-
-    applyStyle: function (element) {
-        // Apply styles in the correct order to element.
-
-        var styleSet = {};
-
-        // Find all the applicable styles and set them as properties on styleSet.
-        this.applyStylesheet(element, styleSet);
-        this.applyInlineStyles(element, styleSet);
-
-        // Record the applied set to the element
-        this.styleSetCache[this.styleSetId] = styleSet;
-        element.setAttribute("__styleSet__", this.styleSetId++);
-    },
-
-    applyStylesheet: function (element, styleSet) {
-        // For each style id on element, find the corresponding style element
-        // and then apply the stylesheet into styleset; this recurses over the tree of referenced styles.
-
-        var styleAttr = this.getAttributeNS(element, "style", this.options.ttmlNamespace);
-
-        if (styleAttr !== null) {
-            var styleIds = styleAttr.split(/\s/); // Find all the style ID references.
-            var isStyleElement = this.hasTagNameNS(element, "style", this.options.ttmlNamespace); // Detect if we are referencing style from a style.
-
-            PlayerFramework.forEach(styleIds, PlayerFramework.proxy(this, function (styleId) {
-                // Find all the style elements in the TTML namespace.
-                PlayerFramework.forEach(this.getElementsByTagNameNS(this.head, "style", this.options.ttmlNamespace), PlayerFramework.proxy(this, function (styleElement) {
-                    if (this.getAttributeNS(styleElement, "id", this.options.xmlNamespace) === styleId) {
-                        this.applyStylesheet(styleElement, styleSet);
-
-                        // If the element is region, do nested styles (note regions can only be referenced from elements in the body).
-                        if (!isStyleElement && this.hasTagNameNS(styleElement, "region", this.options.ttmlNamespace)) {
-                            PlayerFramework.forEach(this.getElementsByTagNameNS(styleElement, "style", this.options.ttmlNamespace), PlayerFramework.proxy(this, function (childElement) {
-                                this.applyStylesheet(childElement, styleSet);
-                            }));
-                        }
-
-                        // Do inline styles.
-                        this.applyInlineStyles(styleElement, styleSet);
-                    }
-                }));
-            }));
-        }
-    },
-
-    applyInlineStyles: function (element, styleSet) {
-        // Apply style attributes into styleset.
-        PlayerFramework.forEach(element.attributes, PlayerFramework.proxy(this, function (attribute) {
-            var ns = this.getNamespace(attribute);
-            if (ns === this.options.ttmlStyleNamespace) {
-                styleSet[this.getLocalTagName(attribute)] = attribute.nodeValue;
-            }
-            else if (ns === this.options.smpteNamespace && this.getLocalTagName(attribute) === "backgroundImage") {
-                var imageId = attribute.nodeValue;
-                if (imageId.indexOf("#") === 0) {
-                    element.setAttribute("image", "data:image/png;base64," + this.imageCache[imageId]);
-                } else {
-                    element.setAttribute("image", imageId);
-                }
-            }
-        }));
-    },
-
-    isInRegion: function (element, regionId) {
-        // A content element is associated with a region according to the following ordered rules,
-        // where the first rule satisfied is used and remaining rules are skipped:
-
-        // Quick test: Out of normal order, but makes following rules simpler.
-        if (regionId === "" || regionId === undefined) {
-            return this.usingDefaultRegion;
-        }
-
-        // 1. If the element specifies a region attribute, then the element is associated with the
-        // region referenced by that attribute;
-        if (this.getAttributeNS(element, "region", this.options.ttmlNamespace) === regionId) {
-            return true;
-        }
-
-        // 2. If some ancestor of that element specifies a region attribute, then the element is
-        // associated with the region referenced by the most immediate ancestor that specifies
-        // this attribute;
-        var ancestor = element.parentNode;
-        while (ancestor !== null && ancestor.nodeType === this.nodeType.elementNode) {
-            var id = this.getAttributeNS(ancestor, "region", this.options.ttmlNamespace);
-            if (id) return id === regionId;
-            ancestor = ancestor.parentNode;
-        }
-
-        // 3. If the element contains a descendant element that specifies a region attribute,
-        // then the element is associated with the region referenced by that attribute;
-        var nodes = element.getElementsByTagName("*");
-        for (var i = 0; i < nodes.length; i++) {
-            var node = nodes[i];
-            if (this.getAttributeNS(node, "region", this.options.ttmlNamespace) === regionId && this.getNamespace(node) === this.options.ttmlNamespace) {
-                return true;
-            }
-        }
-
-        // 4. If a default region was implied (due to the absence of any region element), then
-        // the element is associated with the default region;
-        if (this.usingDefaultRegion) {
-            return regionId === "";
-        }
-
-        // 5. The element is not associated with any region.
-        return false;
-    },
-
-    prune: function (element, regionId, tick) {
-        /// Convert the element if it is in the region, then recurse into its contents.
-        /// If it ends up with no children, then we dont add it to the region.
-
-        var clone = undefined;
-
-        if (this.isInRegion(element, regionId)) {
-            clone = this.translateMarkup(element, tick);
-
-            if (!clone) {
-                return clone;
-            }
-
-            for (var i = 0; i < element.childNodes.length; i++) {
-                var childElement = element.childNodes[i];
-                if (childElement.nodeType !== this.nodeType.commentNode) {
-                    if (childElement.nodeType === this.nodeType.textNode) {
-                        clone.appendChild(document.createTextNode(childElement.data));
-                    } else {
-                        var prunedChildElement = this.prune(childElement, regionId, tick);
-                        if (prunedChildElement) {
-                            clone.appendChild(prunedChildElement);
-                        }
-                    }
-                }
-            }
-        }
-
-        return clone;
-    },
-
-    getTagNameEquivalent: function (element) {
-        var name = this.getLocalTagName(element);
-
-        switch (this.getNamespace(element)) {
-            case this.options.xhtmlNamespace:
-                return name;
-            case this.options.ttmlNamespace:
-                return "tt:" + name;
-            case this.options.smpteNamespace:
-                return "smpte:" + name;
-            default:
-                return "";
-        }
-    },
-
-    getLocalTagName: function (element) {
-        if (element.localName) {
-            return element.localName;
-        } else {
-            return element.baseName;
-        }
-    },
-
-    hasTagNameNS: function (element, name, namespace) {
-        if (element.localName) {
-            return (name === element.localName && this.getNamespace(element) === namespace);
-        } else {
-            return (name === element.baseName && this.getNamespace(element) === namespace);
-        }
-    },
-
-    getElementByTagNameNS: function (element, name, namespace) {
-        return this.getElementsByTagNameNS(element, name, namespace)[0] || null;
-    },
-
-    getElementsByTagNameNS: function (element, name, namespace) {
-        if (element.getElementsByTagNameNS) {
-            return PlayerFramework.getArray(element.getElementsByTagNameNS(namespace, name));
-        }
-        else {
-            return PlayerFramework.getArray(element.getElementsByTagName(name)).filter(function (element) { return element.namespaceUri === namespace; });
-        }
-    },
-
-    getAttributeNS: function (element, name, namespace) {
-        var result = element.getAttributeNS(namespace, name);
-        if (result === "") {
-            result = this.getAttribute(element, name);
-        }
-        return result;
-    },
-
-    getAttribute: function (element, name) {
-        if (element.nodeType === this.nodeType.elementNode) {
-            var value = element.getAttribute(name);
-
-            if (value) {
-                return value;
-            } else if (element.prefix) {
-                // Bug in Encoder moves unprefixed attributes
-                return element.getAttribute(element.prefix + ":" + name);
-            }
-        }
-
-        return null;
-    },
-
-    getNamespace: function (element) {
-        return (element.namespaceUri) ? element.namespaceUri : element.namespaceURI;
-    },
-
-    getChildElements: function (element) {
-        var childElements = [];
-
-        for (var childElement = element.firstChild; childElement; childElement = childElement.nextSibling) {
-            if (childElement.nodeType === this.nodeType.elementNode) {
-                childElements.push(childElement);
-            }
-        }
-
-        return childElements;
-    }
+	init: function(options)
+	{
+		///	<summary>
+		///		Parses a TTML file per the W3C specification: http://www.w3.org/TR/ttaf1-dfxp/
+		///		Based on a library written by Sean Hayes.
+		///	</summary>
+
+		this._super();
+		
+		this.mergeOptions(options,
+		{
+			xmlNamespace: 'http://www.w3.org/XML/1998/namespace',
+			ttmlNamespace: "http://www.w3.org/ns/ttml",
+			ttmlStyleNamespace: "http://www.w3.org/ns/ttml#styling",
+			ttmlMetaNamespace: "http://www.w3.org/ns/ttml#metadata",
+			smpteNamespace: "http://www.smpte-ra.org/schemas/2052-1/2010/smpte-tt",
+			trackIdPrefix: "",
+			mediaFrameRate: 30,
+			mediaFrameRateMultiplier: 1,
+			mediaSubFrameRate: 1,
+			mediaTickRate: 1000,
+			mediaStart: 0,
+			mediaDuration: 99999,
+			clocktime: /^(\d{2,}):(\d{2}):(\d{2})((?:\.\d{1,})|:(\d{2,}(?:\.\d{1,})?))?$/, // hours ":" minutes ":" seconds ( fraction | ":" frames ( "." sub-frames )? )?
+			offsettime: /^(\d+(\.\d+)?)(ms|[hmsft])$/ // time-count fraction? metric
+		});
+
+		this.root = null;
+		this.layout = null;
+		this.head = null;
+		this.body = null;
+		this.regions = null;
+
+		// True unless we see a region definition in the TTML.
+		this.usingDefaultRegion = true;
+
+		// Ordered list of events containing times (in ms) and corresponding element.
+		this.TTMLEvents = [];
+
+		// List of all audio descriptions.
+		this.Descriptions = [];
+
+		// Tree of navigation points.
+		this.Navigation = null;
+
+		// Store styles here because IE doesnt support expando's on XML elements.
+		this.StyleSetCache = {};
+		this.styleSetId = 0;
+
+		// SMPTE-TT image support.
+		this.ImageCache = {};
+				
+		// Keep track of the rightmost element at each level, so that we can include left and right links.
+		this.rightMostInLevel = [];
+
+		this.nodeType =
+		{
+			ELEMENT_NODE: 1,
+			ATTRIBUTE_NODE: 2,
+			TEXT_NODE: 3,
+			CDATA_SECTION_NODE: 4,
+			ENTITY_REFERENCE_NODE: 5,
+			ENTITY_NODE: 6,
+			PROCESSING_INSTRUCTION_NODE: 7,
+			COMMENT_NODE: 8,
+			DOCUMENT_NODE: 9,
+			DOCUMENT_TYPE_NODE: 10,
+			DOCUMENT_FRAGMENT_NODE: 11,
+			NOTATION_NODE: 12
+		};
+	},
+
+	parseTtml: function(source)
+	{
+		// Source is either a wrapped XMLDocument, or a string.
+		this.xmlDoc = (typeof source == "string") ? this.parseXml(source) : source;
+		this.root = this.getElementsByTagNameNS(this.xmlDoc, this.options.ttmlNamespace, "tt")[0];
+
+		// Exactly one tt root object allowed.
+		if (this.root)
+		{
+			// Find the landmark nodes in the XML.
+			this.body = this.getElementsByTagNameNS(this.root, this.options.ttmlNamespace, 'body')[0] || null;
+			this.head = this.getElementsByTagNameNS(this.root, this.options.ttmlNamespace, 'head')[0] || null;
+			this.layout = this.head ? (this.getElementsByTagNameNS(this.root, this.options.ttmlNamespace, 'layout')[0] || null) : null;
+
+			this.loadSMPTEImages();
+
+			// TTML that doesn't declare any layout regions uses a default region.
+			if (this.layout)
+			{
+				this.regions = this.getElementsByTagNameNS(this.layout, this.options.ttmlNamespace, 'region');
+				this.usingDefaultRegion = this.regions.length == 0;
+			}
+			else
+			{
+				this.regions = [];
+				this.usingDefaultRegion = true;
+			}
+            this.applyTiming(this.root, { first: this.options.mediaStart, second: this.options.mediaDuration }, true);
+
+			// Use the time containement as a structured navigation map.
+			this.Navigation = this.getNavigation(this.body)
+
+			// Apply the style inheritance over the tree.
+			this.applyStyling();
+
+		}
+
+		// Unroll using TTMLEvents and getCuesAtTime.
+		// This then makes it easier to use the <track> API's and also use the same interface for WebVTT, SRT etc.
+		var captionArray = [];
+		
+		for (var i = 0, max = this.TTMLEvents.length; i < max; i++)
+		{
+			if (this.TTMLEvents[i].elementScope == this.root)
+				continue;
+
+			var cues = this.getCuesAtTime(this.TTMLEvents[i].tick, this.TTMLEvents[i].elementScope);
+			
+			if (i > 0)
+			{
+				for (var pastCuesIndex = i - 1; pastCuesIndex >= 0; pastCuesIndex--)
+				{
+					if (this.TTMLEvents[pastCuesIndex].elementScope == this.root || this.TTMLEvents[pastCuesIndex].elementScope == this.TTMLEvents[i].elementScope)
+						continue;
+
+					var overlappingCues = this.getCuesAtTime(this.TTMLEvents[i].tick, this.TTMLEvents[pastCuesIndex].elementScope);
+
+					if (overlappingCues.length != 0)
+						cues.push(overlappingCues[0]);
+					else
+						break;
+				}
+			}
+			
+			for (var j = 0, cueCount = cues.length; j < cueCount; j++)
+			{
+				captionArray.push(
+				{
+					start: this.TTMLEvents[i].tick,
+					end: (i + 1 < max) ? this.TTMLEvents[i + 1].tick : this.options.mediaDuration,
+					id: "caption" + (captionArray.length + 1),
+					caption: cues[j]
+				});
+			}
+
+		}
+		
+		return {
+			captions: captionArray,
+			descriptions: this.Descriptions,
+			navigation: this.Navigation,
+			xml: this.root
+		};
+	},
+
+	parseXml: function(data)
+	{
+		var xml;
+
+		try
+		{
+			if (window.DOMParser)
+			{
+				var domParser = new DOMParser();
+				xml = domParser.parseFromString(data, "application/xml");
+			}
+			else
+			{
+				xml = new ActiveXObject("Microsoft.XMLDOM");
+				xml.async = false;
+				xml.loadXML(data);
+			}
+		}
+		catch (err)
+		{
+			xml = null;
+		}
+		return xml;
+	},
+
+	getCuesAtTime: function(tick, elementScope) 
+	{
+		// Get cue for a given time instant.
+		var cues = [];
+
+		if (elementScope && this.isTemporallyActive(elementScope, tick))
+		{
+			if (!this.usingDefaultRegion)
+			{
+				PlayerFramework.forEach(this.regions, PlayerFramework.proxy(this, function (region)
+				{
+					var regionId = this.attrNS(region, 'id', this.options.xmlNamespace);
+					var div = this.translateMarkup(region, tick);
+
+					if (div)
+					{
+						// Create a new subtree for the body element, prune elements not associated
+						// with the region, and if its not empty then select it into this region by
+						// adding it to div container.
+	
+						var prunedElement = this.prune(elementScope, regionId, tick);
+
+						if (prunedElement)
+							div.appendChild(prunedElement);
+
+						var showBackground = div.getAttribute("data-showBackground") != 'whenActive';
+						var text = div.innerHTML.replace(/\s/g, "");
+
+						if (showBackground || text != "")
+							cues.push(div);
+					}
+				}));
+			}
+			else
+			{
+				var div = PlayerFramework.createElement(null,
+				[
+					"div",
+					{
+						"class": "cue"
+					}
+				]);
+
+				var prunedElement = this.prune(elementScope, "", tick)
+
+				if (prunedElement)
+					div.appendChild(prunedElement);
+
+				if (this.children(div).length > 0)
+					cues.push(div);
+			}
+		}
+
+		return cues;
+	},
+
+	applyTiming: function(element, bound, isParallelContext) 
+	{
+		// Walk the tree to determine the absolute start and end times of all the 
+		// elements using the TTML subset of the SMIL timing model.
+		// The reference times passed in 'bound' are absolute times, the result of 
+		// calling this is to set the local start time and end time to absolute times 
+		// between these two reference times, based on the begin, end and dur attributes
+		// and to recursively set all of the children.
+		
+		var begin = this.getTime(this.getAttr(element, "begin")); // Will return 0 if begin is unattested.
+		var startTime = bound.first + begin;
+		var endTime;
+
+		// Compute the simple duration of the interval.
+		var defaultDur = 0,
+			dur = 0,
+			end = 0;
+
+		// Workaround for an issue where some cue ancestor must be offset from 0s.
+		if (element.tagName != "body" && startTime == 0)
+			startTime = .01;
+
+		if (!this.hasAttr(element, "dur") && !this.hasAttr(element, "end"))
+		{
+			// No direct timing attested, so use default based on context.
+			if (isParallelContext)
+			{
+				// "par" children have indefinite default duration, truncated by bounds.
+				// "seq" children have zero default duration.
+				if (startTime <= bound.second)
+				{
+					defaultDur = Math.max(0, bound.second - startTime);
+					endTime = bound.second;
+				}
+				else
+				{
+					endTime = 0;
+				}
+			}
+		}
+		else if (this.hasAttr(element, "dur") && this.hasAttr(element, "end"))
+		{
+			// Both dur and end attested, the minimum interval applies.
+			dur = this.getTime(this.getAttr(element, "dur"));
+			end = this.getTime(this.getAttr(element, "end"));
+			var minEnd = Math.min(startTime + dur, bound.first + end);
+			endTime = Math.min(minEnd, bound.second);
+		}
+		else if (this.hasAttr(element, "end"))
+		{
+			// Only end attested.
+			end = this.getTime(this.getAttr(element, "end"));
+			endTime = Math.min(bound.first + end, bound.second);
+		}
+		else
+		{
+			// Only dur attested.
+			dur = this.getTime(this.getAttr(element, "dur"));
+			var offsetStart = startTime + dur;
+			endTime = Math.min(offsetStart, bound.second);
+		}
+
+		if (endTime < startTime)
+			endTime = startTime;
+
+		element.setAttribute("data-time-start", startTime);
+		element.setAttribute("data-time-end", endTime);
+
+		if (!PlayerFramework.first(this.TTMLEvents, function(event)
+		{
+			return (event.tick == startTime); // && event.elementScope == element.parentNode);
+		}))
+		{
+			this.TTMLEvents.push(
+			{
+				tick: startTime,
+				elementScope: element
+			});
+		}
+			
+		if (!PlayerFramework.first(this.TTMLEvents, function(event)
+		{
+			return (event.tick == endTime); // && event.elementScope == element.parentNode);
+		}))
+		{
+			this.TTMLEvents.push(
+			{
+				tick: endTime,
+				elementScope: element
+			});
+		}
+
+		 // Keep events in order.
+		this.TTMLEvents.sort(function (a, b) { return a.tick - b.tick; })
+
+		if (this.attrNS(element, 'role', this.options.ttmlMetaNamespace))
+		{
+			var srcAudio = this.attrNS(element, 'audio', 'http://www.microsoft.com/enable#media');
+
+			if (srcAudio)
+			{
+				this.Descriptions.push(
+				{
+					start: startTime,
+					end: endTime,
+					id: "description" + (this.Descriptions.length + 1),
+					uri: srcAudio,
+					caption: ""
+				});
+
+				// Sort the descriptions by start time.
+				this.Descriptions.sort(function (a, b) { return a.start - b.start; });
+			}
+		}
+
+		var s = startTime;
+		var timeContext = this.getAttr(element, "timeContainer");
+
+		PlayerFramework.forEach(this.children(element), PlayerFramework.proxy(this, function (childElement)
+		{
+			if (timeContext != "seq")
+			{
+				// Parallel is default so null is OK here.
+				this.applyTiming(childElement,
+				{
+					first: startTime,
+					second: endTime
+				}, true);
+			}
+			else
+			{
+				this.applyTiming(childElement,
+				{
+					first: s,
+					second: endTime
+				}, false);
+				s = new Number(this.getAttr(childElement, "data-time-end"));
+			}
+		}));
+	},
+
+	getTime: function (timeExpression)
+	{
+		// Utility object to handle TTML time expressions. Could be improved, but seems to do the job.
+		// In particular, we are not currently handling TTML parameters for tick rate and so on.
+
+		// NOTE: IE 10 Consumer Preview cannot parse time formats containing frames (e.g. "00:00:04.18" works, but not "00:00:04:18")
+		// To overlay default and native captions for testing/comparison, use the PlayerFramework.TextTrack.DisplayPreference option.
+
+		var time;
+		var v1 = this.options.clocktime.exec(timeExpression);
+		var v2 = this.options.offsettime.exec(timeExpression);
+
+		if (v1 != null)
+		{
+			var hours = new Number(v1[1]);
+			var minutes = new Number(v1[2]);
+			var seconds = new Number(v1[3]);
+			var frames = 0;
+
+			if (!isNaN(v1[4]))
+				seconds += new Number(v1[4]);
+
+			if (!isNaN(v1[5]))
+				frames = new Number(v1[5]);
+
+			time = hours * this.getMetricMultiplier("h") +
+				minutes * this.getMetricMultiplier("m") +
+				seconds * this.getMetricMultiplier("s") +
+				frames * this.getMetricMultiplier("f");
+		}
+		else if (v2 != null)
+		{
+			var value = new Number(v2[1]);
+			var multiplier = this.getMetricMultiplier(v2[3]);
+			
+			time = value * multiplier;
+		}
+		else
+		{
+			time = 0;
+		}
+
+		//console.log("time = " + time);
+
+		return time;
+	},
+
+	getMetricMultiplier: function(timeExpression) 
+	{
+		switch (timeExpression)
+		{
+			case "h":
+				return 1000 * 60 * 60;
+			case "m":
+				return 1000 * 60;
+			case "s":
+				return 1000;
+			case "ms":
+				return 1;
+			case "f":
+				return 1000 / this.options.mediaFrameRate;
+			case "t":
+				return 1000 / this.options.mediaTickRate;
+			default:
+				return 0;
+		}
+	},
+
+	isTemporallyActive: function(element, time)
+	{
+		var s = Math.round(1000 * parseFloat(this.getAttr(element, "data-time-start"))) / 1000;
+		var e = Math.round(1000 * parseFloat(this.getAttr(element, "data-time-end"))) / 1000;
+		var t = Math.round(1000 * time) / 1000;
+
+		//console.log("s = " + s + ", e = " + e + ", t = " + t + ", (s <= t) = " + (s <= t) + ", (t < e) = " + (t < e));
+
+		return (s <= t) && (t < e);
+	},
+
+	getNavigation: function(element)
+	{
+		// Navigation elements are marked with the extensions role="x-nav-..." 
+		// we want to find the lists of nav-labels, where each label goes in the right level of list
+		// the structure of this is loosely based on daisy NCK files.
+
+		return this.getNavPoint(element, null, 0);
+	},
+
+	getNavPoint: function(element, parent, level) 
+	{
+		// A nav point is an element tagged with role=x-nav-point; containing one label and one list
+		// however if the list is empty, then the label can stand on its own for the whole point.
+
+		var label = null;
+		var subtree = [];
+		var node = {};
+
+		// Keep the high tide mark for how deep in the tree we are.
+		if (this.rightMostInLevel.length <= level)
+			this.rightMostInLevel.push(null);
+
+		var role = this.attrNS(element, 'role', this.options.ttmlMetaNamespace);
+		switch (role)
+		{
+			case "x-nav-label": // Degenerate form.
+				label = this.getNavLabel(element);
+				break;
+			case "x-nav-point": // Full form contains a label and a list.
+				PlayerFramework.forEach(this.children(element), PlayerFramework.proxy(this, function (childElement)
+				{
+					var childRole = this.attrNS(childElement, 'role', this.options.ttmlMetaNamespace);
+					switch (childRole)
+					{ 
+						// Should only be one of each. but allow last to win.
+						case "x-nav-label": // Contains text, and use its timing.
+							label = this.getNavLabel(childElement);
+							break;
+						case "x-nav-list": // Contains either a list of navPoints.
+							subtree = this.getNavList(childElement, node, level + 1);
+							break;
+						default:
+							break;
+					}
+				}));
+				break;
+			default:
+				break; // Ignore anything else.
+		}
+
+		if (label != null)
+		{
+			node.text = label.text;
+			node.startTime = new Number(label.startTime) / 1000 + 0.01;
+			node.endTime = new Number(label.endTime) / 1000;
+			node.parent = parent;
+			node.left = this.rightMostInLevel[level]; // Could be null.
+			node.right = null;
+			node.children = subtree;
+
+			if (this.rightMostInLevel[level] != null)
+			{
+				this.rightMostInLevel[level].right = node;
+			}
+			
+			this.rightMostInLevel[level] = node;
+
+			return node;
+		}
+		else
+		{
+			return null;
+		}
+	},
+
+	getNavLabel: function(element) 
+	{
+		// A nav label is just text, but we use its timing to create an interval into the media for navigation.
+
+		var role = this.attrNS(element, 'role', this.options.ttmlMetaNamespace);
+		if (role != null && !PlayerFramework.first(role, function(r) { return r === "x-nav-label"; } )) 
+		{
+			return {
+				text: element.innerHTML,
+				startTime: this.getAttr(element, "data-time-start"),
+				endTime: this.getAttr(element, "data-time-end")
+			}
+		}
+	},
+
+	getNavList: function(element, node, level)
+	{
+		// A navList is supposed to be a list of navPoints, but a navPoint can be a degenerate navLabel
+
+		var list = [];
+		var role = this.attrNS(element, 'role', this.options.ttmlMetaNamespace);
+
+		if (role != null && !PlayerFramework.first(role, function(r) { return r === "x-nav-list"; } ))
+		{
+			PlayerFramework.forEach(this.children(element), function (childElement)
+			{
+				var item = getNavPoint(childElement, node, level);
+				if (item != null)
+				{
+					list.push(item);
+				}
+			});
+		}
+
+		return list;
+	},
+
+	translateMarkup: function(element, tick)
+	{
+		// Convert elements in TTML to their equivalent in HTML.
+
+		var translation = undefined;
+		var name = this.getTagNameEquivalent(element);
+		var htmlName = "";
+		var htmlClass = "";
+		var htmlAttrs = {};
+
+		if (element && this.isTemporallyActive(element, tick))
+		{
+			switch (name) {
+				case "tt:region":
+				case "tt:tt": // We get this if there is no region.
+					htmlClass = "cue "; // To simulate the ::cue selector.
+					htmlName = "div";
+					break;
+				case "tt:body":
+				case "tt:div":
+					htmlName = "div";
+					break;
+				case "tt:p":
+					htmlName = "p";
+					break;
+				case "tt:span":
+					htmlName = "span";
+					break;
+				case "tt:br":
+					htmlName = "br";
+					break;
+				case "":
+					break;
+				default:
+					htmlName = name;
+					
+					PlayerFramework.forEach(PlayerFramework.convertNodeListToArray(element.attributes), function (pair)
+					{
+						htmlAttrs[pair.name] = pair.value;
+					});
+
+					break;
+			}
+			var role = this.attrNS(element, 'role', this.options.ttmlMetaNamespace);
+			if (role) htmlClass += ((role) + ' ');
+
+			var classAttr = this.attrNS(element, 'class', 'http://www.w3.org/1999/xhtml');
+			if (classAttr) htmlClass += ((classAttr) + ' ');
+
+			// Hack until display:ruby on other elements works.
+			if (role == "x-ruby") htmlName = ("ruby");
+			if (role == "x-rubybase") htmlName = ("rb");
+			if (role == "x-rubytext") htmlName = ("rt");
+
+			// Convert image based captions here; and move the text into its alt.
+			// If I could get inline CSS to work div's then this would be set as style. 
+			var image = this.getAttr(element, 'image');
+			if (image != null)
+				htmlName = "img"
+
+			if (htmlName != "")
+			{
+				translation = PlayerFramework.createElement(null,
+				[
+					htmlName,
+					{
+						"class": htmlClass.replace(/^\s+|\s+$/g, "") || null
+					}
+				]);
+
+				// Move ID's over. Use trackIdPrefix to ensure there are no name clases on id's already in target doc.
+				var id = this.attrNS(element, 'id', this.options.xmlNamespace);
+				
+				// If (id) translation.attr('id', this.options.trackIdPrefix + id);
+				if (id) translation.setAttribute('id', this.options.trackIdPrefix + id);
+
+				// Copy style from element over to html, translating into CSS as we go
+				this.translateStyle(element, translation, tick);
+
+				// If we are copying over html elements, then copy any attributes too.
+				for (attr in htmlAttrs)
+				{
+					translation.setAttribute(attr, htmlAttrs[attr]);
+				}
+
+				if (image != null)
+				{
+					translation.setAttribute("src", image);
+					translation.setAttribute("alt", element.innerHTML);
+				}
+			}
+		}
+
+		return translation;
+	},
+
+	translateStyle: function(element, htmlElement, tick) 
+	{
+		// Convert from TTML style names to CSS.
+
+		// Clone of the base style set.
+		var computedStyleSet = {};
+
+		// Iterate over the computed styleset and copy into computed style set.
+		var styles = this.StyleSetCache[this.getAttr(element, "__styleSet__")];
+		for (var name in styles)
+		{
+			computedStyleSet[name] = styles[name];
+		}
+
+		PlayerFramework.forEach(this.getElementsByTagNameNS(element, this.options.ttmlNamespace, 'set'), PlayerFramework.proxy(this, function (childElement)
+		{
+			if (this.isTemporallyActive(childElement, tick))
+				this.applyInlineStyles(computedStyleSet, childElement);
+		}));
+
+		// Apply properties.
+		for (var name in computedStyleSet)
+		{
+			this.convertTtmlToCss(htmlElement, name, computedStyleSet[name]);
+		}
+	},
+
+	convertTtmlToCss: function(obj, style, value)
+	{
+		// Convert TTML style into CSS equivalent. Mostly just the name change used in js, but some are slightly different.
+
+		var cssStyle;
+
+		switch (style)
+		{
+			case "origin":
+				var coords = value.split(/\s/); // Get the individual components.
+				cssStyle =
+				{
+					position: "absolute",
+					left: coords[0],
+					top: coords[1]
+				};
+				break;
+			case "extent":
+				var coords = value.split(/\s/); // Get the individual components.
+				cssStyle = 
+				{
+					width: coords[0],
+					height: coords[1]
+				};
+				break;
+			case "displayAlign":
+				cssStyle =
+				{
+					textAlign: value
+				};
+				break;
+			case "wrapOption":
+				cssStyle =
+				{
+					whiteSpace: value == "nowrap" ? "nowrap" : "normal"
+				};
+				break;
+			default:
+				cssStyle = {};
+				cssStyle[style] = value;
+				break;
+		}
+
+		this.setStyle(obj, cssStyle);
+
+		return obj;
+	},
+
+	applyStyling: function() 
+	{
+		// Apply style to every element in the body.
+
+		PlayerFramework.forEach(this.root.getElementsByTagName("*"), PlayerFramework.proxy(this, function (element)
+		{
+				this.applyStyle(element);
+		}));
+	},
+
+	applyStyle: function(element)
+	{
+		// Apply styles in the correct order to element.
+
+		var styleSet = {};
+
+		// Find all the applicable styles and set them as properties on styleSet. 
+		this.applyStylesheet(styleSet, element);
+		this.applyInlineStyles(styleSet, element);
+
+		// Record the applied set to the element
+		this.StyleSetCache[this.styleSetId] = styleSet;
+		element.setAttribute("__styleSet__", this.styleSetId++);
+	},
+
+	applyInlineStyles: function(styleSet, element)
+	{
+		// Apply style attributes into styleset.
+		
+		PlayerFramework.forEach(PlayerFramework.convertNodeListToArray(element.attributes), PlayerFramework.proxy(this, function (attribute)
+		{
+			if (attribute.namespaceURI == this.options.ttmlStyleNamespace)
+			{
+				styleSet[this.getLocalTagName(attribute)] = attribute.nodeValue;
+			}
+
+			if (attribute.namespaceURI == this.options.smpteNamespace && this.getLocalTagName(this) == "backgroundImage")
+			{
+				var imageId = attribute.nodeValue;
+
+				if (imageId.indexOf("#") == 0)
+					element.setAttribute("image", "data:image/png;base64," + this.ImageCache[imageId]);
+				else
+					element.setAttribute("image", imageId);
+			}
+		}));
+	},
+
+	applyStylesheet: function(styleSet, element) 
+	{
+		// For each style id on element, find the corresponding style element 
+		// and then apply the stylesheet into styleset; this recurses over the tree of referenced styles.
+
+		if (!this.hasAttr(element, 'style'))
+			return;
+
+		var isStyle = this.isTagNS(element, "style", this.options.ttmlNamespace); // Detect if we are referencing style from a style.
+		var ids = this.getAttr(element, 'style').split(/\s/); // Find all the style ID references.
+			
+		PlayerFramework.forEach(ids, PlayerFramework.proxy(this, function (styleId) 
+		{
+			// Find all the style elements in the TTML namespace.
+			PlayerFramework.forEach(this.getElementsByTagNameNS(this.head, this.options.ttmlNamespace, 'style'), PlayerFramework.proxy(this, function (headChildElement)
+			{
+				if (this.attrNS(headChildElement, 'id', this.options.xmlNamespace) == styleId)
+				{
+					this.applyStylesheet(styleSet, headChildElement);
+
+					// If the element is region, do nested styles (note regions can only be referenced from elements in the body).
+					if (!isStyle && this.isTagNS(headChildElement, "region", this.options.ttmlNamespace))
+					{
+						//this.getElementsByTagNameNS(element, this.options.ttmlNamespace, 'style').each(function () {
+						PlayerFramework.forEach(this.getElementsByTagNameNS(headChildElement, this.options.ttmlNamespace, 'style'), PlayerFramework.proxy(this, function (childElement)
+						{
+							this.applyStylesheet(styleSet, childElement);
+						}));
+					}
+
+					// Do inline styles.
+					this.applyInlineStyles(styleSet, headChildElement);
+				}
+			}));
+		}));
+	},
+
+	isInRegion: function(element, regionId) 
+	{
+		// A content element is associated with a region according to the following ordered rules, 
+		// where the first rule satisfied is used and remaining rules are skipped:
+
+		// Quick test: Out of normal order, but makes following rules simpler.
+		if (regionId == "" || regionId == undefined) return this.usingDefaultRegion;
+
+		// 1. If the element specifies a region attribute, then the element is
+		// associated with the region referenced by that attribute;
+		if (this.getAttr(element, 'region') == regionId) return true;
+
+		// 2. If some ancestor of that element specifies a region attribute, then the element is 
+		// associated with the region referenced by the most immediate ancestor that specifies 
+		// this attribute;
+		var ancestor = element.parentNode;
+		while (ancestor != null && ancestor.nodeType == this.nodeType.ELEMENT_NODE) 
+		{
+			var r = this.getAttr(ancestor, "region");
+			if (r)
+				return r == regionId;
+			ancestor = ancestor.parentNode;
+		}
+
+		// 3. If the element contains a descendant element that specifies a region attribute, 
+		//	then the element is associated with the region referenced by that attribute;
+		var nodes = element.getElementsByTagName('*');
+		for (var n = 0, len = nodes.length; n < len; n++)
+		{
+			if ((this.getAttr(nodes[n], 'region') == regionId) && nodes[n].namespaceURI == this.options.ttmlNamespace)
+				// Can't cache this result, because a node may contain more than one region.
+				return true;
+		}
+
+		// 4. If a default region was implied (due to the absence of any region element), 
+		//	then the element is associated with the default region;
+		if (this.usingDefaultRegion)
+			return regionId == "";
+
+		// 5. The element is not associated with any region.
+		return false;
+	},
+
+	loadSMPTEImages: function()
+	{
+		this.ImageCache = {};
+		var images = this.getElementsByTagNameNS(this.root, this.options.smpteNamespace, 'image');
+
+		PlayerFramework.forEach(images, PlayerFramework.proxy(this, function (image)
+		{
+			var id = this.attrNS(image, 'id', this.options.xmlNamespace);
+			if (id != null)
+				this.ImageCache["#" + id] = image.innerHTML;
+		}));
+	},
+
+	getTagNameEquivalent: function(element) 
+	{
+		var tag = this.getLocalTagName(element);
+		switch (element.namespaceURI)
+		{
+			case 'http://www.w3.org/1999/xhtml':
+				return tag;
+			case 'http://www.w3.org/ns/ttml':
+				return 'tt:' + tag;
+			case 'http://www.smpte-ra.org/schemas/2052-1/2010/smpte-tt':
+				return 'smpte:' + tag;
+			default:
+				return "";
+		}
+	},
+
+	prune: function(element, regionId, tick)
+	{
+		/// Convert the element if it is in the region, then recurse into its contents.
+		/// If it ends up with no children, then we dont add it to the region.
+
+		var clone = undefined;
+		
+		if (this.isInRegion(element, regionId))
+		{
+			clone = this.translateMarkup(element, tick);
+
+			if (!clone)
+				return clone;
+
+			PlayerFramework.forEach(element.childNodes, PlayerFramework.proxy(this, function (childElement)
+			{
+				if (childElement.nodeType != this.nodeType.COMMENT_NODE)
+				{
+					if (childElement.nodeType == this.nodeType.TEXT_NODE)
+					{
+						clone.appendChild(document.createTextNode(childElement.data));
+					}
+					else
+					{
+						var prunedChildElement = this.prune(childElement, regionId, tick);
+
+						if (prunedChildElement)
+							clone.appendChild(prunedChildElement);
+					}
+				}
+			}));
+		}
+
+		return clone;
+	},
+
+	getLocalTagName: function(element) 
+	{
+		if (element.localName) // W3C
+			return element.localName;
+		else
+			return element.baseName;
+	},
+
+	getElementsByTagNameNS: function(element, namespace, name) 
+	{
+		var result = [];
+		var nodes = element.getElementsByTagName('*');
+
+		for (var i = 0; i < nodes.length; i++)
+		{
+			if (this.getLocalTagName(nodes[i]) == name && nodes[i].namespaceURI == namespace)
+			{
+				result.push((nodes[i]));
+			}
+		}
+
+		return result; 
+	},
+
+	prefixNS: function(element, ns)
+	{
+		// Find the closest ancestor that attests an xmlns with the required value, and return the prefix it used.
+
+		if (ns == 'http://www.w3.org/XML/1998/namespace') return "xml:"
+		if (element == null || element == undefined || element.nodeType == this.nodeType.DOCUMENT_NODE)
+			return "";
+			
+		var attributes = element.attributes;
+		for (var i = 0; i < attributes.length; i++)
+		{
+			var attribute = attributes[i];
+				
+			if ((attribute.name.indexOf("xmlns") == 0) && attribute.value == ns)
+			{
+				if (attribute.localName) return attribute.localName + ":";
+				if (attribute.baseName) return attribute.baseName + ":";
+			}
+		}
+	
+		return this.prefixNS(element.parentNode, ns);
+	},
+
+	attrNS: function(element, name, ns, value)
+	{
+		var prefix = ns ? this.prefixNS(element, ns) : "";
+
+		return element.getAttribute(prefix + name);
+	},
+
+	hasAttr: function(element, name)
+	{
+		// Test for the existence of an attribute.
+
+		return this.getAttr(element, name) != undefined;
+	},
+
+	getAttr: function(element, name)
+	{
+		// Return an attribute.
+
+		if (element.nodeType != this.nodeType.ELEMENT_NODE)
+			return undefined;
+
+		var val = element.getAttribute(name);
+
+		// Bug in Encoder moves unprefixed attributes
+		if (val == undefined && (element.prefix != null && element.prefix != ""))
+			val = element.getAttribute(element.prefix + ":" + name);
+
+		return val;
+	},
+
+	isTagNS: function(element, tag, namespace)
+	{
+		// Check an elements against a tag name in a namespace.
+
+		var match = false;
+
+		if (element.localName) // W3C
+			match = (tag == element.localName);
+		else
+			match = (tag == element.baseName);
+
+		match &= (element.namespaceURI == namespace);
+		return (match);
+	},
+
+	children: function(element)
+	{
+		var childElement = element.firstChild;
+		var children = [];
+
+		for ( ; childElement; childElement = childElement.nextSibling)
+		{
+			if (childElement.nodeType === this.nodeType.ELEMENT_NODE)
+				children.push(childElement);
+		}
+
+		return children;
+	},
+
+	style: function(styles)
+	{
+		var style = "";
+
+		for(var name in styles)
+		{
+			style += name + ": " + styles[name] + "; ";
+		}
+
+		return style;
+	},
+
+	setStyle: function(element, styles)
+	{
+		for(var name in styles)
+		{
+			element.style[name] = styles[name];
+		}
+	}
 });
-
-﻿PlayerFramework.Plugins.VideoElementMediaPlugin = PlayerFramework.Plugins.VideoElementMediaPluginBase.extend(
+PlayerFramework.Plugins.VideoElementMediaPlugin = PlayerFramework.Plugins.VideoElementMediaPluginBase.extend(
 {
 	init: function(player, options, playerOptions)
 	{
