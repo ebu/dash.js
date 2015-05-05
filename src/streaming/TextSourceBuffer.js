@@ -75,22 +75,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                         this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
-
-                        var textTrack = {
-                            label: "Spanish",
-                            kind: "captions",
-                            xml: ccContent
-                        };
-
-                        var ttmlParser = new PlayerFramework.TtmlParser();
-                        var ttml = ttmlParser.parseTtml(textTrack.xml);
-                        console.warn(ttml);
-                        textTrack.cues = new PlayerFramework.TextTrackCueList(
-                            {
-                                track: textTrack,
-                                list: ttml.captions
-                            });
-                        console.warn(textTrack.cues);
                         try{
                             result = parser.parse(ccContent);
                             this.textSourceBufferExt.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);

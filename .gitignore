@@ -182,3 +182,17 @@ pip-log.txt
 *.mp4
 *.m4s
 *.mpd
+
+dist/dash.all.js
+
+dist/dash.debug.js
+
+dist/dash.min.js
+
+*.html
+
+*.html
+
+*.xml
+
+*.ogg

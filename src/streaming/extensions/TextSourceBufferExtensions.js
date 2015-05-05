@@ -47,20 +47,60 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
         var styleElement = document.getElementsByTagName('style')[0];
         // We replace the current style with the new cue style.
-        styleElement.innerHTML =
-            "#container { \
-            position: relative;\
-            display:inline-flex;\
-            overflow: hidden;\
-            }\
-            #videoPlayer {\
-            position: relative;\
-            z-index: 1;\
-            }\
-            #caption{\
-            z-index: 2147483647;"
-            + styleBlock + "}";
 
+        styleElement.innerHTML =
+            ".container{\
+            width:1280px;\
+            height:720px;\
+            position: relative;\
+            margin: 0;\
+            padding: 0;\
+            display: block;\
+            }\
+            .video {\
+            position: relative;\
+            display:block;\
+            height:100%;\
+            width: 100%;\
+            }\
+            .caption-cues-container {\
+            position: absolute;\
+            left: 200px;\
+            right: 0;\
+            top: 200px;\
+            color: #fff;\
+            font-family: Segoe UI, Arial, Helvetica, sans-serif;\
+            text-align: center;\
+            z-index: 0;\
+            }\
+            .cue{\
+            color: white; \
+            font-family: Arial; \
+            font-size: 36px; \
+            text-shadow: none; \
+            padding: 3px; \
+            opacity: 0.7; \
+            background-color: black; \
+            display: table; \
+            margin: auto;\
+            }\
+            .caption{\
+            margin: 0;\
+            padding: 0;\
+            border: 0;\
+            }\
+            " + styleBlock + "}";
+
+    }
+
+    function replaceContentInContainer(matchClass, content) {
+        var elems = document.getElementsByTagName('*'), i;
+        for (i in elems) {
+            if((' ' + elems[i].className + ' ').indexOf(' ' + matchClass + ' ')
+                > -1) {
+                elems[i].innerHTML = content;
+            }
+        }
     }
 
     return {
@@ -78,8 +118,7 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
             // Check every ms which cue should be played.
             video.listen('timeupdate', this.onCaption);
-            // Check if we're going full screen to make the proper modifications.
-            video.listen('webkitfullscreenchange', this.onFullscreen);
+
         },
 
         addCaptionsToPlaylist: function (dts, duration, captions) {
@@ -113,11 +152,12 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                             cue  = playlist[i];
                         }
                         // When the cue is found, we apply its text, style and positioning.
-                        document.getElementById("caption").innerHTML = cue.data[0].data;
+                        replaceContentInContainer("caption",cue.data[0].data);
 
                         if(cue.data[0].style) {
                             addStyleToCaption(cue.data[0].style);
                         }
+                        // else use default
 
                     } else {
                         // We check for another cue in the list
@@ -128,12 +168,7 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                 // Nothing to be played.
                 return;
             }
-        },
-
-        onFullscreen: function(){
-
         }
-
     };
 };
 
