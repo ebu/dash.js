@@ -84,7 +84,7 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
             display: table; \
             margin: auto;\
             }\
-            .caption{\
+            .text{\
             margin: 0;\
             padding: 0;\
             border: 0;\
@@ -152,7 +152,7 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                             cue  = playlist[i];
                         }
                         // When the cue is found, we apply its text, style and positioning.
-                        replaceContentInContainer("caption",cue.data[0].data);
+                        replaceContentInContainer("text",cue.data[0].data);
 
                         if(cue.data[0].style) {
                             addStyleToCaption(cue.data[0].style);

@@ -47,6 +47,29 @@ MediaPlayer.utils.TTMLParser = function () {
         // - Exactly 2 digits must be used in each of the hours, minutes, second, and frame components (include leading zeros).
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/,
         ttml,
+        defaultStyle = {
+            direction: 'direction: ltr;',
+            "font-family": 'font-family: "monospace";',
+            "font-size": 'font-size: 200%;',
+            "line-height": 'line-height: 100%;',
+            "text-align": 'text-align: start;',
+            "color": 'color: white;',
+            "background-color": 'background-color: black;',
+            "font-style": 'font-style: normal;',
+            "font-weight": 'font-weight: normal;',
+            "text-decoration": 'text-decoration: none;',
+            "unicode-bidi": 'unicode-bidi: normal;',
+            "wrapoption": 'white-space: normal;'
+        },
+        defaultRegion = {
+            origin: 'top: 65%; left: 30%;',
+            extent: 'width: 80%; heigth: 15%;',
+            style: defaultStyle,
+            displayalign: 'vertical-align: top;',
+            padding: 'padding: 0% 1% 0% 1%;',
+            showbackground: 'display:none;',
+            overflow: 'overflow: visible;'
+        },
 
 
         parseTimings = function(timingStr) {
@@ -193,12 +216,19 @@ MediaPlayer.utils.TTMLParser = function () {
                     throw errorMsg;
                 }
 
+                if (isNaN(startTime) || isNaN(endTime)) {
+                    errorMsg = "TTML document has incorrect timing value";
+                    throw errorMsg;
+                }
+
                 // Find the right style for our cue
                 if(cueStyleID) {
                     for (var j = 0; j < ttmlStylings.length; j++) {
                         var currStyle = ttmlStylings[j];
                         if (currStyle['style@xml:id'] === cueStyleID) {
                             cueStyle = currStyle;
+                        } else {
+                            cueContainerProperties = defaultStyle;
                         }
                     }
                 }
@@ -209,75 +239,110 @@ MediaPlayer.utils.TTMLParser = function () {
                         var currReg = ttmlLayout[j];
                         if (currReg['region@xml:id'] === cueRegionID) {
                             cueRegion = currReg;
+                        } else{
+                            regionContainerProperties = defaultRegion;
                         }
                     }
                 }
 
-                // Extract the style for the cue
-                var styleAndRegionProperties = [];
-                for(var key in cueStyle){
-                    if(cueStyle.hasOwnProperty(key)) {
-                        var property = cueStyle[key];
+                if(cueStyle) {
 
-                        key = key.replace("style@tts:", "");
-                        key = key.replace("style@xml:", "");
-                        key = key.toLowerCase();
-
-                        if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
-                            key = key.substr(0, 4) + "-" + key.substr(4);
-                        } else if (key.indexOf("background") > -1) {
-                            key = key.substr(0, 10) + "-" + key.substr(10);
-                        } else if (key.indexOf("unicode") > -1) {
-                            key = key.substr(0, 7) + "-" + key.substr(7);
-                        }
-
-                        if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
-                            continue;
-                        }
-
-                        var result;
-                        if (key === "font-family") {
-                            result = key + ': "' + property + '";';
-                        } else {
-                            result = key + ": " + property + ";";
-                        }
-
-                        styleAndRegionProperties.push(result);
-                    }
-                }
-
-                // Extract the region for the cue
-                for(var key in cueRegion){
-                    if(cueRegion.hasOwnProperty(key)) {
-
-                        var property = cueRegion[key];
-
-                        key = key.replace("region@tts:", "");
-                        key = key.replace("region@xml:", "");
-                        key = key.toLowerCase();
-
-                        if (key.indexOf("extent") > -1) {
-                            var coords = property.split(/\s/);
-                            styleAndRegionProperties.push("width: " + coords[0] + ';');
-                            styleAndRegionProperties.push("height :" + coords[1] + ';');
-                        }  else if (key.indexOf("origin") > -1) {
-                            var coords = property.split(/\s/);
-                            styleAndRegionProperties.push("left: " + coords[0] + ';');
-                            styleAndRegionProperties.push("top :" + coords[1] + ';');
-                            styleAndRegionProperties.push("position: absolute");
-                        } else {
+                    // Extract the style for the cue
+                    var cueContainerProperties = [];
+                    var missingStyleProperties = defaultStyle;
+                    for (var key in cueStyle) {
+                        if (cueStyle.hasOwnProperty(key)) {
+                            var property = cueStyle[key];
                             var result;
-                            result = key + ':' + property + ';';
-                            styleAndRegionProperties.push(result);
+
+                            key = key.replace("style@tts:", "");
+                            key = key.replace("style@xml:", "");
+                            key = key.toLowerCase();
+
+                            if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
+                                key = key.substr(0, 4) + "-" + key.substr(4);
+                            } else if (key.indexOf("background") > -1) {
+                                key = key.substr(0, 10) + "-" + key.substr(10);
+                            } else if (key.indexOf("unicode") > -1) {
+                                key = key.substr(0, 7) + "-" + key.substr(7);
+                            } else if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
+                                continue;
+                            }
+
+                            if (key === "font-family") {
+                                result = key + ': "' + property + '";';
+                            } else {
+                                result = key + ": " + property + ";";
+                            }
+
+                            if(missingStyleProperties.hasOwnProperty(key)) {
+                                delete missingStyleProperties[key];
+                            }
+                            cueContainerProperties.push(result);
+
                         }
+                    }
+                    for (var key in missingStyleProperties){
+                        cueContainerProperties.push(missingStyleProperties[key]);
                     }
                 }
 
-                if (isNaN(startTime) || isNaN(endTime)) {
-                    errorMsg = "TTML document has incorrect timing value";
-                    throw errorMsg;
-                }
+                if(cueRegion) {
 
+                    var regionContainerProperties = [];
+                    var missingRegionProperties = defaultRegion;
+
+                    // Extract the region for the cue
+                    for (var key in cueRegion) {
+                        if (cueRegion.hasOwnProperty(key)) {
+                            var property = cueRegion[key];
+
+                            key = key.replace("region@tts:", "");
+                            key = key.replace("region@xml:", "");
+                            key = key.toLowerCase();
+
+                            if (key.indexOf("extent") > -1) {
+                                var coords = property.split(/\s/);
+                                regionContainerProperties.push("width: " + coords[0] + ';');
+                                regionContainerProperties.push("height :" + coords[1] + ';');
+                            } else if (key.indexOf("origin") > -1) {
+                                var coords = property.split(/\s/);
+                                regionContainerProperties.push("left: " + coords[0] + ';');
+                                regionContainerProperties.push("top :" + coords[1] + ';');
+                                regionContainerProperties.push("position: absolute;");
+                            } else if(key.indexOf("displayalign") > -1){
+                                switch(property){
+                                    case "before":
+                                        regionContainerProperties.push("vertical-align: top;");
+                                        break;
+                                    case "center":
+                                        regionContainerProperties.push("vertical-align: middle;");
+                                        break;
+                                    case "after":
+                                        regionContainerProperties.push("vertical-align: bottom;");
+                                        break;
+                                }
+                            } else if(key.indexOf("writingmode") > -1 || key.indexOf("showbackground") > -1){
+                                continue;
+                            } else if(key.indexOf("region") > -1 || key.indexOf("id") > -1){
+                                continue;
+                            } else {
+                                var result;
+                                result = key + ':' + property + ';';
+                                regionContainerProperties.push(result);
+                            }
+                            if(missingRegionProperties.hasOwnProperty(key)) {
+                                delete missingRegionProperties[key];
+                            }
+                        }
+                    }
+
+                    for (var key in missingRegionProperties){
+                        if (!(key === "style")) {
+                            regionContainerProperties.push(missingRegionProperties[key]);
+                        }
+                    }
+                }
                 //TODO adapt images cues with the new parser.
                 if(cue["smpte:backgroundImage"]!== undefined)
                 {
@@ -290,7 +355,8 @@ MediaPlayer.utils.TTMLParser = function () {
                                 id:images[j]["p@xml:id"],
                                 data: "data:image/"+images[j].imagetype.toLowerCase()+";base64, " + images[j].__text,
                                 type: "image",
-                                style: styleAndRegionProperties
+                                style: cueContainerProperties,
+                                region: regionContainerProperties
                             });
                         }
                     }
@@ -302,12 +368,15 @@ MediaPlayer.utils.TTMLParser = function () {
                     for(var k = 0; k < cue.p.length; k += 1){
                         text += cue.p[k]['span'] || cue.p[k];
                     }
+                    console.warn("cueContainerProperties", cueContainerProperties);
+                    console.warn("regionContainerProperties", regionContainerProperties);
                     captionArray.push({
                         start: startTime,
                         end: endTime,
                         data: text,
                         type: "text",
-                        style: styleAndRegionProperties
+                        style: cueContainerProperties,
+                        region: regionContainerProperties
                     });
                 }
             }
