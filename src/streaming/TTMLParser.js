@@ -67,7 +67,7 @@ MediaPlayer.utils.TTMLParser = function () {
             style: defaultStyle,
             displayalign: 'vertical-align: top;',
             padding: 'padding: 0% 1% 0% 1%;',
-            showbackground: 'display:none;',
+            showbackground: '',
             overflow: 'overflow: visible;'
         },
 
@@ -143,6 +143,125 @@ MediaPlayer.utils.TTMLParser = function () {
             return r[0];
         },
 
+        getStyle = function(ttmlStylings, cueStyleID) {
+            for (var j = 0; j < ttmlStylings.length; j++) {
+                var currStyle = ttmlStylings[j];
+                if (currStyle['style@xml:id'] === cueStyleID) {
+                    return currStyle;
+                }
+            }
+        },
+
+        getRegion = function(ttmlLayout, cueRegionID) {
+            for (var j = 0; j < ttmlLayout.length; j++) {
+                var currReg = ttmlLayout[j];
+                if (currReg['region@xml:id'] === cueRegionID) {
+                    return currReg;
+                }
+            }
+        },
+
+        computeStyle = function(cueStyle){
+            var cueContainerProperties = [];
+            var missingStyleProperties = defaultStyle;
+            for (var key in cueStyle) {
+                if (cueStyle.hasOwnProperty(key)) {
+                    var property = cueStyle[key];
+                    var result;
+
+                    key = key.replace("style@tts:", "");
+                    key = key.replace("style@xml:", "");
+                    key = key.toLowerCase();
+
+                    if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
+                        key = key.substr(0, 4) + "-" + key.substr(4);
+                    } else if (key.indexOf("background") > -1) {
+                        key = key.substr(0, 10) + "-" + key.substr(10);
+                    } else if (key.indexOf("unicode") > -1) {
+                        key = key.substr(0, 7) + "-" + key.substr(7);
+                    } else if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
+                        continue;
+                    }
+
+                    if (key === "font-family") {
+                        result = key + ': "' + property + '";';
+                    } else {
+                        result = key + ": " + property + ";";
+                    }
+
+                    if(missingStyleProperties.hasOwnProperty(key)) {
+                        delete missingStyleProperties[key];
+                    }
+                    cueContainerProperties.push(result);
+
+                }
+            }
+            for (var key in missingStyleProperties){
+                cueContainerProperties.push(missingStyleProperties[key]);
+            }
+            return cueContainerProperties;
+        },
+
+        computeRegion = function(ttmlStylings, cueRegion){
+            var regionContainerProperties = [];
+            var missingRegionProperties = defaultRegion;
+
+            // Extract the region for the cue
+            for (var key in cueRegion) {
+                if (cueRegion.hasOwnProperty(key)) {
+                    var property = cueRegion[key];
+
+                    key = key.replace("region@tts:", "");
+                    key = key.replace("region@xml:", "");
+                    key = key.toLowerCase();
+
+                    if (key.indexOf("extent") > -1) {
+                        var coords = property.split(/\s/);
+                        regionContainerProperties.push("width: " + coords[0] + ';');
+                        regionContainerProperties.push("height :" + coords[1] + ';');
+                    } else if (key.indexOf("origin") > -1) {
+                        var coords = property.split(/\s/);
+                        regionContainerProperties.push("left: " + coords[0] + ';');
+                        regionContainerProperties.push("top :" + coords[1] + ';');
+                        regionContainerProperties.push("position: absolute;");
+                    } else if(key.indexOf("displayalign") > -1){
+                        switch(property){
+                            case "before":
+                                regionContainerProperties.push("vertical-align: top;");
+                                break;
+                            case "center":
+                                regionContainerProperties.push("vertical-align: middle;");
+                                break;
+                            case "after":
+                                regionContainerProperties.push("vertical-align: bottom;");
+                                break;
+                        }
+                    } else if(key.indexOf("writingmode") > -1 || key.indexOf("showbackground") > -1){
+                        continue;
+                    } else if(key.indexOf("region") > -1 || key.indexOf("id") > -1){
+                        continue;
+                    } else if(key.indexOf("style") > -1){
+                        var styleFromID = computeStyle(ttmlStylings, property);
+                        regionContainerProperties.push(styleFromID);
+                    } else {
+                        var result;
+                        result = key + ':' + property + ';';
+                        regionContainerProperties.push(result);
+                    }
+                    if(missingRegionProperties.hasOwnProperty(key)) {
+                        delete missingRegionProperties[key];
+                    }
+                }
+            }
+
+            for (var key in missingRegionProperties){
+                if (!(key === "style")) {
+                    regionContainerProperties.push(missingRegionProperties[key]);
+                }
+            }
+            return regionContainerProperties;
+        },
+
         internalParse = function(data) {
             var captionArray = [],
                 errorMsg,
@@ -154,6 +273,8 @@ MediaPlayer.utils.TTMLParser = function () {
                 cueRegionID,
                 cueStyle,
                 cueRegion,
+                cueContainerProperties = [],
+                regionContainerProperties = [],
                 ttmlStylings,
                 ttmlLayout,
                 nsttp,
@@ -164,7 +285,9 @@ MediaPlayer.utils.TTMLParser = function () {
 
             // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
-
+            ttmlLayout = ttml.tt.head.layout;
+            ttmlStylings = ttml.tt.head.styling;
+            console.warn(ttml);
             //Check that the document follow the proper constraints.
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
@@ -187,16 +310,36 @@ MediaPlayer.utils.TTMLParser = function () {
                 cues = ttml.tt.body;
             }
 
+            if(cues['body@style']){
+                var bodyStyleID = cues['body@style'];
+                if(bodyStyleID) {
+                    var bodyStyle = getStyle(ttmlStylings, bodyStyleID);
+                    if(bodyStyle) {
+                        // Extract the style for the cue
+                        cueContainerProperties = computeStyle(bodyStyle);
+                    }
+                } else {
+                    cueContainerProperties = defaultStyle;
+                }
+            } else if (cues['div@style']){
+                var divStyleID = cues['div@style'];
+                if(divStyleID) {
+                    var divStyle = getStyle(ttmlStylings, divStyleID);
+                    if (divStyle) {
+                        // Extract the style for the cue
+                        cueContainerProperties = computeStyle(divStyle);
+                    } else {
+                        cueContainerProperties = defaultStyle;
+                    }
+                }
+            }
+
             cues = [].concat(cues);
 
             if (!cues || cues.length === 0) {
                 errorMsg = "TTML document does not contain any cues";
                 throw errorMsg;
             }
-
-
-            ttmlLayout = ttml.tt.head.layout;
-            ttmlStylings = ttml.tt.head.styling;
 
             if(!Array.isArray(ttmlLayout)){
                 ttmlLayout = [ttmlLayout];
@@ -223,126 +366,26 @@ MediaPlayer.utils.TTMLParser = function () {
 
                 // Find the right style for our cue
                 if(cueStyleID) {
-                    for (var j = 0; j < ttmlStylings.length; j++) {
-                        var currStyle = ttmlStylings[j];
-                        if (currStyle['style@xml:id'] === cueStyleID) {
-                            cueStyle = currStyle;
-                        } else {
-                            cueContainerProperties = defaultStyle;
-                        }
+                    cueStyle = getStyle(ttmlStylings, cueStyleID);
+                    if(cueStyle) {
+                        // Compute the style for the cue in CSS form
+                        cueContainerProperties = computeStyle(cueStyle);
                     }
+                } else {
+                    cueContainerProperties = defaultStyle;
                 }
 
                 // Find the right region for our cue
                 if(cueRegionID) {
-                    for (var j = 0; j < ttmlLayout.length; j++) {
-                        var currReg = ttmlLayout[j];
-                        if (currReg['region@xml:id'] === cueRegionID) {
-                            cueRegion = currReg;
-                        } else{
-                            regionContainerProperties = defaultRegion;
-                        }
+                    cueRegion = getRegion(ttmlLayout, cueRegionID);
+                    if(cueRegion) {
+                        // Compute the region style for the cue in CSS form
+                        regionContainerProperties = computeRegion(ttmlStylings, cueRegion);
                     }
+                } else{
+                    regionContainerProperties = defaultRegion;
                 }
 
-                if(cueStyle) {
-
-                    // Extract the style for the cue
-                    var cueContainerProperties = [];
-                    var missingStyleProperties = defaultStyle;
-                    for (var key in cueStyle) {
-                        if (cueStyle.hasOwnProperty(key)) {
-                            var property = cueStyle[key];
-                            var result;
-
-                            key = key.replace("style@tts:", "");
-                            key = key.replace("style@xml:", "");
-                            key = key.toLowerCase();
-
-                            if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
-                                key = key.substr(0, 4) + "-" + key.substr(4);
-                            } else if (key.indexOf("background") > -1) {
-                                key = key.substr(0, 10) + "-" + key.substr(10);
-                            } else if (key.indexOf("unicode") > -1) {
-                                key = key.substr(0, 7) + "-" + key.substr(7);
-                            } else if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
-                                continue;
-                            }
-
-                            if (key === "font-family") {
-                                result = key + ': "' + property + '";';
-                            } else {
-                                result = key + ": " + property + ";";
-                            }
-
-                            if(missingStyleProperties.hasOwnProperty(key)) {
-                                delete missingStyleProperties[key];
-                            }
-                            cueContainerProperties.push(result);
-
-                        }
-                    }
-                    for (var key in missingStyleProperties){
-                        cueContainerProperties.push(missingStyleProperties[key]);
-                    }
-                }
-
-                if(cueRegion) {
-
-                    var regionContainerProperties = [];
-                    var missingRegionProperties = defaultRegion;
-
-                    // Extract the region for the cue
-                    for (var key in cueRegion) {
-                        if (cueRegion.hasOwnProperty(key)) {
-                            var property = cueRegion[key];
-
-                            key = key.replace("region@tts:", "");
-                            key = key.replace("region@xml:", "");
-                            key = key.toLowerCase();
-
-                            if (key.indexOf("extent") > -1) {
-                                var coords = property.split(/\s/);
-                                regionContainerProperties.push("width: " + coords[0] + ';');
-                                regionContainerProperties.push("height :" + coords[1] + ';');
-                            } else if (key.indexOf("origin") > -1) {
-                                var coords = property.split(/\s/);
-                                regionContainerProperties.push("left: " + coords[0] + ';');
-                                regionContainerProperties.push("top :" + coords[1] + ';');
-                                regionContainerProperties.push("position: absolute;");
-                            } else if(key.indexOf("displayalign") > -1){
-                                switch(property){
-                                    case "before":
-                                        regionContainerProperties.push("vertical-align: top;");
-                                        break;
-                                    case "center":
-                                        regionContainerProperties.push("vertical-align: middle;");
-                                        break;
-                                    case "after":
-                                        regionContainerProperties.push("vertical-align: bottom;");
-                                        break;
-                                }
-                            } else if(key.indexOf("writingmode") > -1 || key.indexOf("showbackground") > -1){
-                                continue;
-                            } else if(key.indexOf("region") > -1 || key.indexOf("id") > -1){
-                                continue;
-                            } else {
-                                var result;
-                                result = key + ':' + property + ';';
-                                regionContainerProperties.push(result);
-                            }
-                            if(missingRegionProperties.hasOwnProperty(key)) {
-                                delete missingRegionProperties[key];
-                            }
-                        }
-                    }
-
-                    for (var key in missingRegionProperties){
-                        if (!(key === "style")) {
-                            regionContainerProperties.push(missingRegionProperties[key]);
-                        }
-                    }
-                }
                 //TODO adapt images cues with the new parser.
                 if(cue["smpte:backgroundImage"]!== undefined)
                 {
@@ -364,12 +407,33 @@ MediaPlayer.utils.TTMLParser = function () {
                 else
                 {
                     cue.p = [].concat(cue.p);
+                    console.warn(cue.p);
                     text = "";
                     for(var k = 0; k < cue.p.length; k += 1){
-                        text += cue.p[k]['span'] || cue.p[k];
+                        if(cue.p[k].hasOwnProperty('br')){
+                            text += "<"+"br"+">";
+                            continue;
+                        } else if(cue.p[k].hasOwnProperty('span')){
+                            var spanBefore= "<"+"span ";
+                            if(cue.p[k].hasOwnProperty('span@id')){
+                                spanBefore += 'id="' + cue.p[k]['span@id'] + '"' ;
+                            }
+                            if(cue.p[k].hasOwnProperty('span@style')){
+                                var spanStyle = getStyle(ttmlStylings, cue.p[k]['span@style']);
+                                if(spanStyle){
+                                    var styleBlock = computeStyle(spanStyle);
+                                    console.warn(styleBlock);
+                                    spanBefore += 'style="' + styleBlock.join(" ") + '">';
+                                }
+                            }
+                            text += spanBefore + cue.p[k]['span'] + "</"+"span"+">";
+                            console.warn("text",text);
+                            continue;
+                        } else {
+                            text += cue.p[k];
+                        }
                     }
-                    console.warn("cueContainerProperties", cueContainerProperties);
-                    console.warn("regionContainerProperties", regionContainerProperties);
+
                     captionArray.push({
                         start: startTime,
                         end: endTime,

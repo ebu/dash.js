@@ -1,0 +1,19 @@
+.container{
+width:1280px;
+height:720px;
+position: relative;
+margin: 0;
+padding: 0;
+display: block;
+}
+.video {
+position: relative;
+display:block;
+height:100%;
+width: 100%;
+}
+.text{
+margin: 0;
+padding: 0;
+border: 0;
+}

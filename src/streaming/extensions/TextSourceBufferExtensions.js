@@ -37,59 +37,28 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
         video;
 
 
-    function addStyleToCaption(style) {
+    function addStyleToCaption(style, region) {
         var styleBlock = "";
+        var regionBlock = "";
 
         // Add each CSS property to a CSS block.
         for (var i = 0; i < style.length; i++){
-            styleBlock += style[i] +';'+ "\n";
+            styleBlock += style[i] + "\n";
+        }
+        for (var i = 0; i < region.length; i++){
+            regionBlock += region[i] + "\n";
         }
 
-        var styleElement = document.getElementsByTagName('style')[0];
         // We replace the current style with the new cue style.
+        var regions = document.getElementsByClassName('region');
+        for (var i = 0; i < regions.length; i++){
+            regions[i].style.cssText = regionBlock + "z-index: 0;";
+        }
 
-        styleElement.innerHTML =
-            ".container{\
-            width:1280px;\
-            height:720px;\
-            position: relative;\
-            margin: 0;\
-            padding: 0;\
-            display: block;\
-            }\
-            .video {\
-            position: relative;\
-            display:block;\
-            height:100%;\
-            width: 100%;\
-            }\
-            .caption-cues-container {\
-            position: absolute;\
-            left: 200px;\
-            right: 0;\
-            top: 200px;\
-            color: #fff;\
-            font-family: Segoe UI, Arial, Helvetica, sans-serif;\
-            text-align: center;\
-            z-index: 0;\
-            }\
-            .cue{\
-            color: white; \
-            font-family: Arial; \
-            font-size: 36px; \
-            text-shadow: none; \
-            padding: 3px; \
-            opacity: 0.7; \
-            background-color: black; \
-            display: table; \
-            margin: auto;\
-            }\
-            .text{\
-            margin: 0;\
-            padding: 0;\
-            border: 0;\
-            }\
-            " + styleBlock + "}";
+        var cues = document.getElementsByClassName('cue');
+        for (var i = 0; i < cues.length; i++){
+            cues[i].style.cssText = styleBlock + "display: table; margin: auto;";
+        }
 
     }
 
@@ -154,8 +123,8 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
                         // When the cue is found, we apply its text, style and positioning.
                         replaceContentInContainer("text",cue.data[0].data);
 
-                        if(cue.data[0].style) {
-                            addStyleToCaption(cue.data[0].style);
+                        if(cue.data[0].style && cue.data[0].region) {
+                            addStyleToCaption(cue.data[0].style, cue.data[0].region);
                         }
                         // else use default
 
