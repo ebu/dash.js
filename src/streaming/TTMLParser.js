@@ -48,7 +48,7 @@ MediaPlayer.utils.TTMLParser = function () {
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/,
         ttml,
         defaultStyle = {
-            direction: 'direction: ltr;',
+            "direction": 'direction: ltr;',
             "font-family": 'font-family: "monospace";',
             "font-size": 'font-size: 200%;',
             "line-height": 'line-height: 100%;',
@@ -62,15 +62,13 @@ MediaPlayer.utils.TTMLParser = function () {
             "wrapoption": 'white-space: normal;'
         },
         defaultRegion = {
-            origin: 'top: 65%; left: 30%;',
-            extent: 'width: 80%; heigth: 15%;',
-            style: defaultStyle,
-            displayalign: 'vertical-align: top;',
-            padding: 'padding: 0% 1% 0% 1%;',
-            showbackground: '',
-            overflow: 'overflow: visible;'
+            "origin": 'top: 65%; left: 30%;',
+            "extent": 'width: 80%; heigth: 15%;',
+            "displayalign": 'vertical-align: top;',
+            "padding": 'padding: 0% 1% 0% 1%;',
+            "showbackground": '',
+            "overflow": 'overflow: visible;'
         },
-
 
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
@@ -143,6 +141,14 @@ MediaPlayer.utils.TTMLParser = function () {
             return r[0];
         },
 
+        getDefaultArray = function(object){
+            var array = [];
+            for(var key in object){
+                array.push(object[key]);
+            }
+            return array;
+        },
+
         getStyle = function(ttmlStylings, cueStyleID) {
             for (var j = 0; j < ttmlStylings.length; j++) {
                 var currStyle = ttmlStylings[j];
@@ -163,7 +169,11 @@ MediaPlayer.utils.TTMLParser = function () {
 
         computeStyle = function(cueStyle){
             var cueContainerProperties = [];
-            var missingStyleProperties = defaultStyle;
+            var missingStyleProperties = {};
+            for (var attr in defaultStyle) {
+                if (defaultStyle.hasOwnProperty(attr)) missingStyleProperties[attr] = defaultStyle[attr];
+            }
+            console.warn(missingStyleProperties);
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     var property = cueStyle[key];
@@ -204,8 +214,10 @@ MediaPlayer.utils.TTMLParser = function () {
 
         computeRegion = function(ttmlStylings, cueRegion){
             var regionContainerProperties = [];
-            var missingRegionProperties = defaultRegion;
-
+            var missingRegionProperties = {};
+            for (var attr in defaultRegion) {
+                if (defaultRegion.hasOwnProperty(attr)) missingRegionProperties[attr] = defaultRegion[attr];
+            }
             // Extract the region for the cue
             for (var key in cueRegion) {
                 if (cueRegion.hasOwnProperty(key)) {
@@ -223,7 +235,6 @@ MediaPlayer.utils.TTMLParser = function () {
                         var coords = property.split(/\s/);
                         regionContainerProperties.push("left: " + coords[0] + ';');
                         regionContainerProperties.push("top :" + coords[1] + ';');
-                        regionContainerProperties.push("position: absolute;");
                     } else if(key.indexOf("displayalign") > -1){
                         switch(property){
                             case "before":
@@ -287,7 +298,7 @@ MediaPlayer.utils.TTMLParser = function () {
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
             ttmlLayout = ttml.tt.head.layout;
             ttmlStylings = ttml.tt.head.styling;
-            console.warn(ttml);
+
             //Check that the document follow the proper constraints.
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
@@ -310,8 +321,8 @@ MediaPlayer.utils.TTMLParser = function () {
                 cues = ttml.tt.body;
             }
 
-            if(cues['body@style']){
-                var bodyStyleID = cues['body@style'];
+            if(ttml.tt['body@style']){
+                var bodyStyleID = ttml.tt['body@style'];
                 if(bodyStyleID) {
                     var bodyStyle = getStyle(ttmlStylings, bodyStyleID);
                     if(bodyStyle) {
@@ -319,19 +330,33 @@ MediaPlayer.utils.TTMLParser = function () {
                         cueContainerProperties = computeStyle(bodyStyle);
                     }
                 } else {
-                    cueContainerProperties = defaultStyle;
+                    cueContainerProperties = getDefaultArray(defaultStyle);
                 }
-            } else if (cues['div@style']){
-                var divStyleID = cues['div@style'];
+            } else if (ttml.tt.body['div@style']){
+                var divStyleID = ttml.tt.body['div@style'];
                 if(divStyleID) {
                     var divStyle = getStyle(ttmlStylings, divStyleID);
                     if (divStyle) {
                         // Extract the style for the cue
                         cueContainerProperties = computeStyle(divStyle);
-                    } else {
-                        cueContainerProperties = defaultStyle;
                     }
+                } else {
+                    cueContainerProperties = getDefaultArray(defaultStyle);
                 }
+            }
+
+            if(ttml.tt.body['div@region']){
+                var divRegionID = ttml.tt.body['div@region'];
+                if(divRegionID) {
+                    var divRegion = getRegion(ttmlLayout, divRegionID);
+                    if (divRegion) {
+                        // Extract the style for the cue
+                        cueContainerProperties = computeRegion(ttmlStylings, divRegion);
+                    }
+                } else {
+                    regionContainerProperties = getDefaultArray(defaultRegion);
+                }
+
             }
 
             cues = [].concat(cues);
@@ -371,8 +396,8 @@ MediaPlayer.utils.TTMLParser = function () {
                         // Compute the style for the cue in CSS form
                         cueContainerProperties = computeStyle(cueStyle);
                     }
-                } else {
-                    cueContainerProperties = defaultStyle;
+                } else if(!cueContainerProperties){
+                    cueContainerProperties = getDefaultArray(defaultStyle);
                 }
 
                 // Find the right region for our cue
@@ -383,7 +408,7 @@ MediaPlayer.utils.TTMLParser = function () {
                         regionContainerProperties = computeRegion(ttmlStylings, cueRegion);
                     }
                 } else{
-                    regionContainerProperties = defaultRegion;
+                    regionContainerProperties = getDefaultArray(defaultRegion);
                 }
 
                 //TODO adapt images cues with the new parser.
@@ -407,27 +432,25 @@ MediaPlayer.utils.TTMLParser = function () {
                 else
                 {
                     cue.p = [].concat(cue.p);
-                    console.warn(cue.p);
+
                     text = "";
                     for(var k = 0; k < cue.p.length; k += 1){
                         if(cue.p[k].hasOwnProperty('br')){
-                            text += "<"+"br"+">";
+                            text += "<"+"br"+"/>";
                             continue;
                         } else if(cue.p[k].hasOwnProperty('span')){
-                            var spanBefore= "<"+"span ";
-                            if(cue.p[k].hasOwnProperty('span@id')){
+                            var spanBefore= "<span ";
+                           if(cue.p[k].hasOwnProperty('span@id')){
                                 spanBefore += 'id="' + cue.p[k]['span@id'] + '"' ;
                             }
                             if(cue.p[k].hasOwnProperty('span@style')){
                                 var spanStyle = getStyle(ttmlStylings, cue.p[k]['span@style']);
                                 if(spanStyle){
                                     var styleBlock = computeStyle(spanStyle);
-                                    console.warn(styleBlock);
                                     spanBefore += 'style="' + styleBlock.join(" ") + '">';
                                 }
                             }
-                            text += spanBefore + cue.p[k]['span'] + "</"+"span"+">";
-                            console.warn("text",text);
+                            text += spanBefore + cue.p[k]['span'] + "</span"+">";
                             continue;
                         } else {
                             text += cue.p[k];

@@ -5,6 +5,7 @@ position: relative;
 margin: 0;
 padding: 0;
 display: block;
+overflow: hidden;
 }
 .video {
 position: relative;
@@ -12,8 +13,17 @@ display:block;
 height:100%;
 width: 100%;
 }
+
+.region{
+position: absolute;
+}
+
 .text{
 margin: 0;
 padding: 0;
 border: 0;
+}
+
+video::-webkit-media-controls-enclosure{
+    z-index: 1;
 }
