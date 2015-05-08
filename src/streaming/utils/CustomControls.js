@@ -47,7 +47,7 @@ MediaPlayer.utils.CustomControls = function () {
                 progressbar      = document.getElementById('progressbar'),
                 bufferbar        = document.getElementById('bufferbar'),
                 caption          = document.getElementById('caption'),
-                captionArea      = document.getElementById('captionContainer');
+                captionArea      = document.getElementById('captionRegion');
 
             if (video.autoplay) {
                 playbutton.classList.add('icon-pause');
@@ -102,11 +102,18 @@ MediaPlayer.utils.CustomControls = function () {
             playbutton.addEventListener('click', playpause, false);
             video.addEventListener('click', playpause, false);
             captionArea.addEventListener('click', playpause, false);
+
             caption.addEventListener('click', function() {
                 if(captionArea.style.display === 'none'){
                     captionArea.style.display = 'table';
                 } else{
                     captionArea.style.display = 'none';
+                    var elems = document.getElementsByTagName('*'), i;
+                    for (i in elems) {
+                        if((' ' + elems[i].className + ' ').indexOf(' ' + "text" + ' ') > -1) {
+                            elems[i].innerHTML = '';
+                        }
+                    }
                 }
             }, false);
 
@@ -211,10 +218,5 @@ MediaPlayer.utils.CustomControls = function () {
                 seek.classList.remove('light');
             });
         },
-
-        bonjour: function(){
-            console.warn("This is a test");
-        }
-
     }
 };

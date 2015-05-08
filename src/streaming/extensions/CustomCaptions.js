@@ -37,33 +37,86 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         video;
 
 
-    function addStyleToCaption(style, region) {
-        var styleBlock = "";
-        var regionBlock = "";
+    function addRenderingToCaption(data) {
+        var bodyStyleProperties = "",
+            divStyleProperties = "",
+            divRegionProperties = "",
+            paragraphStyleProperties = "",
+            paragraphRegionProperties = "";
 
         // Add each CSS property to a CSS block.
-        for (var i = 0; i < style.length; i++){
-            styleBlock += style[i] + "\n";
-        }
-        for (var i = 0; i < region.length; i++){
-            if(region[i].indexOf("vertical-align")>-1){
-                styleBlock  += region[i] + "\n";
-                continue;
+        if(data.bodyStyle){
+            for (var i = 0; i < data.bodyStyle.length; i++) {
+               bodyStyleProperties += data.bodyStyle[i] + "\n";
             }
-            regionBlock += region[i] + "\n";
+        }
+        if(data.divStyle) {
+            for (var i = 0; i < data.divStyle.length; i++) {
+                divStyleProperties += data.divStyle[i] + "\n";
+            }
+        }
+        if(data.divRegion) {
+            for (var i = 0; i < data.divRegion.length; i++) {
+                if (data.divRegion[i].indexOf("vertical-align") > -1) {
+                    divStyleProperties += data.divRegion[i] + "\n";
+                    continue;
+                }
+                divRegionProperties += data.divRegion[i] + "\n";
+            }
+        }
+        if(data.paragraphStyle) {
+            for (var i = 0; i < data.paragraphStyle.length; i++) {
+                paragraphStyleProperties += data.paragraphStyle[i] + "\n";
+            }
+        }
+        if(data.paragraphRegion) {
+            for (var i = 0; i < data.paragraphRegion.length; i++) {
+                if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
+                    paragraphStyleProperties += data.paragraphRegion[i] + "\n";
+                    continue;
+                }
+                paragraphRegionProperties += data.paragraphRegion[i] + "\n";
+            }
         }
 
-        // We replace the current style with the new cue style.
-        var regions = document.getElementsByClassName('region');
+        // We set the region
+        var regions = document.getElementsByClassName('captionRegion');
         for (var i = 0; i < regions.length; i++){
-            regions[i].style.cssText = regionBlock;
+            if(divRegionProperties === ""){
+                if(paragraphRegionProperties == ""){
+                    regions[i].style.cssText = "top: 65%; left: 30%; width: 80%; padding: 0% 1%; overflow: visible;";
+                } else {
+                    regions[i].style.cssText = paragraphRegionProperties;
+                }
+            } else {
+                regions[i].style.cssText = divRegionProperties;
+            }
         }
 
-        var cues = document.getElementsByClassName('cue');
-        for (var i = 0; i < cues.length; i++){
-            cues[i].style.cssText = styleBlock;
-        }
+        // We set the style
 
+        var textArea = document.getElementsByClassName('captionTextArea');
+        if(paragraphStyleProperties === ""){
+            if(divStyleProperties === ""){
+                if(bodyStyleProperties === ""){
+                    for (var i = 0; i < textArea.length; i++){
+                        textArea[i].style.cssText = "font-size: 150%; line-height: 125%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
+                    }
+                } else{
+                    for (var i = 0; i < textArea.length; i++){
+                        textArea[i].style.cssText = bodyStyleProperties;
+                    }
+                }
+            } else{
+                for (var i = 0; i < textArea.length; i++){
+                    textArea[i].style.cssText = divStyleProperties;
+                }
+            }
+        } else {
+            for (var i = 0; i < textArea.length; i++) {
+                textArea[i].style.cssText = paragraphStyleProperties;
+            }
+        }
     }
 
     function replaceContentInContainer(matchClass, content) {
@@ -107,7 +160,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
 
         onCaption: function() {
             // Check if we have a cue to play
-            if (document.getElementById('captionContainer').style.display === 'none') {
+            if (document.getElementById('captionRegion').style.display === 'none') {
                 return;
             } else {
                 if (playlist.length !== 0) {
@@ -127,12 +180,8 @@ MediaPlayer.dependencies.CustomCaptions = function () {
                                 cue  = playlist[i];
                             }
                             // When the cue is found, we apply its text, style and positioning.
-                            replaceContentInContainer("text", cue.data[0].data);
-
-                            if (cue.data[0].style && cue.data[0].region) {
-                                addStyleToCaption(cue.data[0].style, cue.data[0].region);
-                            }
-                            // else use default
+                            replaceContentInContainer("captionParagraph", cue.data[0].data);
+                            addRenderingToCaption(cue.data[0]);
 
                         } else {
                             // We check for another cue in the list

@@ -57,18 +57,17 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
             if(mimeType=="fragmentedText"){
                 var fragmentExt;
                 var controls;
-                //self.videoModel.getElement().removeAttribute("controls");
                 if(!this.initializationSegmentReceived){
                     this.initializationSegmentReceived=true;
-                    label = mediaInfo.id;
-                    lang = mediaInfo.lang;
-                    this.textTrackExtensions = self.getTextTrackExtensions();
-                    this.textSourceBufferExt = self.getCustomCaptions();
-                    this.textSourceBufferExt.initialize(self.videoModel);
+                    //label = mediaInfo.id;
+                    //lang = mediaInfo.lang;
+                    //this.textTrackExtensions = self.getTextTrackExtensions();
+                    this.customCaptions = self.getCustomCaptions();
+                    this.customCaptions.initialize(self.videoModel);
                     controls = self.system.getObject('customControls');
                     controls.createControls(self.videoModel);
-                    this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
-                    self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
+                    //this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
+                    //self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
                 }else{
@@ -81,8 +80,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            this.textSourceBufferExt.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
-                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
+                            this.customCaptions.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
+                            //this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                         } catch(e) {
                             //empty cue ?
                         }
