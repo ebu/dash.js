@@ -173,7 +173,7 @@ MediaPlayer.utils.TTMLParser = function () {
             for (var attr in defaultStyle) {
                 if (defaultStyle.hasOwnProperty(attr)) missingStyleProperties[attr] = defaultStyle[attr];
             }
-            console.warn(missingStyleProperties);
+
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     var property = cueStyle[key];

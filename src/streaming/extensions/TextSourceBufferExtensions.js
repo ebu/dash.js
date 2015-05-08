@@ -29,7 +29,7 @@
  *  POSSIBILITY OF SUCH DAMAGE.
  */
 
-MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
+MediaPlayer.dependencies.CustomCaptions = function () {
     "use strict";
 
     var cue,
@@ -46,18 +46,22 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
             styleBlock += style[i] + "\n";
         }
         for (var i = 0; i < region.length; i++){
+            if(region[i].indexOf("vertical-align")>-1){
+                styleBlock  += region[i] + "\n";
+                continue;
+            }
             regionBlock += region[i] + "\n";
         }
 
         // We replace the current style with the new cue style.
         var regions = document.getElementsByClassName('region');
         for (var i = 0; i < regions.length; i++){
-            regions[i].style.cssText = regionBlock + "z-index: 0;";
+            regions[i].style.cssText = regionBlock;
         }
 
         var cues = document.getElementsByClassName('cue');
         for (var i = 0; i < cues.length; i++){
-            cues[i].style.cssText = styleBlock + "display: table; margin: auto;";
+            cues[i].style.cssText = styleBlock;
         }
 
     }
@@ -80,7 +84,6 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
             video = videoModel;
             this.listen();
             playlist = [];
-
         },
 
         listen: function(){
@@ -104,43 +107,47 @@ MediaPlayer.dependencies.TextSourceBufferExtensions = function () {
 
         onCaption: function() {
             // Check if we have a cue to play
-            if (playlist.length !== 0) {
-                var time = video.getCurrentTime();
-                cue      = playlist[0];
-                var diff = Math.abs(time - cue.data[0].start);
-                // Function to determine the cue that should play at the video current time.
-                for (var i = 0; i < playlist.length; i++) {
-                    // Check that the start of the cue we test is at least after or equal to the current time
-                    // So the cue chosen should always be the right one in the timeline, even when seeking
-                    if (time >= playlist[i].data[0].start) {
-
-                        var newDiff = Math.abs(time - playlist[i].data[0].start);
-
-                        if (newDiff < diff) {
-                            diff = newDiff;
-                            cue  = playlist[i];
-                        }
-                        // When the cue is found, we apply its text, style and positioning.
-                        replaceContentInContainer("text",cue.data[0].data);
-
-                        if(cue.data[0].style && cue.data[0].region) {
-                            addStyleToCaption(cue.data[0].style, cue.data[0].region);
-                        }
-                        // else use default
-
-                    } else {
-                        // We check for another cue in the list
-                        continue;
-                    }
-                }
-            } else {
-                // Nothing to be played.
+            if (document.getElementById('captionContainer').style.display === 'none') {
                 return;
+            } else {
+                if (playlist.length !== 0) {
+                    var time = video.getCurrentTime();
+                    cue      = playlist[0];
+                    var diff = Math.abs(time - cue.data[0].start);
+                    // Function to determine the cue that should play at the video current time.
+                    for (var i = 0; i < playlist.length; i++) {
+                        // Check that the start of the cue we test is at least after or equal to the current time
+                        // So the cue chosen should always be the right one in the timeline, even when seeking
+                        if (time >= playlist[i].data[0].start) {
+
+                            var newDiff = Math.abs(time - playlist[i].data[0].start);
+
+                            if (newDiff < diff) {
+                                diff = newDiff;
+                                cue  = playlist[i];
+                            }
+                            // When the cue is found, we apply its text, style and positioning.
+                            replaceContentInContainer("text", cue.data[0].data);
+
+                            if (cue.data[0].style && cue.data[0].region) {
+                                addStyleToCaption(cue.data[0].style, cue.data[0].region);
+                            }
+                            // else use default
+
+                        } else {
+                            // We check for another cue in the list
+                            continue;
+                        }
+                    }
+                } else {
+                    // Nothing to be played.
+                    return;
+                }
             }
         }
     };
 };
 
-MediaPlayer.dependencies.TextSourceBufferExtensions.prototype = {
-    constructor: MediaPlayer.dependencies.TextSourceBufferExtensions
+MediaPlayer.dependencies.CustomCaptions.prototype = {
+    constructor: MediaPlayer.dependencies.CustomCaptions
 };

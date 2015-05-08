@@ -56,13 +56,17 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 ccContent;
             if(mimeType=="fragmentedText"){
                 var fragmentExt;
+                var controls;
+                //self.videoModel.getElement().removeAttribute("controls");
                 if(!this.initializationSegmentReceived){
                     this.initializationSegmentReceived=true;
                     label = mediaInfo.id;
                     lang = mediaInfo.lang;
                     this.textTrackExtensions = self.getTextTrackExtensions();
-                    this.textSourceBufferExt = self.getTextSourceBufferExtensions();
+                    this.textSourceBufferExt = self.getCustomCaptions();
                     this.textSourceBufferExt.initialize(self.videoModel);
+                    controls = self.system.getObject('customControls');
+                    controls.createControls(self.videoModel);
                     this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
                     fragmentExt = self.system.getObject("fragmentExt");
@@ -119,8 +123,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
             return this.system.getObject("textTrackExtensions");
         },
 
-        getTextSourceBufferExtensions: function() {
-            return this.system.getObject("textSourceBufferExt");
+        getCustomCaptions: function() {
+            return this.system.getObject("customCaptions");
         },
 
         addEventListener: function (type, listener, useCapture) {

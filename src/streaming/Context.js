@@ -58,6 +58,7 @@ MediaPlayer.di.Context = function () {
             this.system.mapSingleton('capabilities', MediaPlayer.utils.Capabilities);
             this.system.mapSingleton('DOMStorage', MediaPlayer.utils.DOMStorage);
             this.system.mapClass('customTimeRanges', MediaPlayer.utils.CustomTimeRanges);
+            this.system.mapClass('customControls', MediaPlayer.utils.CustomControls);
 
             this.system.mapSingleton('textTrackExtensions', MediaPlayer.utils.TextTrackExtensions);
             this.system.mapSingleton('vttParser', MediaPlayer.utils.VTTParser);
@@ -74,7 +75,7 @@ MediaPlayer.di.Context = function () {
 
             this.system.mapSingleton('requestModifierExt', MediaPlayer.dependencies.RequestModifierExtensions);
             this.system.mapSingleton('textSourceBuffer', MediaPlayer.dependencies.TextSourceBuffer);
-            this.system.mapSingleton('textSourceBufferExt', MediaPlayer.dependencies.TextSourceBufferExtensions);
+            this.system.mapSingleton('customCaptions', MediaPlayer.dependencies.CustomCaptions);
             this.system.mapSingleton('mediaSourceExt', MediaPlayer.dependencies.MediaSourceExtensions);
             this.system.mapSingleton('sourceBufferExt', MediaPlayer.dependencies.SourceBufferExtensions);
             this.system.mapSingleton('abrController', MediaPlayer.dependencies.AbrController);

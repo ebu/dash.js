@@ -51,6 +51,7 @@ Dash.dependencies.DashManifestExtensions.prototype = {
            (adaptation.Representation_asArray[0].hasOwnProperty("codecs"))&&
            (adaptation.Representation_asArray[0].codecs=="stpp")
            ){
+
             return type == "fragmentedText";
         }
 
