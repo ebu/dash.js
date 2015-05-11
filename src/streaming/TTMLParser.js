@@ -47,6 +47,8 @@ MediaPlayer.utils.TTMLParser = function () {
         // - Exactly 2 digits must be used in each of the hours, minutes, second, and frame components (include leading zeros).
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/,
         ttml,
+        ttmlStylings,
+        ttmlLayout,
 
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
@@ -223,8 +225,11 @@ MediaPlayer.utils.TTMLParser = function () {
                     } else if(key.indexOf("region") > -1 || key.indexOf("id") > -1){
                         continue;
                     } else if(key.indexOf("style") > -1){
-                        var styleFromID = computeStyle(ttmlStylings, property);
-                        properties.push(styleFromID);
+                        var styleFromID = computeStyle(getStyle(ttmlStylings, property));
+                        for(var i = 0; i<styleFromID.length; i++){
+                            properties.push(styleFromID[i]);
+                        }
+                        continue;
                     } else {
                         var result;
                         result = key + ':' + property + ';';
@@ -252,8 +257,6 @@ MediaPlayer.utils.TTMLParser = function () {
                 divRegionProperties = [],
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
-                ttmlStylings,
-                ttmlLayout,
                 nsttp,
                 text;
 
@@ -263,6 +266,11 @@ MediaPlayer.utils.TTMLParser = function () {
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
             ttmlLayout = ttml.tt.head.layout;
             ttmlStylings = ttml.tt.head.styling;
+
+            // If only one item, transform into an array
+            ttmlLayout = [].concat(ttmlLayout);
+            ttmlStylings = [].concat(ttmlStylings);
+
             //Check that the document follow the proper constraints.
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
@@ -284,6 +292,8 @@ MediaPlayer.utils.TTMLParser = function () {
             }else{
                 cues = ttml.tt.body;
             }
+
+            cues = [].concat(cues);
 
             // If body has a style
             if(ttml.tt['body@style']){
@@ -321,11 +331,6 @@ MediaPlayer.utils.TTMLParser = function () {
                     }
                 }
             }
-
-            // If only one item, transform into an array
-            ttmlLayout = [].concat(ttmlLayout);
-            ttmlStylings = [].concat(ttmlStylings);
-            cues = [].concat(cues);
 
             // Check if cues is not empty or undefined
             if (!cues || cues.length === 0) {
