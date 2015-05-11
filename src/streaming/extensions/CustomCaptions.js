@@ -36,7 +36,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         playlist,
         video;
 
-
+    // Method which assign to the HTML the styling and positioning in the right containers for every cue.
     function addRenderingToCaption(data) {
         var bodyStyleProperties = "",
             divStyleProperties = "",
@@ -44,7 +44,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
             paragraphStyleProperties = "",
             paragraphRegionProperties = "";
 
-        // Add each CSS property to a CSS block.
+        // Add each CSS property to a CSS text block.
         if(data.bodyStyle){
             for (var i = 0; i < data.bodyStyle.length; i++) {
                bodyStyleProperties += data.bodyStyle[i] + "\n";
@@ -58,7 +58,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         if(data.divRegion) {
             for (var i = 0; i < data.divRegion.length; i++) {
                 if (data.divRegion[i].indexOf("vertical-align") > -1) {
-                    divStyleProperties += data.divRegion[i] + "\n";
+                    document.getElementById('captionTextArea').style.cssText += data.divRegion[i] + "\n";
                     continue;
                 }
                 divRegionProperties += data.divRegion[i] + "\n";
@@ -72,7 +72,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         if(data.paragraphRegion) {
             for (var i = 0; i < data.paragraphRegion.length; i++) {
                 if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
-                    paragraphStyleProperties += data.paragraphRegion[i] + "\n";
+                    document.getElementById('captionTextArea').style.cssText += data.paragraphRegion[i] + "\n";
                     continue;
                 }
                 paragraphRegionProperties += data.paragraphRegion[i] + "\n";
@@ -84,7 +84,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         for (var i = 0; i < regions.length; i++){
             if(divRegionProperties === ""){
                 if(paragraphRegionProperties == ""){
-                    regions[i].style.cssText = "top: 65%; left: 30%; width: 80%; padding: 0% 1%; overflow: visible;";
+                    regions[i].style.cssText = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible;";
                 } else {
                     regions[i].style.cssText = paragraphRegionProperties;
                 }
@@ -95,12 +95,12 @@ MediaPlayer.dependencies.CustomCaptions = function () {
 
         // We set the style
 
-        var textArea = document.getElementsByClassName('captionTextArea');
+        var textArea = document.getElementsByClassName('captionParagraph');
         if(paragraphStyleProperties === ""){
             if(divStyleProperties === ""){
                 if(bodyStyleProperties === ""){
                     for (var i = 0; i < textArea.length; i++){
-                        textArea[i].style.cssText = "font-size: 150%; line-height: 125%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
+                        textArea[i].style.cssText = "font-size: 150%; line-height: 100%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
                     }
                 } else{
                     for (var i = 0; i < textArea.length; i++){
@@ -119,6 +119,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         }
     }
 
+    // Replace the HTML content of elements of a certain class
     function replaceContentInContainer(matchClass, content) {
         var elems = document.getElementsByTagName('*'), i;
         for (i in elems) {
