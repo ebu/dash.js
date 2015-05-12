@@ -189,10 +189,6 @@ dist/dash.debug.js
 
 dist/dash.min.js
 
-*.html
-
-*.html
-
 *.xml
 
 *.ogg

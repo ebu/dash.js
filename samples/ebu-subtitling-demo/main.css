@@ -14,28 +14,25 @@ height:100%;
 width: 100%;
 }
 
-.captionRegion{
+.captionContainer{
     position: absolute;
     z-index: 2147483647;
-}
+    }
 
-.captionBody{
-    width: 100%;
+.captionRegion{
+    width:100%;
     height: 100%;
     display: table;
     table-layout: fixed;
 }
 
-.captionTextArea{
-    margin: auto;
-    display: table-cell;
-}
-
-.captionParagraph{
+.captionText{
     margin: 0;
     padding: 0;
     border: 0;
+    display: table-cell;
 }
+
 
 .controls-user-active{
     visibility: visible;

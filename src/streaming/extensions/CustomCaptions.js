@@ -58,7 +58,15 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         if(data.divRegion) {
             for (var i = 0; i < data.divRegion.length; i++) {
                 if (data.divRegion[i].indexOf("vertical-align") > -1) {
-                    document.getElementById('captionTextArea').style.cssText += data.divRegion[i] + "\n";
+                    document.getElementById('captionText').style.cssText += data.divRegion[i] + "\n";
+                    continue;
+                }
+                if (data.divRegion[i].indexOf("width") > -1 || data.divRegion[i].indexOf("height") > -1) {
+                    document.getElementById('captionContainer').style.cssText += data.divRegion[i] + "\n";
+                    continue;
+                }
+                if (data.divRegion[i].indexOf("top") > -1 || data.divRegion[i].indexOf("left") > -1) {
+                    document.getElementById('captionContainer').style.cssText += data.divRegion[i] + "\n";
                     continue;
                 }
                 divRegionProperties += data.divRegion[i] + "\n";
@@ -72,7 +80,16 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         if(data.paragraphRegion) {
             for (var i = 0; i < data.paragraphRegion.length; i++) {
                 if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
-                    document.getElementById('captionTextArea').style.cssText += data.paragraphRegion[i] + "\n";
+                    console.warn("hello!");
+                    document.getElementById('captionText').style.cssText += data.paragraphRegion[i] + "\n";
+                    continue;
+                }
+                if (data.paragraphRegion[i].indexOf("width") > -1 || data.paragraphRegion[i].indexOf("height") > -1) {
+                    document.getElementById('captionContainer').style.cssText += data.paragraphRegion[i] + "\n";
+                    continue;
+                }
+                if (data.paragraphRegion[i].indexOf("top") > -1 || data.paragraphRegion[i].indexOf("left") > -1) {
+                    document.getElementById('captionContainer').style.cssText += data.paragraphRegion[i] + "\n";
                     continue;
                 }
                 paragraphRegionProperties += data.paragraphRegion[i] + "\n";
@@ -84,37 +101,37 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         for (var i = 0; i < regions.length; i++){
             if(divRegionProperties === ""){
                 if(paragraphRegionProperties == ""){
-                    regions[i].style.cssText = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible;";
+                    regions[i].style.cssText += "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible;";
                 } else {
-                    regions[i].style.cssText = paragraphRegionProperties;
+                    regions[i].style.cssText += paragraphRegionProperties;
                 }
             } else {
-                regions[i].style.cssText = divRegionProperties;
+                regions[i].style.cssText += divRegionProperties;
             }
         }
 
         // We set the style
 
-        var textArea = document.getElementsByClassName('captionParagraph');
+        var textArea = document.getElementsByClassName('captionText');
         if(paragraphStyleProperties === ""){
             if(divStyleProperties === ""){
                 if(bodyStyleProperties === ""){
                     for (var i = 0; i < textArea.length; i++){
-                        textArea[i].style.cssText = "font-size: 150%; line-height: 100%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
+                        textArea[i].style.cssText += "font-size: 150%; line-height: 100%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
                     }
                 } else{
                     for (var i = 0; i < textArea.length; i++){
-                        textArea[i].style.cssText = bodyStyleProperties;
+                        textArea[i].style.cssText += bodyStyleProperties;
                     }
                 }
             } else{
                 for (var i = 0; i < textArea.length; i++){
-                    textArea[i].style.cssText = divStyleProperties;
+                    textArea[i].style.cssText += divStyleProperties;
                 }
             }
         } else {
             for (var i = 0; i < textArea.length; i++) {
-                textArea[i].style.cssText = paragraphStyleProperties;
+                textArea[i].style.cssText += paragraphStyleProperties;
             }
         }
     }
@@ -181,7 +198,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
                                 cue  = playlist[i];
                             }
                             // When the cue is found, we apply its text, style and positioning.
-                            replaceContentInContainer("captionParagraph", cue.data[0].data);
+                            replaceContentInContainer("captionText", cue.data[0].data);
                             addRenderingToCaption(cue.data[0]);
 
                         } else {
