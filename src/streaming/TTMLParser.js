@@ -171,9 +171,9 @@ MediaPlayer.utils.TTMLParser = function () {
                     }
                     // Add quotes for font-family
                     if (key === "font-family") {
-                        result = key + ': "' + property + '";';
+                        result = key + ":'" + property + "';";
                     } else {
-                        result = key + ": " + property + ";";
+                        result = key + ":" + property + ";";
                     }
                     properties.push(result);
 
@@ -398,6 +398,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 else {
                     cue.p = [].concat(cue.p);
 
+                    console.warn(cue.p);
                     text = "";
                     for(var k = 0; k < cue.p.length; k += 1){
                         // Add a <br/> into the text for a new line
@@ -418,6 +419,19 @@ MediaPlayer.utils.TTMLParser = function () {
                                 if(spanStyle){
                                     // Compute the style from the style ID
                                     var styleBlock = computeStyle(spanStyle);
+                                    for(var i = 0; i< styleBlock.length; i++){
+                                        if(k != 0 || cue.p.length >= 1) {
+                                            if (styleBlock[i].indexOf('font-size') > -1) {
+                                                var percent     = styleBlock[i].indexOf('%');
+                                                var currentSize = parseFloat(styleBlock[i].slice(10, percent));
+                                                if (currentSize >= 100) {
+                                                    styleBlock[i] = "font-size:" + currentSize / 2 + "%";
+                                                } else if (currentSize < 100) {
+                                                    styleBlock[i] = "font-size:" + currentSize * 2 + "%";
+                                                }
+                                            }
+                                        }
+                                    }
                                     // Insert into the text the style computed.
                                     spanBefore += 'style="' + styleBlock.join(" ") + '">';
                                 }

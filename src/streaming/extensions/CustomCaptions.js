@@ -80,7 +80,6 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         if(data.paragraphRegion) {
             for (var i = 0; i < data.paragraphRegion.length; i++) {
                 if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
-                    console.warn("hello!");
                     document.getElementById('captionText').style.cssText += data.paragraphRegion[i] + "\n";
                     continue;
                 }
