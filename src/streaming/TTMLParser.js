@@ -258,7 +258,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
                 nsttp,
-                text;
+                textData;
 
 
             // **** Check the document Structure ***
@@ -306,7 +306,7 @@ MediaPlayer.utils.TTMLParser = function () {
                         bodyStyleProperties = computeStyle(bodyStyle);
                     }
                 }
-              // If div has a style
+                // If div has a style
             } else if (ttml.tt.body['div@style']){
                 var divStyleID = ttml.tt.body['div@style'];
                 if(divStyleID) {
@@ -388,7 +388,6 @@ MediaPlayer.utils.TTMLParser = function () {
                                 bodyStyle: bodyStyleProperties,
                                 divStyle: divStyleProperties,
                                 divRegion: divRegionProperties,
-                                paragraphStyle: paragraphStyleProperties,
                                 paragraphRegion: paragraphRegionProperties
                             });
                         }
@@ -398,61 +397,53 @@ MediaPlayer.utils.TTMLParser = function () {
                 else {
                     cue.p = [].concat(cue.p);
 
-                    console.warn(cue.p);
-                    text = "";
+                    textData = [];
                     for(var k = 0; k < cue.p.length; k += 1){
-                        // Add a <br/> into the text for a new line
+                        // Add a <br/> element for a new line
                         if(cue.p[k].hasOwnProperty('br')){
-                            text += "<"+"br"+"/>";
+                            textData.push(document.createElement('br'));
                             continue;
                         }
-                        // Compute the style if there is a span
+                        // Create the inline span element
                         else if(cue.p[k].hasOwnProperty('span')){
-                            // Open the span
-                            var spanBefore= "<span ";
+                            var inlineSpan = document.createElement('span');
+                            // Set the id of the span
                             if(cue.p[k].hasOwnProperty('span@id')){
-                                spanBefore += 'id="' + cue.p[k]['span@id'] + '"' ;
+                                inlineSpan.id = cue.p[k]['span@id'];
                             }
+                            // Compute the style of the span
                             if(cue.p[k].hasOwnProperty('span@style')){
                                 // Get the style set from the span@style ID
                                 var spanStyle = getStyle(ttmlStylings, cue.p[k]['span@style']);
                                 if(spanStyle){
                                     // Compute the style from the style ID
                                     var styleBlock = computeStyle(spanStyle);
-                                    for(var i = 0; i< styleBlock.length; i++){
-                                        if(k != 0 || cue.p.length >= 1) {
-                                            if (styleBlock[i].indexOf('font-size') > -1) {
-                                                var percent     = styleBlock[i].indexOf('%');
-                                                var currentSize = parseFloat(styleBlock[i].slice(10, percent));
-                                                if (currentSize >= 100) {
-                                                    styleBlock[i] = "font-size:" + currentSize / 2 + "%";
-                                                } else if (currentSize < 100) {
-                                                    styleBlock[i] = "font-size:" + currentSize * 2 + "%";
-                                                }
-                                            }
-                                        }
-                                    }
+
                                     // Insert into the text the style computed.
-                                    spanBefore += 'style="' + styleBlock.join(" ") + '">';
+                                    inlineSpan.style.cssText = styleBlock.join(" ");
                                 }
                             }
-                            // Close the span
-                           text += spanBefore + cue.p[k]['span'] + "</span"+">";
-                           continue;
-                        } else {
-                            text += cue.p[k];
+                            inlineSpan.innerHTML = cue.p[k]['span'];
+                            textData.push(inlineSpan);
+                            continue;
+                        }
+                        // If it is only text in a <p>
+                        else {
+                            var spanElem = document.createElement('span');
+                            spanElem.className = 'text';
+                            spanElem.style.cssText = paragraphStyleProperties.join(" ");
+                            spanElem.innerHTML = cue.p[k];
+                            textData.push(spanElem);
                         }
                     }
-
                     captionArray.push({
                         start: startTime,
                         end: endTime,
-                        data: text,
+                        data: textData,
                         type: "text",
                         bodyStyle: bodyStyleProperties,
                         divStyle: divStyleProperties,
                         divRegion: divRegionProperties,
-                        paragraphStyle: paragraphStyleProperties,
                         paragraphRegion: paragraphRegionProperties
                     });
                 }

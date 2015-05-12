@@ -41,13 +41,12 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         var bodyStyleProperties = "",
             divStyleProperties = "",
             divRegionProperties = "",
-            paragraphStyleProperties = "",
             paragraphRegionProperties = "";
 
         // Add each CSS property to a CSS text block.
         if(data.bodyStyle){
             for (var i = 0; i < data.bodyStyle.length; i++) {
-               bodyStyleProperties += data.bodyStyle[i] + "\n";
+                bodyStyleProperties += data.bodyStyle[i] + "\n";
             }
         }
         if(data.divStyle) {
@@ -72,11 +71,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
                 divRegionProperties += data.divRegion[i] + "\n";
             }
         }
-        if(data.paragraphStyle) {
-            for (var i = 0; i < data.paragraphStyle.length; i++) {
-                paragraphStyleProperties += data.paragraphStyle[i] + "\n";
-            }
-        }
+
         if(data.paragraphRegion) {
             for (var i = 0; i < data.paragraphRegion.length; i++) {
                 if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
@@ -112,36 +107,14 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         // We set the style
 
         var textArea = document.getElementsByClassName('captionText');
-        if(paragraphStyleProperties === ""){
-            if(divStyleProperties === ""){
-                if(bodyStyleProperties === ""){
-                    for (var i = 0; i < textArea.length; i++){
-                        textArea[i].style.cssText += "font-size: 150%; line-height: 100%; text-align: center; color: rgb(255, 0, 0); font-style: normal; font-weight: normal; text-decoration: none; font-family: Helvetica; direction: ltr; unicode-bidi: normal; white-space: normal; vertical-align: top; background-color: rgb(255, 255, 0);";
-                    }
-                } else{
-                    for (var i = 0; i < textArea.length; i++){
-                        textArea[i].style.cssText += bodyStyleProperties;
-                    }
-                }
-            } else{
-                for (var i = 0; i < textArea.length; i++){
-                    textArea[i].style.cssText += divStyleProperties;
-                }
-            }
-        } else {
-            for (var i = 0; i < textArea.length; i++) {
-                textArea[i].style.cssText += paragraphStyleProperties;
+        if(divStyleProperties){
+            for (var i = 0; i < textArea.length; i++){
+                textArea[i].style.cssText += divStyleProperties;
             }
         }
-    }
-
-    // Replace the HTML content of elements of a certain class
-    function replaceContentInContainer(matchClass, content) {
-        var elems = document.getElementsByTagName('*'), i;
-        for (i in elems) {
-            if((' ' + elems[i].className + ' ').indexOf(' ' + matchClass + ' ')
-                > -1) {
-                elems[i].innerHTML = content;
+        else if(bodyStyleProperties) {
+            for (var i = 0; i < textArea.length; i++) {
+                textArea[i].style.cssText += bodyStyleProperties;
             }
         }
     }
@@ -197,7 +170,13 @@ MediaPlayer.dependencies.CustomCaptions = function () {
                                 cue  = playlist[i];
                             }
                             // When the cue is found, we apply its text, style and positioning.
-                            replaceContentInContainer("captionText", cue.data[0].data);
+                            var textNode = document.getElementById("captionText");
+                            textNode.innerHTML ="";
+
+                            cue.data[0].data.forEach(function(d){
+                                textNode.appendChild(d);
+                            });
+
                             addRenderingToCaption(cue.data[0]);
 
                         } else {
