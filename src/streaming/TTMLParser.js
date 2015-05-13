@@ -28,13 +28,12 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-MediaPlayer.utils.TTMLParser = function () {
+MediaPlayer.utils.TTMLParser = function() {
     "use strict";
 
     /*
      * This TTML parser follows "TTML Simple Delivery Profile for Closed Captions (US)" spec - http://www.w3.org/TR/ttml10-sdp-us/
      * */
-
     var SECONDS_IN_HOUR = 60 * 60,
         SECONDS_IN_MIN = 60,
         // R0028 - A document must not contain a <timeExpression> value that does not conform to the subset of clock-time that
@@ -71,27 +70,22 @@ MediaPlayer.utils.TTMLParser = function () {
             //  - A ttp:frameRateMultiplier attribute may be present on the tt element.
             if (timeParts[3]) {
                 frameRate = ttml['tt@ttp:frameRate'];
-
                 if (frameRate && !isNaN(frameRate)) {
                     parsedTime += parseFloat(timeParts[3]) / frameRate;
                 } else {
                     return NaN;
                 }
             }
-
             return parsedTime;
         },
 
-        passStructuralConstraints = function () {
+        passStructuralConstraints = function() {
             var passed = false,
                 hasTt = ttml.hasOwnProperty("tt"),
                 hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false,
                 hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false,
                 hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false,
                 hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
-            /* extend the support to other profiles
-             hasProfile = hasHead ? ttml.tt.head.hasOwnProperty("profile") : false;
-             */
 
             // R001 - A document must contain a tt element.
             // R002 - A document must contain both a head and body element.
@@ -99,20 +93,14 @@ MediaPlayer.utils.TTMLParser = function () {
             if (hasTt && hasHead && hasLayout && hasStyling && hasBody) {
                 passed = true;
             }
-
-            // R0008 - A document must contain a ttp:profile element where the use attribute of that element is specified as http://www.w3.org/ns/ttml/profile/sdp-us.
-            /* extend the support to other profiles
-             if (passed) {
-             passed = hasProfile && (ttml.tt.head.profile.use === "http://www.w3.org/ns/ttml/profile/sdp-us");
-             }*/
             return passed;
         },
 
         getNamespacePrefix = function(json, ns) {
             var r = Object.keys(json)
-                .filter(function(k){
+                .filter(function(k) {
                     return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
-                }).map(function(k){
+                }).map(function(k) {
                     return k.split(":")[1];
                 });
             if (r.length != 1) {
@@ -146,7 +134,7 @@ MediaPlayer.utils.TTMLParser = function () {
         },
 
         // Compute the style properties to return an array with the cleaned properties
-        computeStyle = function(cueStyle){
+        computeStyle = function(cueStyle) {
             var properties = [];
 
             for (var key in cueStyle) {
@@ -157,16 +145,10 @@ MediaPlayer.utils.TTMLParser = function () {
                     //Clean the properties from the parsing
                     key = key.replace("style@tts:", "");
                     key = key.replace("style@xml:", "");
-                    key = key.toLowerCase();
-
                     // Clean the properties' names
-                    if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
-                        key = key.substr(0, 4) + "-" + key.substr(4);
-                    } else if (key.indexOf("background") > -1) {
-                        key = key.substr(0, 10) + "-" + key.substr(10);
-                    } else if (key.indexOf("unicode") > -1) {
-                        key = key.substr(0, 7) + "-" + key.substr(7);
-                    } else if (key.indexOf('style') > -1 || key.indexOf('id') > -1) {
+                    key = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+                    // Not needed to add these.
+                    if (key === 'style' || key === 'id') {
                         continue;
                     }
                     // Add quotes for font-family
@@ -176,14 +158,13 @@ MediaPlayer.utils.TTMLParser = function () {
                         result = key + ":" + property + ";";
                     }
                     properties.push(result);
-
                 }
             }
             return properties;
         },
 
         // Compute the region properties to return an array with the cleaned properties
-        computeRegion = function(ttmlStylings, cueRegion){
+        computeRegion = function(ttmlStylings, cueRegion) {
             var properties = [];
 
             for (var key in cueRegion) {
@@ -193,23 +174,29 @@ MediaPlayer.utils.TTMLParser = function () {
                     //Clean the properties from the parsing
                     key = key.replace("region@tts:", "");
                     key = key.replace("region@xml:", "");
-                    key = key.toLowerCase();
-
-                    // Extent property corresponds to width and height
-                    // Origin property corresponds to top and left
-                    // DisplayAlign property corresponds to vertical-align
-                    // WritingMode is not yet implemented (for CSS3, to come)
-                    // Style will give to the region the style properties from the style selected
-                    if (key.indexOf("extent") > -1) {
+                    // Clean the properties' names
+                    key = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+                    // Not needed to add these.
+                    if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
+                        continue;
+                    }
+                    /***
+                     * - Extent property corresponds to width and height
+                     * - Origin property corresponds to top and left
+                     * - DisplayAlign property corresponds to vertical-align
+                     * - WritingMode is not yet implemented (for CSS3, to come)
+                     * - Style will give to the region the style properties from the style selected
+                     * ***/
+                    if (key === "extent") {
                         var coords = property.split(/\s/);
                         properties.push("width: " + coords[0] + ';');
                         properties.push("height :" + coords[1] + ';');
-                    } else if (key.indexOf("origin") > -1) {
+                    } else if (key === "origin") {
                         var coords = property.split(/\s/);
                         properties.push("left: " + coords[0] + ';');
                         properties.push("top :" + coords[1] + ';');
-                    } else if(key.indexOf("displayalign") > -1){
-                        switch(property){
+                    } else if (key === "display-align") {
+                        switch (property) {
                             case "before":
                                 properties.push("vertical-align: top;");
                                 break;
@@ -220,16 +207,11 @@ MediaPlayer.utils.TTMLParser = function () {
                                 properties.push("vertical-align: bottom;");
                                 break;
                         }
-                    } else if(key.indexOf("writingmode") > -1 || key.indexOf("showbackground") > -1){
-                        continue;
-                    } else if(key.indexOf("region") > -1 || key.indexOf("id") > -1){
-                        continue;
-                    } else if(key.indexOf("style") > -1){
+                    } else if (key === "style") {
                         var styleFromID = computeStyle(getStyle(ttmlStylings, property));
-                        for(var i = 0; i<styleFromID.length; i++){
+                        for (var i = 0; i < styleFromID.length; i++) {
                             properties.push(styleFromID[i]);
                         }
-                        continue;
                     } else {
                         var result;
                         result = key + ':' + property + ';';
@@ -241,29 +223,43 @@ MediaPlayer.utils.TTMLParser = function () {
             return properties;
         },
 
+        // Return the computed style from a certain ID
+        getStyleFromID = function(id) {
+            var cueStyle = getStyle(ttmlStylings, id);
+            if (cueStyle) {
+                // Compute the style for the cue in CSS form
+                return computeStyle(cueStyle);
+            }
+        },
+
+        // Return the computed region from a certain ID
+        getRegionFromID = function(ttmlLayout, ttmlStylings, id) {
+            var cueRegion = getRegion(ttmlLayout, id);
+            if (cueRegion) {
+                // Compute the style for the cue in CSS form
+                return computeRegion(ttmlStylings, cueRegion);
+            }
+        },
+
         internalParse = function(data) {
             var captionArray = [],
                 errorMsg,
                 cues,
-                cue,
                 startTime,
                 endTime,
                 cueStyleID,
                 cueRegionID,
-                cueStyle,
-                cueRegion,
                 bodyStyleProperties = [],
                 divStyleProperties = [],
                 divRegionProperties = [],
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
                 nsttp,
-                cellResolution =[],
+                cellResolution,
                 cellUnit,
                 videoHeight,
                 videoWidth,
                 textData;
-
 
             // **** Check the document Structure ***
             // Parse the TTML in a JSON object.
@@ -271,77 +267,52 @@ MediaPlayer.utils.TTMLParser = function () {
             ttmlLayout = ttml.tt.head.layout;
             ttmlStylings = ttml.tt.head.styling;
 
-            cellResolution[0] = parseFloat(ttml["tt@ttp:cellResolution"].slice(0,2));
-            cellResolution[1] = parseFloat(ttml["tt@ttp:cellResolution"].slice(3,5));
-
-            videoWidth = document.getElementById('videoPlayer').offsetWidth;
-            videoHeight = document.getElementById('videoPlayer').offsetHeight;
-
-            cellUnit = [videoWidth/cellResolution[0], videoHeight/cellResolution[1]];
-
-            // If only one item, transform into an array
-            ttmlLayout = [].concat(ttmlLayout);
-            ttmlStylings = [].concat(ttmlStylings);
-
-            //Check that the document follow the proper constraints.
             if (!passStructuralConstraints()) {
                 errorMsg = "TTML document has incorrect structure";
                 throw errorMsg;
             }
 
-            //Get the namespace prefixe.
+            cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+
+            videoWidth = document.getElementById('videoPlayer').offsetWidth;
+            videoHeight = document.getElementById('videoPlayer').offsetHeight;
+
+            cellUnit = [videoWidth / cellResolution[0], videoHeight / cellResolution[1]];
+
+            ttmlLayout = [].concat(ttmlLayout);
+            ttmlStylings = [].concat(ttmlStylings);
+
+            // Get the namespace prefixe.
             nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
 
             // Set the framerate.
             if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
                 ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
             }
+            cues = (ttml.tt.body.div) ? ttml.tt.body.div : ttml.tt.body;
 
-            // *** Extract the cues ***
-
-            if(ttml.tt.body.div){
-                cues = ttml.tt.body.div;
-            }else{
-                cues = ttml.tt.body;
-            }
-
+            // If only one cue, put it in an array
             cues = [].concat(cues);
 
-            // If body has a style
-            if(ttml.tt['body@style']){
-                var bodyStyleID = ttml.tt['body@style'];
-                if(bodyStyleID) {
-                    // Get the corresponding style array
-                    var bodyStyle = getStyle(ttmlStylings, bodyStyleID);
-                    if(bodyStyle) {
-                        // Compute the style from the selected set
-                        bodyStyleProperties = computeStyle(bodyStyle);
-                    }
-                }
-                // If div has a style
-            } else if (ttml.tt.body['div@style']){
-                var divStyleID = ttml.tt.body['div@style'];
-                if(divStyleID) {
-                    // Get the corresponding style array
-                    var divStyle = getStyle(ttmlStylings, divStyleID);
-                    if (divStyle) {
-                        // Compute the style from the selected set
-                        divStyleProperties = computeStyle(divStyle);
-                    }
+            var bodyStyleID = ttml.tt['body@style'];
+            if (bodyStyleID) {
+                // Get the corresponding style array
+                var bodyStyle = getStyle(ttmlStylings, bodyStyleID);
+                if (bodyStyle) {
+                    // Compute the style from the selected set
+                    bodyStyleProperties = computeStyle(bodyStyle);
                 }
             }
 
+            // If div has a style
+            var divStyleID = ttml.tt.body['div@style'];
+            if (divStyleID) {
+                divStyleProperties = getStyleFromID(divStyleID);
+            }
             // If div has a region
-            if(ttml.tt.body['div@region']){
-                var divRegionID = ttml.tt.body['div@region'];
-                if(divRegionID) {
-                    // Get the corresponding region array
-                    var divRegion = getRegion(ttmlLayout, divRegionID);
-                    if (divRegion) {
-                        // Compute the region from the selected set
-                        divRegionProperties = computeRegion(ttmlStylings, divRegion);
-                    }
-                }
+            var divRegionID = ttml.tt.body['div@region'];
+            if (divRegionID) {
+                divRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
             }
 
             // Check if cues is not empty or undefined
@@ -351,8 +322,7 @@ MediaPlayer.utils.TTMLParser = function () {
             }
 
             // Parsing of every cue
-            for (var i = 0; i < cues.length; i += 1) {
-                cue = cues[i];
+            cues.forEach(function(cue) {
                 // Obtain the start and end time of the cue
                 startTime = parseTimings(cue['p@begin']);
                 endTime = parseTimings(cue['p@end']);
@@ -361,51 +331,41 @@ MediaPlayer.utils.TTMLParser = function () {
                 cueRegionID = cue['p@region'];
 
                 // Error if timing is not specified
-                // TODO: EBU-TT-D accept this situation
                 if (isNaN(startTime) || isNaN(endTime)) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
 
                 // Find the right style for our cue
-                if(cueStyleID) {
-                    cueStyle = getStyle(ttmlStylings, cueStyleID);
-                    if(cueStyle) {
-                        // Compute the style for the cue in CSS form
-                        paragraphStyleProperties = computeStyle(cueStyle);
-                    }
+                if (cueStyleID) {
+                    paragraphStyleProperties = getStyleFromID(cueStyleID);
                 }
 
                 // Find the right region for our cue
-                if(cueRegionID) {
-                    cueRegion = getRegion(ttmlLayout, cueRegionID);
-                    if(cueRegion) {
-                        // Compute the region style for the cue in CSS form
-                        paragraphRegionProperties = computeRegion(ttmlStylings, cueRegion);
-                    }
+                if (cueRegionID) {
+                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, cueRegionID);
                 }
 
                 // Line padding
-                paragraphStyleProperties.forEach(function(d,index){
-                   if(d.indexOf("line-padding") > -1){
-                       var value = parseFloat(d.slice(13, d.indexOf('c')));
-                       paragraphStyleProperties.splice(index, 1);
-                       paragraphStyleProperties.push("padding-left:" + value*cellUnit[0]+"px;");
-                       paragraphStyleProperties.push("padding-right:" + value*cellUnit[0] + "px;");
-                   }
+                paragraphStyleProperties.forEach(function(d, index) {
+                    if (d.indexOf("line-padding") > -1) {
+                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
+                        var valuePx = value * cellUnit[0] + "px;";
+                        paragraphStyleProperties.splice(index, 1);
+                        paragraphStyleProperties.push("padding-left:" + valuePx);
+                        paragraphStyleProperties.push("padding-right:" + valuePx);
+                    }
                 });
 
-                //TODO adapt images cues with the new parser.
-                if(cue["smpte:backgroundImage"]!== undefined)
-                {
+                if (cue["smpte:backgroundImage"] !== undefined) {
                     var images = ttml.tt.head.metadata.image_asArray;
                     for (var j = 0; j < images.length; j += 1) {
-                        if(("#"+images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
+                        if (("#" + images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
                             captionArray.push({
                                 start: startTime,
                                 end: endTime,
-                                id:images[j]["p@xml:id"],
-                                data: "data:image/"+images[j].imagetype.toLowerCase()+";base64, " + images[j].__text,
+                                id: images[j]["p@xml:id"],
+                                data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
                                 type: "image",
                                 bodyStyle: bodyStyleProperties,
                                 divStyle: divStyleProperties,
@@ -418,48 +378,40 @@ MediaPlayer.utils.TTMLParser = function () {
                 // If cues are not SMPTE images, extract the text
                 else {
                     cue.p = [].concat(cue.p);
-
                     textData = [];
-                    for(var k = 0; k < cue.p.length; k += 1){
+
+                    cue.p.forEach(function(caption) {
                         // Add a <br/> element for a new line
-                        if(cue.p[k].hasOwnProperty('br')){
+                        if (caption.hasOwnProperty('br')) {
                             textData.push(document.createElement('br'));
                         }
                         // Create the inline span element
-                        else if(cue.p[k].hasOwnProperty('span')){
+                        else if (caption.hasOwnProperty('span')) {
                             var inlineSpan = document.createElement('span');
                             // Set the id of the span
-                            if(cue.p[k].hasOwnProperty('span@id')){
-                                inlineSpan.id = cue.p[k]['span@id'];
+                            if (caption.hasOwnProperty('span@id')) {
+                                inlineSpan.id = caption['span@id'];
                             }
                             // Compute the style of the span
-                            if(cue.p[k].hasOwnProperty('span@style')){
-                                // Get the style set from the span@style ID
-                                var spanStyle = getStyle(ttmlStylings, cue.p[k]['span@style']);
-                                if(spanStyle){
-                                    // Compute the style from the style ID
-                                    var styleBlock = computeStyle(spanStyle);
-
-                                    // Insert into the text the style computed.
-                                    inlineSpan.style.cssText = styleBlock.join(" ");
-                                }
+                            if (caption.hasOwnProperty('span@style')) {
+                                var styleBlock = getStyleFromID(caption['span@style']);
+                                inlineSpan.style.cssText = styleBlock.join(" ");
                             }
-
-                            inlineSpan.innerHTML = cue.p[k]['span'];
+                            inlineSpan.innerHTML = caption['span'];
 
                             // Create a div that will wrap around the span to control the text alignment.
-                            var wrapper           = document.createElement('div');
-                            if(styleBlock.length > 0) {
-                                styleBlock.forEach(function (d) {
+                            var wrapper = document.createElement('div');
+                            if (styleBlock.length) {
+                                styleBlock.forEach(function(d) {
                                     if (d.indexOf('text-align') > -1) {
                                         wrapper.style.cssText = d;
                                         wrapper.appendChild(inlineSpan);
                                     }
                                 });
                             }
-                            if(wrapper.style.cssText === ""){
+                            if (!wrapper.style.cssText) {
                                 textData.push(inlineSpan)
-                            } else{
+                            } else {
                                 textData.push(wrapper);
                             }
 
@@ -470,12 +422,12 @@ MediaPlayer.utils.TTMLParser = function () {
                             spanElem.className = 'text';
 
                             spanElem.style.cssText = paragraphStyleProperties.join(" ");
-                            spanElem.innerHTML = cue.p[k];
+                            spanElem.innerHTML = caption;
 
                             // Create a div that will wrap around the span to control the text alignment.
-                            var wrapper           = document.createElement('div');
-                            if(paragraphStyleProperties.length > 0) {
-                                paragraphStyleProperties.forEach(function (d) {
+                            var wrapper = document.createElement('div');
+                            if (paragraphStyleProperties.length) {
+                                paragraphStyleProperties.forEach(function(d) {
                                     if (d.indexOf('text-align') > -1) {
                                         wrapper.style.cssText = d;
                                         wrapper.appendChild(spanElem);
@@ -483,14 +435,15 @@ MediaPlayer.utils.TTMLParser = function () {
                                 });
                             }
 
-                            if(wrapper.style.cssText === ""){
+                            if (!wrapper.style.cssText) {
                                 textData.push(spanElem)
-                            } else{
+                            } else {
                                 textData.push(wrapper);
                             }
 
                         }
-                    }
+                    });
+
                     captionArray.push({
                         start: startTime,
                         end: endTime,
@@ -502,7 +455,7 @@ MediaPlayer.utils.TTMLParser = function () {
                         paragraphRegion: paragraphRegionProperties
                     });
                 }
-            }
+            });
 
             return captionArray;
         };
