@@ -84,7 +84,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
     }
 
 
-    /**** Process specific properties from region to add them at the correct place.*****/
+    /**** Process specific properties from region to add them at the correct place. *****/
     function processRegionProperties(inputArray) {
         var outputString = "";
         inputArray.forEach(function (property) {
@@ -92,9 +92,8 @@ MediaPlayer.dependencies.CustomCaptions = function () {
             // Width, heigth, top and left must be applied to the captionContainer.
             if (property.indexOf("vertical-align") > -1) {
                 captionText.style.cssText += property;
-            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1) {
-                captionContainer.style.cssText += property;
-            } else if (property.indexOf("top") > -1 || property.indexOf("left") > -1) {
+            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1 ||
+                property.indexOf("top") > -1 || property.indexOf("left") > -1) {
                 captionContainer.style.cssText += property;
             } else {
                 outputString += property;
@@ -128,7 +127,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
 
         },
 
-
+        /***** Function to determine the cue that should be played at the video current time. *****/
         onCaption: function () {
 
             // Check if we have a cue to play and if the cc is turned on.
@@ -138,8 +137,6 @@ MediaPlayer.dependencies.CustomCaptions = function () {
             var time = video.getCurrentTime();
             var activeCue = playlist[0];
             var diff = Math.abs(time - activeCue.data[0].start);
-
-            /***** Function to determine the cue that should be played at the video current time. *****/
 
             playlist.forEach(function (cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
@@ -162,7 +159,6 @@ MediaPlayer.dependencies.CustomCaptions = function () {
 
                     // Apply the styling and positioning to our text.
                     addRenderingToCaption(activeCue.data[0]);
-                    return;
                 }
             });
         }

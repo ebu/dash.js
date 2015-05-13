@@ -109,6 +109,10 @@ MediaPlayer.utils.TTMLParser = function() {
             return r[0];
         },
 
+        camelCaseToDash = function (key) {
+            return key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+        },
+
         // Get the style set by comparing the style IDs available.
         getStyle = function(ttmlStylings, cueStyleID) {
             // For every styles available.
@@ -146,7 +150,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     key = key.replace("style@tts:", "");
                     key = key.replace("style@xml:", "");
                     // Clean the properties' names
-                    key = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
+                    key = camelCaseToDash(key);
                     // Not needed to add these.
                     if (key === 'style' || key === 'id') {
                         continue;
@@ -168,58 +172,52 @@ MediaPlayer.utils.TTMLParser = function() {
             var properties = [];
 
             for (var key in cueRegion) {
-                if (cueRegion.hasOwnProperty(key)) {
-                    var property = cueRegion[key];
+                if (!cueRegion.hasOwnProperty(key)) {
+                    continue;
+                }
 
-                    //Clean the properties from the parsing
-                    key = key.replace("region@tts:", "");
-                    key = key.replace("region@xml:", "");
-                    // Clean the properties' names
-                    key = key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
-                    // Not needed to add these.
-                    if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
-                        continue;
-                    }
-                    /***
-                     * - Extent property corresponds to width and height
-                     * - Origin property corresponds to top and left
-                     * - DisplayAlign property corresponds to vertical-align
-                     * - WritingMode is not yet implemented (for CSS3, to come)
-                     * - Style will give to the region the style properties from the style selected
-                     * ***/
-                    if (key === "extent") {
-                        var coords = property.split(/\s/);
-                        properties.push("width: " + coords[0] + ';');
-                        properties.push("height :" + coords[1] + ';');
-                    } else if (key === "origin") {
-                        var coords = property.split(/\s/);
-                        properties.push("left: " + coords[0] + ';');
-                        properties.push("top :" + coords[1] + ';');
-                    } else if (key === "display-align") {
-                        switch (property) {
-                            case "before":
-                                properties.push("vertical-align: top;");
-                                break;
-                            case "center":
-                                properties.push("vertical-align: middle;");
-                                break;
-                            case "after":
-                                properties.push("vertical-align: bottom;");
-                                break;
-                        }
-                    } else if (key === "style") {
-                        var styleFromID = computeStyle(getStyle(ttmlStylings, property));
-                        for (var i = 0; i < styleFromID.length; i++) {
-                            properties.push(styleFromID[i]);
-                        }
-                    } else {
-                        var result;
-                        result = key + ':' + property + ';';
-                        properties.push(result);
-                    }
+                var property = cueRegion[key];
+
+                //Clean the properties from the parsing
+                key = key.replace("region@tts:", "");
+                key = key.replace("region@xml:", "");
+                // Clean the properties' names
+                key = camelCaseToDash(key);
+                // Not needed to add these.
+                if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
+                    continue;
+                }
+                /***
+                 * - Extent property corresponds to width and height
+                 * - Origin property corresponds to top and left
+                 * - DisplayAlign property corresponds to vertical-align
+                 * - WritingMode is not yet implemented (for CSS3, to come)
+                 * - Style will give to the region the style properties from the style selected
+                 * ***/
+                if (key === "extent") {
+                    var coords = property.split(/\s/);
+                    properties.push("width: " + coords[0] + ';');
+                    properties.push("height :" + coords[1] + ';');
+                } else if (key === "origin") {
+                    var coords = property.split(/\s/);
+                    properties.push("left: " + coords[0] + ';');
+                    properties.push("top :" + coords[1] + ';');
+                } else if (key === "display-align") {
+                    var displayAlign = {
+                        before: "vertical-align: top;",
+                        center: "vertical-align: middle;",
+                        after: "vertical-align: bottom"
+                    };
+                    properties.push(displayAlign[property]);
+                } else if (key === "style") {
+                    var styleFromID = getStyleFromID( property);
+                    properties.push(styleFromID);
+                } else {
+                    var result;
+                    result = key + ':' + property + ';';
+                    properties.push(result);
                 }
             }
-
             return properties;
         },
 
@@ -294,14 +292,10 @@ MediaPlayer.utils.TTMLParser = function() {
             // If only one cue, put it in an array
             cues = [].concat(cues);
 
+            // If body has a style
             var bodyStyleID = ttml.tt['body@style'];
             if (bodyStyleID) {
-                // Get the corresponding style array
-                var bodyStyle = getStyle(ttmlStylings, bodyStyleID);
-                if (bodyStyle) {
-                    // Compute the style from the selected set
-                    bodyStyleProperties = computeStyle(bodyStyle);
-                }
+                bodyStyleProperties = getStyleFromID(bodyStyleID);
             }
 
             // If div has a style
@@ -378,12 +372,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 // If cues are not SMPTE images, extract the text
                 else {
                     cue.p = [].concat(cue.p);
-                    textData = [];
 
-                    cue.p.forEach(function(caption) {
+                    textData = cue.p.map(function(caption) {
                         // Add a <br/> element for a new line
                         if (caption.hasOwnProperty('br')) {
-                            textData.push(document.createElement('br'));
+                            return document.createElement('br');
                         }
                         // Create the inline span element
                         else if (caption.hasOwnProperty('span')) {
@@ -401,18 +394,16 @@ MediaPlayer.utils.TTMLParser = function() {
 
                             // Create a div that will wrap around the span to control the text alignment.
                             var wrapper = document.createElement('div');
-                            if (styleBlock.length) {
-                                styleBlock.forEach(function(d) {
-                                    if (d.indexOf('text-align') > -1) {
-                                        wrapper.style.cssText = d;
-                                        wrapper.appendChild(inlineSpan);
-                                    }
-                                });
-                            }
+                            styleBlock.forEach(function(d) {
+                                if (d.indexOf('text-align') > -1) {
+                                    wrapper.style.cssText = d;
+                                    wrapper.appendChild(inlineSpan);
+                                }
+                            });
                             if (!wrapper.style.cssText) {
-                                textData.push(inlineSpan)
+                                return inlineSpan
                             } else {
-                                textData.push(wrapper);
+                                return wrapper;
                             }
 
                         }
@@ -426,19 +417,18 @@ MediaPlayer.utils.TTMLParser = function() {
 
                             // Create a div that will wrap around the span to control the text alignment.
                             var wrapper = document.createElement('div');
-                            if (paragraphStyleProperties.length) {
-                                paragraphStyleProperties.forEach(function(d) {
-                                    if (d.indexOf('text-align') > -1) {
-                                        wrapper.style.cssText = d;
-                                        wrapper.appendChild(spanElem);
-                                    }
-                                });
-                            }
+                            paragraphStyleProperties.forEach(function(d) {
+                                if (d.indexOf('text-align') > -1) {
+                                    wrapper.style.cssText = d;
+                                    wrapper.appendChild(spanElem);
+                                }
+                            });
+
 
                             if (!wrapper.style.cssText) {
-                                textData.push(spanElem)
+                                return spanElem;
                             } else {
-                                textData.push(wrapper);
+                                return wrapper;
                             }
 
                         }
