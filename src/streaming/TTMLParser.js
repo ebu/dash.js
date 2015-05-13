@@ -385,6 +385,16 @@ MediaPlayer.utils.TTMLParser = function () {
                     }
                 }
 
+                // Line padding
+                paragraphStyleProperties.forEach(function(d,index){
+                   if(d.indexOf("line-padding") > -1){
+                       var value = parseFloat(d.slice(13, d.indexOf('c')));
+                       paragraphStyleProperties.splice(index, 1);
+                       paragraphStyleProperties.push("padding-left:" + value*cellUnit[0]+"px;");
+                       paragraphStyleProperties.push("padding-right:" + value*cellUnit[0] + "px;");
+                   }
+                });
+
                 //TODO adapt images cues with the new parser.
                 if(cue["smpte:backgroundImage"]!== undefined)
                 {
