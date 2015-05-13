@@ -259,6 +259,9 @@ MediaPlayer.utils.TTMLParser = function () {
                 paragraphRegionProperties = [],
                 nsttp,
                 cellResolution =[],
+                cellUnit,
+                videoHeight,
+                videoWidth,
                 textData;
 
 
@@ -270,6 +273,11 @@ MediaPlayer.utils.TTMLParser = function () {
 
             cellResolution[0] = parseFloat(ttml["tt@ttp:cellResolution"].slice(0,2));
             cellResolution[1] = parseFloat(ttml["tt@ttp:cellResolution"].slice(3,5));
+
+            videoWidth = document.getElementById('videoPlayer').offsetWidth;
+            videoHeight = document.getElementById('videoPlayer').offsetHeight;
+
+            cellUnit = [videoWidth/cellResolution[0], videoHeight/cellResolution[1]];
 
             // If only one item, transform into an array
             ttmlLayout = [].concat(ttmlLayout);
