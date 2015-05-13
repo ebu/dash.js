@@ -258,6 +258,7 @@ MediaPlayer.utils.TTMLParser = function () {
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
                 nsttp,
+                cellResolution =[],
                 textData;
 
 
@@ -266,6 +267,9 @@ MediaPlayer.utils.TTMLParser = function () {
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
             ttmlLayout = ttml.tt.head.layout;
             ttmlStylings = ttml.tt.head.styling;
+
+            cellResolution[0] = parseFloat(ttml["tt@ttp:cellResolution"].slice(0,2));
+            cellResolution[1] = parseFloat(ttml["tt@ttp:cellResolution"].slice(3,5));
 
             // If only one item, transform into an array
             ttmlLayout = [].concat(ttmlLayout);
@@ -402,7 +406,6 @@ MediaPlayer.utils.TTMLParser = function () {
                         // Add a <br/> element for a new line
                         if(cue.p[k].hasOwnProperty('br')){
                             textData.push(document.createElement('br'));
-                            continue;
                         }
                         // Create the inline span element
                         else if(cue.p[k].hasOwnProperty('span')){
@@ -423,17 +426,51 @@ MediaPlayer.utils.TTMLParser = function () {
                                     inlineSpan.style.cssText = styleBlock.join(" ");
                                 }
                             }
+
                             inlineSpan.innerHTML = cue.p[k]['span'];
-                            textData.push(inlineSpan);
-                            continue;
+
+                            // Create a div that will wrap around the span to control the text alignment.
+                            var wrapper           = document.createElement('div');
+                            if(styleBlock.length > 0) {
+                                styleBlock.forEach(function (d) {
+                                    if (d.indexOf('text-align') > -1) {
+                                        wrapper.style.cssText = d;
+                                        wrapper.appendChild(inlineSpan);
+                                    }
+                                });
+                            }
+                            if(wrapper.style.cssText === ""){
+                                textData.push(inlineSpan)
+                            } else{
+                                textData.push(wrapper);
+                            }
+
                         }
                         // If it is only text in a <p>
                         else {
                             var spanElem = document.createElement('span');
                             spanElem.className = 'text';
+
                             spanElem.style.cssText = paragraphStyleProperties.join(" ");
                             spanElem.innerHTML = cue.p[k];
-                            textData.push(spanElem);
+
+                            // Create a div that will wrap around the span to control the text alignment.
+                            var wrapper           = document.createElement('div');
+                            if(paragraphStyleProperties.length > 0) {
+                                paragraphStyleProperties.forEach(function (d) {
+                                    if (d.indexOf('text-align') > -1) {
+                                        wrapper.style.cssText = d;
+                                        wrapper.appendChild(spanElem);
+                                    }
+                                });
+                            }
+
+                            if(wrapper.style.cssText === ""){
+                                textData.push(spanElem)
+                            } else{
+                                textData.push(wrapper);
+                            }
+
                         }
                     }
                     captionArray.push({
