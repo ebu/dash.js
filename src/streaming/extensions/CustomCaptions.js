@@ -31,116 +31,97 @@
 
 MediaPlayer.dependencies.CustomCaptions = function () {
     "use strict";
+    var playlist, // Playlist containing all cues received
+        video, // video from the VideoModel
+        captionContainer = document.getElementById('captionContainer'), // container of the caption region
+        regions = document.getElementById('captionRegion'),// container of the captionText, represent the region
+        captionText = document.getElementById('captionText'), // container with all the text
+        defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
-    var cue,
-        playlist,
-        video;
+    /***** Method which assign to the HTML the styling and positioning in the right containers for every cue.
+     * -
+     *
+     * *****/
 
-    // Method which assign to the HTML the styling and positioning in the right containers for every cue.
     function addRenderingToCaption(data) {
-        var bodyStyleProperties = "",
-            divStyleProperties = "",
-            divRegionProperties = "",
+        var divRegionProperties = "",
             paragraphRegionProperties = "";
 
-        // Add each CSS property to a CSS text block.
-        if(data.bodyStyle){
-            for (var i = 0; i < data.bodyStyle.length; i++) {
-                bodyStyleProperties += data.bodyStyle[i] + "\n";
-            }
-        }
-        if(data.divStyle) {
-            for (var i = 0; i < data.divStyle.length; i++) {
-                divStyleProperties += data.divStyle[i] + "\n";
-            }
-        }
-        if(data.divRegion) {
-            for (var i = 0; i < data.divRegion.length; i++) {
-                if (data.divRegion[i].indexOf("vertical-align") > -1) {
-                    document.getElementById('captionText').style.cssText += data.divRegion[i] + "\n";
-                    continue;
-                }
-                if (data.divRegion[i].indexOf("width") > -1 || data.divRegion[i].indexOf("height") > -1) {
-                    document.getElementById('captionContainer').style.cssText += data.divRegion[i] + "\n";
-                    continue;
-                }
-                if (data.divRegion[i].indexOf("top") > -1 || data.divRegion[i].indexOf("left") > -1) {
-                    document.getElementById('captionContainer').style.cssText += data.divRegion[i] + "\n";
-                    continue;
-                }
-                divRegionProperties += data.divRegion[i] + "\n";
-            }
+        /***** Add each CSS property to a CSS text block and set it up in the captionText Container
+         *We set the style only for Body and Div: in inline text, it is computed and added inside TTMLParser directly to
+         *the span elements that are created for every line.
+         * *****/
+
+        // Extract the properties and affect them to the captionText container.
+        if (data.bodyStyle) {
+            captionText.style.cssText = data.bodyStyle.join("\n");
+        } else if (data.divStyle) {
+            captionText.style.cssText = data.divStyle.join("\n");
         }
 
-        if(data.paragraphRegion) {
-            for (var i = 0; i < data.paragraphRegion.length; i++) {
-                if (data.paragraphRegion[i].indexOf("vertical-align") > -1) {
-                    document.getElementById('captionText').style.cssText += data.paragraphRegion[i] + "\n";
-                    continue;
-                }
-                if (data.paragraphRegion[i].indexOf("width") > -1 || data.paragraphRegion[i].indexOf("height") > -1) {
-                    document.getElementById('captionContainer').style.cssText += data.paragraphRegion[i] + "\n";
-                    continue;
-                }
-                if (data.paragraphRegion[i].indexOf("top") > -1 || data.paragraphRegion[i].indexOf("left") > -1) {
-                    document.getElementById('captionContainer').style.cssText += data.paragraphRegion[i] + "\n";
-                    continue;
-                }
-                paragraphRegionProperties += data.paragraphRegion[i] + "\n";
-            }
-        }
+        /***** Transform the region properties and affect to a CSS block.
+         * We set the region only for Paragraph and Div: body can't have a region.
+         * (The region is controlled from different containers)
+         * *****/
 
-        // We set the region
-        var regions = document.getElementsByClassName('captionRegion');
-        for (var i = 0; i < regions.length; i++){
-            if(divRegionProperties === ""){
-                if(paragraphRegionProperties == ""){
-                    regions[i].style.cssText += "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible;";
-                } else {
-                    regions[i].style.cssText += paragraphRegionProperties;
-                }
+        // Extract the properties and affect specific properties to other containers than captionRegion.
+        if (data.divRegion) {
+            divRegionProperties = processRegionProperties(data.divRegion);
+        }
+        if (data.paragraphRegion) {
+            paragraphRegionProperties = processRegionProperties(data.paragraphRegion);
+        }
+        // Affect the other properties to the captionRegion container.
+        if (!divRegionProperties) {
+            if (!paragraphRegionProperties) {
+                regions.style.cssText += defaultRegion;
             } else {
-                regions[i].style.cssText += divRegionProperties;
+                regions.style.cssText += paragraphRegionProperties;
             }
+        } else {
+            regions.style.cssText += divRegionProperties;
         }
+    }
 
-        // We set the style
 
-        var textArea = document.getElementsByClassName('captionText');
-        if(divStyleProperties){
-            for (var i = 0; i < textArea.length; i++){
-                textArea[i].style.cssText += divStyleProperties;
+    /**** Process specific properties from region to add them at the correct place.*****/
+    function processRegionProperties(inputArray) {
+        var outputString = "";
+        inputArray.forEach(function (property) {
+            // Vertical-align must be applied to the captionText container (display table).
+            // Width, heigth, top and left must be applied to the captionContainer.
+            if (property.indexOf("vertical-align") > -1) {
+                captionText.style.cssText += property;
+            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1) {
+                captionContainer.style.cssText += property;
+            } else if (property.indexOf("top") > -1 || property.indexOf("left") > -1) {
+                captionContainer.style.cssText += property;
+            } else {
+                outputString += property;
             }
-        }
-        else if(bodyStyleProperties) {
-            for (var i = 0; i < textArea.length; i++) {
-                textArea[i].style.cssText += bodyStyleProperties;
-            }
-        }
+        });
+        return outputString;
     }
 
     return {
 
         initialize: function (videoModel) {
             // Initialization of the videoModel, the playlist and we start listening the event we need.
-
             video = videoModel;
             this.listen();
             playlist = [];
         },
 
-        listen: function(){
-
+        listen: function () {
             // Check every ms which cue should be played.
             video.listen('timeupdate', this.onCaption);
 
         },
 
         addCaptionsToPlaylist: function (dts, duration, captions) {
-
             var newCues = {};
             // Record the cues Info for its parsing and displaying.
-            newCues.decode = dts;
+            newCues.decode = dts; // dts: decode time stamp
             newCues.duration = duration;
             newCues.data = captions;
             playlist.push(newCues);
@@ -148,47 +129,42 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         },
 
 
-        onCaption: function() {
-            // Check if we have a cue to play
-            if (document.getElementById('captionRegion').style.display === 'none') {
+        onCaption: function () {
+
+            // Check if we have a cue to play and if the cc is turned on.
+            if (document.getElementById('captionRegion').style.display === 'none' || playlist.length === 0) {
                 return;
-            } else {
-                if (playlist.length !== 0) {
-                    var time = video.getCurrentTime();
-                    cue      = playlist[0];
-                    var diff = Math.abs(time - cue.data[0].start);
-                    // Function to determine the cue that should play at the video current time.
-                    for (var i = 0; i < playlist.length; i++) {
-                        // Check that the start of the cue we test is at least after or equal to the current time
-                        // So the cue chosen should always be the right one in the timeline, even when seeking
-                        if (time >= playlist[i].data[0].start) {
+            }
+            var time = video.getCurrentTime();
+            var activeCue = playlist[0];
+            var diff = Math.abs(time - activeCue.data[0].start);
 
-                            var newDiff = Math.abs(time - playlist[i].data[0].start);
+            /***** Function to determine the cue that should be played at the video current time. *****/
 
-                            if (newDiff < diff) {
-                                diff = newDiff;
-                                cue  = playlist[i];
-                            }
-                            // When the cue is found, we apply its text, style and positioning.
-                            var textNode = document.getElementById("captionText");
-                            textNode.innerHTML ="";
-
-                            cue.data[0].data.forEach(function(d){
-                                textNode.appendChild(d);
-                            });
-
-                            addRenderingToCaption(cue.data[0]);
-
-                        } else {
-                            // We check for another cue in the list
-                            continue;
-                        }
+            playlist.forEach(function (cue) {
+                // Check that the start of the cue we test is at least after or equal to the current time
+                // So the cue chosen should always be the right one in the timeline, even when seeking
+                if (time >= cue.data[0].start) {
+                    var newDiff = Math.abs(time - cue.data[0].start);
+                    if (newDiff < diff) {
+                        diff = newDiff;
+                        activeCue = cue;
                     }
-                } else {
-                    // Nothing to be played.
+
+                    /** When the cue is found, we apply its text, style and positioning. **/
+                    // Make sure the div is emptied before we add anything.
+                    captionText.innerHTML = "";
+
+                    // Add the text HTML element to captionText container.
+                    activeCue.data[0].data.forEach(function (d) {
+                        captionText.appendChild(d);
+                    });
+
+                    // Apply the styling and positioning to our text.
+                    addRenderingToCaption(activeCue.data[0]);
                     return;
                 }
-            }
+            });
         }
     };
 };
