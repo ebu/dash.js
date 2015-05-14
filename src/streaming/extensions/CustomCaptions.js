@@ -28,13 +28,12 @@
  *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
  *  POSSIBILITY OF SUCH DAMAGE.
  */
-
-MediaPlayer.dependencies.CustomCaptions = function () {
+MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
-        regions = document.getElementById('captionRegion'),// container of the captionText, represent the region
+        regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
@@ -87,7 +86,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
     /**** Process specific properties from region to add them at the correct place. *****/
     function processRegionProperties(inputArray) {
         var outputString = "";
-        inputArray.forEach(function (property) {
+        inputArray.forEach(function(property) {
             // Vertical-align must be applied to the captionText container (display table).
             // Width, heigth, top and left must be applied to the captionContainer.
             if (property.indexOf("vertical-align") > -1) {
@@ -104,20 +103,20 @@ MediaPlayer.dependencies.CustomCaptions = function () {
 
     return {
 
-        initialize: function (videoModel) {
+        initialize: function(videoModel) {
             // Initialization of the videoModel, the playlist and we start listening the event we need.
             video = videoModel;
             this.listen();
             playlist = [];
         },
 
-        listen: function () {
+        listen: function() {
             // Check every ms which cue should be played.
             video.listen('timeupdate', this.onCaption);
 
         },
 
-        addCaptionsToPlaylist: function (dts, duration, captions) {
+        addCaptionsToPlaylist: function(dts, duration, captions) {
             var newCues = {};
             // Record the cues Info for its parsing and displaying.
             newCues.decode = dts; // dts: decode time stamp
@@ -128,7 +127,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
         },
 
         /***** Function to determine the cue that should be played at the video current time. *****/
-        onCaption: function () {
+        onCaption: function() {
 
             // Check if we have a cue to play and if the cc is turned on.
             if (document.getElementById('captionRegion').style.display === 'none' || playlist.length === 0) {
@@ -138,7 +137,7 @@ MediaPlayer.dependencies.CustomCaptions = function () {
             var activeCue = playlist[0];
             var diff = Math.abs(time - activeCue.data[0].start);
 
-            playlist.forEach(function (cue) {
+            playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
                 if (time >= cue.data[0].start) {
@@ -149,11 +148,11 @@ MediaPlayer.dependencies.CustomCaptions = function () {
                     }
 
                     /** When the cue is found, we apply its text, style and positioning. **/
-                    // Make sure the div is emptied before we add anything.
+                        // Make sure the div is emptied before we add anything.
                     captionText.innerHTML = "";
 
                     // Add the text HTML element to captionText container.
-                    activeCue.data[0].data.forEach(function (d) {
+                    activeCue.data[0].data.forEach(function(d) {
                         captionText.appendChild(d);
                     });
 

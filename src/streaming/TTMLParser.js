@@ -109,7 +109,7 @@ MediaPlayer.utils.TTMLParser = function() {
             return r[0];
         },
 
-        camelCaseToDash = function (key) {
+        camelCaseToDash = function(key) {
             return key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
         },
 
@@ -210,7 +210,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     };
                     properties.push(displayAlign[property]);
                 } else if (key === "style") {
-                    var styleFromID = getStyleFromID( property);
+                    var styleFromID = getStyleFromID(property);
                     properties.push(styleFromID);
                 } else {
                     var result;
