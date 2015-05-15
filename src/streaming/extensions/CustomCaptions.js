@@ -32,7 +32,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
-        activeCue,
+        activeCue, // Active cue playing
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
         regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
