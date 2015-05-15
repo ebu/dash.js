@@ -9,9 +9,12 @@ module.exports = function(grunt) {
         }
       }
     },
-    watch: {},
+    watch: {
+      files: ['../src/**/*.js'],
+      tasks: ['uglify']
+    },
     jshint: {
-      all: ["../src/dash/**/*.js", 
+      all: ["../src/dash/**/*.js",
 			"../src/streaming/**/*.js"],
       options: {
         jshintrc: ".jshintrc"

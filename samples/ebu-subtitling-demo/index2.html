@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width">
+
+    <title>HTML5 Player Framework - Closed Captions Example</title>
+
+    <link rel="stylesheet" href="ttml/playerframework.min.css">
+    <link rel="stylesheet" href="ttml/style.css">
+
+    <script src="ttml/playerframework.min.js"></script>
+</head>
+<body>
+<h1>HTML5 Player Framework</h1>
+<h2>Closed Captions Example</h2>
+
+<!-- MS VIDEO PLAYER -->
+<video id="myVideo" class="pf-video" width="450" height="255" controls="controls" poster="http://smf.blob.core.windows.net/samples/videos/blackposter.png">
+    <source src="sources/test-ms-ttml/RealPCPride.mp4" type='video/mp4; codecs="avc1.42E01E, mp4a.40.2"' />
+    <source src="sources/test-ms-ttml/RealPCPride.ogg" type='video/ogg; codecs="theora, vorbis"' />
+    <!-- Option 1: Add track elements directly to the video tag. Add then english track -->
+    <track src="sources/test-ms-ttml/RealPCPride.en.captions.xml" label="English" kind="captions" default />
+</video>
+
+<!-- MS PLAYER SET UP -->
+<script>
+    var myPlayer = new PlayerFramework.Player("myVideo",
+            {
+                // Option 2: Add tracks via the textTracks option. Add the spanish track
+                textTracks:
+                        [
+                            {
+                                label: "Spanish",
+                                src: "sources/test-ms-ttml/RealPCPride.es.captions.xml",
+                                kind: "captions"
+                            }
+                        ]
+            });
+
+    console.warn(PlayerFramework);
+</script>
+</body>
+</html>
