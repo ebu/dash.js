@@ -17,7 +17,7 @@ width: 100%;
 .captionContainer{
     position: absolute;
     z-index: 2147483647;
-    }
+}
 
 .captionRegion{
     width:100%;
@@ -30,6 +30,7 @@ width: 100%;
     margin: 0;
     padding: 0;
     border: 0;
+    line-height: 0px;
     display: table-cell;
 }
 
@@ -447,16 +448,6 @@ table {
     -ms-box-sizing: border-box;
     -o-box-sizing: border-box;
     box-sizing: border-box;
-}
-
-html {
-    font-size: 62.5%;
-}
-
-body {
-    font: 300 13px/1.6 'Helvetica Neue', Helvetica, Arial;
-    background: #fff;
-    color: #444;
 }
 
 header{
