@@ -1,25 +1,25 @@
 
-# EBU-TT-D Subtitling within Dash.js
+# EBU-TT-D Subtitling within dash.js
 
-The ebu-subtitling-dev branch has for purpose to experiment the support for XML based subtitles like EBU-TT-D within Dash.js
+This is a fork of dash.js with as purpose to *experiment* with the support for XML based subtitles like EBU-TT-D within dash.js
 
-The current work focus on an HTML/CSS overlay to replace the native approach. This solution allow dash.js to render the subtitles and its properties the closest of the author intentions. In fact, CSS properties are very close from the ones of EBU-TT-D. It is also quite versatile as it allows us to reproduce properties that are not part of the CSS specification.
+The current work focuses on an HTML/CSS overlay to replace the native approach. This solution allows dash.js to render the subtitles and its properties closer to the author's intentions. In fact, CSS properties are very close to the ones used in EBU-TT-D. The approach is also quite versatile as it allows us to reproduce properties that are not part of the CSS specification.
 
-The core modifications are to be found in the following Javascript classes:
+The core modifications can be found in the following javascript classes:
 
-- TextSourceBuffer: will use for "fragmentedText" files the new features instead of TextTrack and VTTCues.
-- TTMLParser: An improved TTMLParser to parse the style and positioning and provide the proper data to the renderer.
-- CustomCaptions (new): The renderer. Handle the rendering of the subtitles and control their timings.
+- TextSourceBuffer: uses for "fragmentedText" files the new features instead of TextTrack and VTTCues;
+- TTMLParser: An improved TTMLParser that parses the style and positioning informatin and provides the relevant data to the renderer;
+- CustomCaptions (new): The renderer. Handls the rendering of the subtitles and controls their timings;
 - CustomControls (new): To manage the overlay arrangement between the video, the subtitles and the controls.
 
 To test it out:
-- Create your EBU-TT-D document
-- Package it in an ISOBMFF format as DASH specification is requiring (you can use MP4Box as for an example: gpac.wp.mines-telecom.fr/2014/08/23/ebu-ttd-support-in-gpac/)
-- Produce a manifest (you can also use MP4Box)
-- Launch a server at the root of the project where dash.js can do HTTP requests to get the media chunks
-- Launch index.html (samples/ebu-subtitling-demo) after replacing the source value by your MPD address
+- Create your EBU-TT-D document (https://tech.ebu.ch/docs/tech/tech3380.pdf)
+- Package it in an ISOBMFF format as the DASH specification requires (you can use MP4Box for example: gpac.wp.mines-telecom.fr/2014/08/23/ebu-ttd-support-in-gpac/)
+- Produce a manifest (you can also use MP4Box for this)
+- Launch a server at the root of the project where dash.js can send HTTP requests to, to get the media chunks
+- Launch index.html (samples/ebu-subtitling-demo) after setting the source value to your MPD address
 
-For any question, contact Solène Buet at EBU.
+For any questions, contact Solène Buet (EPFL) at the EBU.
 
 # dash.js
 
