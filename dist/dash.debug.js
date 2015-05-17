@@ -8149,17 +8149,17 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
             var time = video.getCurrentTime();
             var diff = Math.abs(time - activeCue.start);
-            if (time > activeCue.start && time < activeCue.end) {
+            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
                 return;
             }
+            captionText.innerHTML = "";
             playlist.forEach(function(cue) {
-                if (time >= cue.start) {
+                if (time >= cue.start && time <= cue.end) {
                     var newDiff = Math.abs(time - cue.start);
                     if (newDiff < diff) {
                         diff = newDiff;
                         activeCue = cue;
                     }
-                    captionText.innerHTML = "";
                     activeCue.data.forEach(function(d) {
                         captionText.appendChild(d);
                     });

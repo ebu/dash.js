@@ -138,14 +138,17 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             var diff = Math.abs(time - activeCue.start);
 
             // Check if we need to change the active cue.
-            if (time > activeCue.start && time < activeCue.end) {
+            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
                 return;
             }
 
+            // Make sure the div is emptied before we add anything.
+            captionText.innerHTML = "";
+            
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
-                if (time >= cue.start) {
+                if (time >= cue.start && time <= cue.end) {
                     var newDiff = Math.abs(time - cue.start);
                     if (newDiff < diff) {
                         diff = newDiff;
@@ -153,8 +156,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
 
                     /** When the cue is found, we apply its text, style and positioning. **/
-                        // Make sure the div is emptied before we add anything.
-                    captionText.innerHTML = "";
 
                     // Add the text HTML element to captionText container.
                     activeCue.data.forEach(function(d) {
