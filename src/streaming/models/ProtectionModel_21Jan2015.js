@@ -3,7 +3,7 @@
  * included below. This software may be subject to other third party and contributor
  * rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2014-2015, Cable Television Laboratories, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -13,7 +13,7 @@
  *  * Redistributions in binary form must reproduce the above copyright notice,
  *  this list of conditions and the following disclaimer in the documentation and/or
  *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
+ *  * Neither the name of Cable Television Laboratories, Inc. nor the names of its
  *  contributors may be used to endorse or promote products derived from this software
  *  without specific prior written permission.
  *
@@ -57,7 +57,7 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
                             keySystemAccess);
                 }).catch(function() {
                     if (++i < ksConfigurations.length) {
-                        requestKeySystemAccessInternal.call(self, ksConfigurations, i);
+                        requestKeySystemAccessInternal(ksConfigurations, i);
                     } else {
                         self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_SYSTEM_ACCESS_COMPLETE,
                                 null, "Key system access denied!");
@@ -158,7 +158,6 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
         notify: undefined,
         subscribe: undefined,
         unsubscribe: undefined,
-        protectionExt: undefined,
         keySystem: null,
 
         setup: function() {
@@ -219,9 +218,9 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
 
             var self = this;
             mediaKeys.setServerCertificate(serverCertificate).then(function() {
-                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_SERVER_CERTIFICATE_UPDATED);
+                self.notify(MediaPlayer.models.ProtectionModel.ENAME_SERVER_CERTIFICATE_UPDATED);
             }).catch(function(error) {
-                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_SERVER_CERTIFICATE_UPDATED,
+                self.notify(MediaPlayer.models.ProtectionModel.ENAME_SERVER_CERTIFICATE_UPDATED,
                         null, "Error updating server certificate -- " + error.name);
             });
         },
@@ -232,12 +231,8 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
                 throw new Error("Can not create sessions until you have selected a key system");
             }
 
-            // Check for duplicate initData.
-            for (var i = 0; i < sessions.length; i++) {
-                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
-                    return;
-                }
-            }
+            // TODO: Need to check for duplicate initData.  If we already have
+            // a KeySession for this exact initData, we shouldn't create a new session.
 
             var session = mediaKeys.createSession(sessionType);
             var sessionToken = createSessionToken.call(this, session, initData);
@@ -245,7 +240,7 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
             // Generate initial key request
             var self = this;
             session.generateRequest("cenc", initData).then(function() {
-                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_SESSION_CREATED, sessionToken);
+                self.notify(MediaPlayer.models.ProtectionModel.ENAME_KEY_SESSION_CREATED, sessionToken);
             }).catch(function(error) {
                 // TODO: Better error string
                 removeSession(sessionToken);
@@ -260,9 +255,6 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
 
             // Send our request to the key session
             var self = this;
-            if (this.protectionExt.isClearKey(this.keySystem)) {
-                message = message.toJWK();
-            }
             session.update(message).catch(function (error) {
                 self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_ERROR,
                     new MediaPlayer.vo.protection.KeyError(sessionToken, "Error sending update() message! " + error.name));

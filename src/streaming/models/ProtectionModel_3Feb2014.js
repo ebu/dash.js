@@ -3,7 +3,7 @@
  * included below. This software may be subject to other third party and contributor
  * rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Dash Industry Forum.
+ * Copyright (c) 2014-2015, Cable Television Laboratories, Inc.
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without modification,
@@ -13,7 +13,7 @@
  *  * Redistributions in binary form must reproduce the above copyright notice,
  *  this list of conditions and the following disclaimer in the documentation and/or
  *  other materials provided with the distribution.
- *  * Neither the name of Dash Industry Forum nor the names of its
+ *  * Neither the name of Cable Television Laboratories, Inc. nor the names of its
  *  contributors may be used to endorse or promote products derived from this software
  *  without specific prior written permission.
  *
@@ -59,23 +59,6 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
             };
         },
         eventHandler = null,
-
-        // IE11 does not let you set MediaKeys until it has entered a certain
-        // readyState, so we need this logic to ensure we don't set the keys
-        // too early
-        setMediaKeys = function() {
-            // IE11 does not allow setting of media keys until
-            var doSetKeys = function() {
-                videoElement[api.setMediaKeys](mediaKeys);
-                this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_VIDEO_ELEMENT_SELECTED);
-            };
-            if (videoElement.readyState >= 1) {
-                doSetKeys.call(this);
-            } else {
-                videoElement.addEventListener("loadedmetadata", doSetKeys.bind(this));
-            }
-
-        },
 
         // Function to create our session token objects which manage the EME
         // MediaKeySession and session-specific event handler
@@ -217,7 +200,8 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
                 this.keySystem = ksAccess.keySystem;
                 keySystemAccess = ksAccess;
                 if (videoElement) {
-                    setMediaKeys.call(this);
+                    videoElement[api.setMediaKeys](mediaKeys);
+                    this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_VIDEO_ELEMENT_SELECTED);
                 }
                 this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_SYSTEM_SELECTED);
 
@@ -234,7 +218,8 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
             videoElement = mediaElement;
             videoElement.addEventListener(api.needkey, eventHandler);
             if (mediaKeys) {
-                setMediaKeys.call(this);
+                videoElement[api.setMediaKeys](mediaKeys);
+                this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_VIDEO_ELEMENT_SELECTED);
             }
         },
 
@@ -244,17 +229,13 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
                 throw new Error("Can not create sessions until you have selected a key system");
             }
 
-            // Check for duplicate initData.
-            for (var i = 0; i < sessions.length; i++) {
-                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
-                    return;
-                }
-            }
+            // TODO: Need to check for duplicate initData.  If we already have
+            // a KeySession for this exact initData, we shouldn't create a new session.
 
             // Use the first video capability for the contentType.
             // TODO:  Not sure if there is a way to concatenate all capability data into a RFC6386-compatible format
             var contentType = keySystemAccess.ksConfiguration.videoCapabilities[0].contentType;
-            var session = mediaKeys.createSession(contentType, new Uint8Array(initData));
+            var session = mediaKeys.createSession(contentType, initData);
             var sessionToken = createSessionToken.call(this, session, initData);
 
             // Add all event listeners
@@ -266,7 +247,7 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
             // Add to our session list
             sessions.push(sessionToken);
 
-            this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_SESSION_CREATED, sessionToken);
+            return sessionToken;
         },
 
         updateKeySession: function(sessionToken, message) {
@@ -278,7 +259,7 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
                 session.update(message);
             } else {
                 // For clearkey, message is a MediaPlayer.vo.protection.ClearKeyKeySet
-                session.update(new Uint8Array(message.toJWK()));
+                session.update(message.toJWKString());
             }
         },
 

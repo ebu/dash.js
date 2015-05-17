@@ -615,9 +615,6 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     }
 
     $scope.doLoad = function () {
-        if ($scope.selectedItem.hasOwnProperty("protData")) {
-            player.attachProtectionData($scope.selectedItem.protData);
-        }
         player.attachSource($scope.selectedItem.url);
         player.setAutoSwitchQuality($scope.abrEnabled);
         $scope.manifestUpdateInfo = null;
