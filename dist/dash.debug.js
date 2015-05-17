@@ -5617,7 +5617,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5654,14 +5654,14 @@ MediaPlayer.utils.TTMLParser = function() {
     }, getStyle = function(ttmlStylings, cueStyleID) {
         for (var j = 0; j < ttmlStylings.length; j++) {
             var currStyle = ttmlStylings[j];
-            if (currStyle["style@xml:id"] === cueStyleID) {
+            if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
                 return currStyle;
             }
         }
     }, getRegion = function(ttmlLayout, cueRegionID) {
         for (var j = 0; j < ttmlLayout.length; j++) {
             var currReg = ttmlLayout[j];
-            if (currReg["region@xml:id"] === cueRegionID) {
+            if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
                 return currReg;
             }
         }
@@ -5673,6 +5673,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 var result;
                 key = key.replace("style@tts:", "");
                 key = key.replace("style@xml:", "");
+                key = key.replace("style@ebutts:", "");
+                key = key.replace("style@", "");
                 key = camelCaseToDash(key);
                 if (key === "style" || key === "id") {
                     continue;
@@ -5695,6 +5697,7 @@ MediaPlayer.utils.TTMLParser = function() {
             var property = cueRegion[key];
             key = key.replace("region@tts:", "");
             key = key.replace("region@xml:", "");
+            key = key.replace("region@:", "");
             key = camelCaseToDash(key);
             if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
                 continue;
@@ -5786,15 +5789,17 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueRegionID) {
                 paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, cueRegionID);
             }
-            paragraphStyleProperties.forEach(function(d, index) {
-                if (d.indexOf("line-padding") > -1) {
-                    var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf("c")));
-                    var valuePx = value * cellUnit[0] + "px;";
-                    paragraphStyleProperties.splice(index, 1);
-                    paragraphStyleProperties.push("padding-left:" + valuePx);
-                    paragraphStyleProperties.push("padding-right:" + valuePx);
-                }
-            });
+            if (paragraphStyleProperties) {
+                paragraphStyleProperties.forEach(function(d, index) {
+                    if (d.indexOf("line-padding") > -1) {
+                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf("c")));
+                        var valuePx = value * cellUnit[0] + "px;";
+                        paragraphStyleProperties.splice(index, 1);
+                        paragraphStyleProperties.push("padding-left:" + valuePx);
+                        paragraphStyleProperties.push("padding-right:" + valuePx);
+                    }
+                });
+            }
             if (cue["smpte:backgroundImage"] !== undefined) {
                 var images = ttml.tt.head.metadata.image_asArray;
                 for (var j = 0; j < images.length; j += 1) {
@@ -5824,9 +5829,34 @@ MediaPlayer.utils.TTMLParser = function() {
                         }
                         if (caption.hasOwnProperty("span@style")) {
                             var styleBlock = getStyleFromID(caption["span@style"]);
-                            inlineSpan.style.cssText = styleBlock.join(" ");
+                            if (styleBlock) {
+                                styleBlock.forEach(function(d, index) {
+                                    if (d.indexOf("line-padding") > -1) {
+                                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf("c")));
+                                        var valuePx = value * cellUnit[0] + "px;";
+                                        styleBlock.splice(index, 1);
+                                        styleBlock.push("padding-left:" + valuePx);
+                                        styleBlock.push("padding-right:" + valuePx);
+                                    }
+                                });
+                            }
                         }
-                        inlineSpan.innerHTML = caption["span"];
+                        caption["span"] = [].concat(caption["span"]);
+                        if (caption["span"].length > 1) {
+                            caption["span"].forEach(function(el) {
+                                if (typeof el == "string" || el instanceof String) {
+                                    var span = document.createElement("span");
+                                    span.style.cssText = styleBlock.join(" ");
+                                    span.innerHTML = el;
+                                    inlineSpan.appendChild(span);
+                                } else if (el.hasOwnProperty("br")) {
+                                    inlineSpan.appendChild(document.createElement("br"));
+                                }
+                            });
+                        } else {
+                            inlineSpan.style.cssText = styleBlock.join(" ");
+                            inlineSpan.innerHTML = caption["span"];
+                        }
                         var wrapper = document.createElement("div");
                         styleBlock.forEach(function(d) {
                             if (d.indexOf("text-align") > -1) {
@@ -5913,7 +5943,10 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
-                            this.customCaptions.addCaptionsToPlaylist(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
+                            result = [].concat(result);
+                            for (var i = 0; i < result.length; i++) {
+                                this.customCaptions.addCueToPlaylist(result[i]);
+                            }
                         } catch (e) {}
                     }
                 }
@@ -8058,18 +8091,18 @@ MediaPlayer.dependencies.TextController.eventList = {
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, video, activeCue, captionContainer = document.getElementById("captionContainer"), regions = document.getElementById("captionRegion"), captionText = document.getElementById("captionText"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
-    function addRenderingToCaption(data) {
+    function addRenderingToCaption(cue) {
         var divRegionProperties = "", paragraphRegionProperties = "";
-        if (data.bodyStyle) {
-            captionText.style.cssText = data.bodyStyle.join("\n");
-        } else if (data.divStyle) {
-            captionText.style.cssText = data.divStyle.join("\n");
+        if (cue.bodyStyle) {
+            captionText.style.cssText = cue.bodyStyle.join("\n");
+        } else if (cue.divStyle) {
+            captionText.style.cssText = cue.divStyle.join("\n");
         }
-        if (data.divRegion) {
-            divRegionProperties = processRegionProperties(data.divRegion);
+        if (cue.divRegion) {
+            divRegionProperties = processRegionProperties(cue.divRegion);
         }
-        if (data.paragraphRegion) {
-            paragraphRegionProperties = processRegionProperties(data.paragraphRegion);
+        if (cue.paragraphRegion) {
+            paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
         }
         if (!divRegionProperties) {
             if (!paragraphRegionProperties) {
@@ -8103,18 +8136,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         listen: function() {
             video.listen("timeupdate", this.onCaption);
         },
-        addCaptionsToPlaylist: function(dts, duration, captions) {
-            var newCues = {};
-            newCues.decode = dts;
-            newCues.duration = duration;
-            newCues.data = captions;
-            playlist.push(newCues);
+        addCueToPlaylist: function(cue) {
+            playlist.push(cue);
             if (playlist.length === 1) {
                 activeCue = playlist[0];
-                activeCue.data[0].data.forEach(function(d) {
-                    captionText.appendChild(d);
-                });
-                addRenderingToCaption(activeCue.data[0]);
+                this.onCaption();
             }
         },
         onCaption: function() {
@@ -8122,22 +8148,22 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             var time = video.getCurrentTime();
-            var diff = Math.abs(time - activeCue.data[0].start);
-            if (time > activeCue.data[0].start && time < activeCue.data[0].end) {
+            var diff = Math.abs(time - activeCue.start);
+            if (time > activeCue.start && time < activeCue.end) {
                 return;
             }
             playlist.forEach(function(cue) {
-                if (time >= cue.data[0].start) {
-                    var newDiff = Math.abs(time - cue.data[0].start);
+                if (time >= cue.start) {
+                    var newDiff = Math.abs(time - cue.start);
                     if (newDiff < diff) {
                         diff = newDiff;
                         activeCue = cue;
                     }
                     captionText.innerHTML = "";
-                    activeCue.data[0].data.forEach(function(d) {
+                    activeCue.data.forEach(function(d) {
                         captionText.appendChild(d);
                     });
-                    addRenderingToCaption(activeCue.data[0]);
+                    addRenderingToCaption(activeCue);
                 }
             });
         }

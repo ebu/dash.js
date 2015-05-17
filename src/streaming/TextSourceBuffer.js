@@ -80,7 +80,10 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            this.customCaptions.addCaptionsToPlaylist(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
+                            result = [].concat(result);
+                            for(var i = 0; i < result.length; i++){
+                                this.customCaptions.addCueToPlaylist(result[i]);
+                            }
                             //this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                         } catch(e) {
                             //empty cue ?
