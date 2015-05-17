@@ -1,3 +1,26 @@
+
+# EBU-TT-D Subtitling within dash.js
+
+This is a fork of dash.js with as purpose to *experiment* with the support for XML based subtitles like EBU-TT-D within dash.js
+
+The current work focuses on an HTML/CSS overlay to replace the native approach. This solution allows dash.js to render the subtitles and its properties closer to the author's intentions. In fact, CSS properties are very close to the ones used in EBU-TT-D. The approach is also quite versatile as it allows us to reproduce properties that are not part of the CSS specification.
+
+The core modifications can be found in the following javascript classes:
+
+- TextSourceBuffer: uses for "fragmentedText" files the new features instead of TextTrack and VTTCues;
+- TTMLParser: An improved TTMLParser that parses the style and positioning informatin and provides the relevant data to the renderer;
+- CustomCaptions (new): The renderer. Handls the rendering of the subtitles and controls their timings;
+- CustomControls (new): To manage the overlay arrangement between the video, the subtitles and the controls.
+
+To test it out:
+- Create your EBU-TT-D document (https://tech.ebu.ch/docs/tech/tech3380.pdf)
+- Package it in an ISOBMFF format as the DASH specification requires (you can use MP4Box for example: gpac.wp.mines-telecom.fr/2014/08/23/ebu-ttd-support-in-gpac/)
+- Produce a manifest (you can also use MP4Box for this)
+- Launch a server at the root of the project where dash.js can send HTTP requests to, to get the media chunks
+- Launch index.html (samples/ebu-subtitling-demo) after setting the source value to your MPD address
+
+For any questions, contact Solène Buet (EPFL) at the EBU.
+
 # dash.js
 
 JSHint and Jasmine status: [![JSHint and Jasmine](http://img.shields.io/travis/Dash-Industry-Forum/dash.js/development.svg?style=flat-square)](https://travis-ci.org/Dash-Industry-Forum/dash.js)

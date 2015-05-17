@@ -9,9 +9,12 @@ module.exports = function(grunt) {
         }
       }
     },
-    watch: {},
+    watch: {
+      files: ['../src/**/*.js'],
+      tasks: ['uglify']
+    },
     jshint: {
-      all: ["../src/dash/**/*.js", 
+      all: ["../src/dash/**/*.js",
 			"../src/streaming/**/*.js"],
       options: {
         jshintrc: ".jshintrc"
@@ -34,6 +37,7 @@ module.exports = function(grunt) {
         files: {
           "../dist/dash.all.js": [
             "../src/lib/xml2json.js",
+            "../src/lib/xml2json_henriko.js",
             "../src/lib/objectiron.js",
             "../src/lib/dijon.js",
             "../src/lib/Math.js",

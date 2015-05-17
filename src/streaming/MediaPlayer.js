@@ -1,15 +1,34 @@
 /**
- * @copyright The copyright in this software is being made available under the BSD License, included below. This software may be subject to other third party and contributor rights, including patent rights, and no such rights are granted under this license.
+ * The copyright in this software is being made available under the BSD License,
+ * included below. This software may be subject to other third party and contributor
+ * rights, including patent rights, and no such rights are granted under this license.
  *
- * Copyright (c) 2013, Digital Primates
+ * Copyright (c) 2013, Dash Industry Forum.
  * All rights reserved.
  *
- * Redistribution and use in source and binary forms, with or without modification, are permitted provided that the following conditions are met:
- * •  Redistributions of source code must retain the above copyright notice, this list of conditions and the following disclaimer.
- * •  Redistributions in binary form must reproduce the above copyright notice, this list of conditions and the following disclaimer in the documentation and/or other materials provided with the distribution.
- * •  Neither the name of the Digital Primates nor the names of its contributors may be used to endorse or promote products derived from this software without specific prior written permission.
+ * Redistribution and use in source and binary forms, with or without modification,
+ * are permitted provided that the following conditions are met:
+ *  * Redistributions of source code must retain the above copyright notice, this
+ *  list of conditions and the following disclaimer.
+ *  * Redistributions in binary form must reproduce the above copyright notice,
+ *  this list of conditions and the following disclaimer in the documentation and/or
+ *  other materials provided with the distribution.
+ *  * Neither the name of Dash Industry Forum nor the names of its
+ *  contributors may be used to endorse or promote products derived from this software
+ *  without specific prior written permission.
  *
- * @license THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS “AS IS” AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *  THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS AS IS AND ANY
+ *  EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ *  WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.
+ *  IN NO EVENT SHALL THE COPYRIGHT HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT,
+ *  INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT
+ *  NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+ *  PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY,
+ *  WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ *  ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+ *  POSSIBILITY OF SUCH DAMAGE.
+ */
+/**
  * @class MediaPlayer
  * @param context - New instance of a dijon.js context (i.e. new Dash.di.DashContext()).  You can pass a custom context that extends Dash.di.DashContext to override item(s) in the DashContext.
  */
@@ -43,7 +62,7 @@ MediaPlayer = function (context) {
  * 6) Transform fragments.
  * 7) Push fragmemt bytes into SourceBuffer.
  */
-    var VERSION = "1.3.0",
+    var VERSION = "1.4.0",
         system,
         manifestLoader,
         abrController,
@@ -56,6 +75,7 @@ MediaPlayer = function (context) {
         metricsExt,
         metricsModel,
         videoModel,
+        DOMStorage,
         initialized = false,
         playing = false,
         autoPlay = true,
@@ -81,7 +101,7 @@ MediaPlayer = function (context) {
             }
 
             playing = true;
-            //this.debug.log("Playback initiated!");
+            this.debug.log("Playback initiated!");
             streamController = system.getObject("streamController");
             streamController.subscribe(MediaPlayer.dependencies.StreamController.eventList.ENAME_STREAMS_COMPOSED, manifestUpdater);
             manifestLoader.subscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, streamController);
@@ -90,8 +110,8 @@ MediaPlayer = function (context) {
             streamController.setVideoModel(videoModel);
             streamController.setAutoPlay(autoPlay);
             streamController.setProtectionData(protectionData);
+            DOMStorage.checkInitialBitrate();
             streamController.load(source);
-
             system.mapValue("scheduleWhilePaused", scheduleWhilePaused);
             system.mapOutlet("scheduleWhilePaused", "stream");
             system.mapOutlet("scheduleWhilePaused", "scheduleController");
@@ -212,6 +232,8 @@ MediaPlayer = function (context) {
             }
         };
 
+
+
     // Overload dijon getObject function
     var _getObject = dijon.System.prototype.getObject;
     dijon.System.prototype.getObject = function(name) {
@@ -247,6 +269,7 @@ MediaPlayer = function (context) {
             abrController = system.getObject("abrController");
             rulesController = system.getObject("rulesController");
             metricsModel = system.getObject("metricsModel");
+            DOMStorage = system.getObject("DOMStorage");
         },
 
         /**
@@ -309,6 +332,51 @@ MediaPlayer = function (context) {
                 stream = streamInfo ? streamController.getStreamById(streamInfo.id) : null;
 
             return (stream ? stream.getVideoModel() : videoModel);
+        },
+
+        /**
+         * Set to false if you would like to disable the last known bit rate from being stored during playback and used
+         * to set the initial bit rate for subsequent playback within the expiration window.
+         *
+         * The default expiration is one hour, defined in milliseconds. If expired, the default initial bit rate (closest to 1000 kpbs) will be used
+         * for that session and a new bit rate will be stored during that session.
+         *
+         * @param enable - Boolean - Will toggle if feature is enabled. True to enable, False to disable.
+         * @param ttl Number - (Optional) A value defined in milliseconds representing how long to cache the bit rate for. Time to live.
+         * @default enable = True, ttl = 360000 (1 hour)
+         * @memberof MediaPlayer#
+         *
+         */
+        enableLastBitrateCaching: function (enable, ttl) {
+            DOMStorage.enableLastBitrateCaching(enable, ttl);
+        },
+
+        /**
+         * When switching multi-bitrate content (auto or manual mode) this property specifies the maximum bitrate allowed.
+         * If you set this property to a value lower than that currently playing, the switching engine will switch down to
+         * satisfy this requirement. If you set it to a value that is lower than the lowest bitrate, it will still play
+         * that lowest bitrate.
+         *
+         * You can set or remove this bitrate cap at anytime before or during playback.  To clear this setting you must use the API
+         * and set the value param to NaN.
+         *
+         * This feature is typically used to reserve higher bitrates for playback only when the player is in large or full-screen format.
+         *
+         * @param type String 'video' or 'audio' are the type options.
+         * @param value int value in kbps representing the maximum bitrate allowed.
+         * @memberof MediaPlayer#
+         */
+        setMaxAllowedBitrateFor:function(type, value) {
+            abrController.setMaxAllowedBitrateFor(type, value);
+        },
+
+        /**
+         * @param type String 'video' or 'audio' are the type options.
+         * @memberof MediaPlayer#
+         * @see {@link MediaPlayer#setMaxAllowedBitrateFor setMaxAllowedBitrateFor()}
+         */
+        getMaxAllowedBitrateFor:function(type) {
+            return abrController.getMaxAllowedBitrateFor(type);
         },
 
         /**
@@ -404,6 +472,24 @@ MediaPlayer = function (context) {
                 stream = streamController.getStreamById(streamInfo.id);
 
             return stream.getBitrateListFor(type);
+        },
+
+        /**
+         * @param type
+         * @param {number} value A value of the initial bitrate, kbps
+         * @memberof MediaPlayer#
+         */
+        setInitialBitrateFor: function(type, value) {
+            abrController.setInitialBitrateFor(type, value);
+        },
+
+        /**
+         * @param type
+         * @returns {number} A value of the initial bitrate, kbps
+         * @memberof MediaPlayer#
+         */
+        getInitialBitrateFor: function(type) {
+            return abrController.getInitialBitrateFor(type);
         },
 
         /**
@@ -659,6 +745,7 @@ MediaPlayer = function (context) {
 MediaPlayer.prototype = {
     constructor: MediaPlayer
 };
+
 
 MediaPlayer.dependencies = {};
 MediaPlayer.dependencies.protection = {};
