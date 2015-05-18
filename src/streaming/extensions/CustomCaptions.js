@@ -38,7 +38,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         captionText = document.getElementById('captionText'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
-    /***** Method which assign to the HTML the styling and positioning in the right containers for every cue. *****/
+    /***** Method which assign to the HTML the styling and positioning in the right containers for every cue.
+     * -
+     *
+     * *****/
 
     function addRenderingToCaption(cue) {
         var divRegionProperties = "",
@@ -68,8 +71,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         if (cue.paragraphRegion) {
             paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
         }
-
-        // TODO: If there are regions on a p element and on a div.
         // Affect the other properties to the captionRegion container.
         if (!divRegionProperties) {
             if (!paragraphRegionProperties) {
@@ -83,7 +84,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     }
 
 
-    /***** Process specific properties from region to add them at the correct place. *****/
+    /**** Process specific properties from region to add them at the correct place. *****/
     function processRegionProperties(inputArray) {
         var outputString = "";
         inputArray.forEach(function(property) {
@@ -143,7 +144,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
             // Make sure the div is emptied before we add anything.
             captionText.innerHTML = "";
-
+            
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
@@ -154,9 +155,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         activeCue = cue;
                     }
 
-                    /*** When the cue is found, we apply its text, style and positioning. ***/
+                    /** When the cue is found, we apply its text, style and positioning. **/
 
-                    // Add the HTML elements to the     captionText container.
+                    // Add the text HTML element to captionText container.
                     activeCue.data.forEach(function(d) {
                         captionText.appendChild(d);
                     });
