@@ -1572,6 +1572,7 @@ MediaPlayer.di.Context = function() {
             this.system.mapSingleton("capabilities", MediaPlayer.utils.Capabilities);
             this.system.mapSingleton("DOMStorage", MediaPlayer.utils.DOMStorage);
             this.system.mapClass("customTimeRanges", MediaPlayer.utils.CustomTimeRanges);
+            this.system.mapClass("customControls", MediaPlayer.utils.CustomControls);
             this.system.mapSingleton("textTrackExtensions", MediaPlayer.utils.TextTrackExtensions);
             this.system.mapSingleton("vttParser", MediaPlayer.utils.VTTParser);
             this.system.mapSingleton("ttmlParser", MediaPlayer.utils.TTMLParser);
@@ -1584,7 +1585,7 @@ MediaPlayer.di.Context = function() {
             this.system.mapSingleton("ksClearKey", MediaPlayer.dependencies.protection.KeySystem_ClearKey);
             this.system.mapSingleton("requestModifierExt", MediaPlayer.dependencies.RequestModifierExtensions);
             this.system.mapSingleton("textSourceBuffer", MediaPlayer.dependencies.TextSourceBuffer);
-            this.system.mapSingleton("textSourceBufferExt", MediaPlayer.dependencies.TextSourceBufferExtensions);
+            this.system.mapSingleton("customCaptions", MediaPlayer.dependencies.CustomCaptions);
             this.system.mapSingleton("mediaSourceExt", MediaPlayer.dependencies.MediaSourceExtensions);
             this.system.mapSingleton("sourceBufferExt", MediaPlayer.dependencies.SourceBufferExtensions);
             this.system.mapSingleton("abrController", MediaPlayer.dependencies.AbrController);
@@ -5616,7 +5617,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/, ttml, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5639,7 +5640,6 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return passed;
     }, getNamespacePrefix = function(json, ns) {
-        var array = Object.keys(json);
         var r = Object.keys(json).filter(function(k) {
             return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
         }).map(function(k) {
@@ -5649,83 +5649,156 @@ MediaPlayer.utils.TTMLParser = function() {
             return null;
         }
         return r[0];
+    }, camelCaseToDash = function(key) {
+        return key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+    }, getStyle = function(ttmlStylings, cueStyleID) {
+        for (var j = 0; j < ttmlStylings.length; j++) {
+            var currStyle = ttmlStylings[j];
+            if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
+                return currStyle;
+            }
+        }
+    }, getRegion = function(ttmlLayout, cueRegionID) {
+        for (var j = 0; j < ttmlLayout.length; j++) {
+            var currReg = ttmlLayout[j];
+            if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
+                return currReg;
+            }
+        }
+    }, computeStyle = function(cueStyle) {
+        var properties = [];
+        for (var key in cueStyle) {
+            if (cueStyle.hasOwnProperty(key)) {
+                var property = cueStyle[key];
+                var result;
+                key = key.replace("style@tts:", "");
+                key = key.replace("style@xml:", "");
+                key = key.replace("style@ebutts:", "");
+                key = key.replace("style@", "");
+                key = camelCaseToDash(key);
+                if (key === "style" || key === "id") {
+                    continue;
+                }
+                if (key === "font-family") {
+                    result = key + ":'" + property + "';";
+                } else {
+                    result = key + ":" + property + ";";
+                }
+                properties.push(result);
+            }
+        }
+        return properties;
+    }, computeRegion = function(ttmlStylings, cueRegion) {
+        var properties = [];
+        for (var key in cueRegion) {
+            if (!cueRegion.hasOwnProperty(key)) {
+                continue;
+            }
+            var property = cueRegion[key];
+            key = key.replace("region@tts:", "");
+            key = key.replace("region@xml:", "");
+            key = key.replace("region@:", "");
+            key = camelCaseToDash(key);
+            if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
+                continue;
+            }
+            if (key === "extent") {
+                var coords = property.split(/\s/);
+                properties.push("width: " + coords[0] + ";");
+                properties.push("height :" + coords[1] + ";");
+            } else if (key === "origin") {
+                var coords = property.split(/\s/);
+                properties.push("left: " + coords[0] + ";");
+                properties.push("top :" + coords[1] + ";");
+            } else if (key === "display-align") {
+                var displayAlign = {
+                    before: "vertical-align: top;",
+                    center: "vertical-align: middle;",
+                    after: "vertical-align: bottom"
+                };
+                properties.push(displayAlign[property]);
+            } else if (key === "style") {
+                var styleFromID = getStyleFromID(property);
+                properties.push(styleFromID);
+            } else {
+                var result;
+                result = key + ":" + property + ";";
+                properties.push(result);
+            }
+        }
+        return properties;
+    }, getStyleFromID = function(id) {
+        var cueStyle = getStyle(ttmlStylings, id);
+        if (cueStyle) {
+            return computeStyle(cueStyle);
+        }
+    }, getRegionFromID = function(ttmlLayout, ttmlStylings, id) {
+        var cueRegion = getRegion(ttmlLayout, id);
+        if (cueRegion) {
+            return computeRegion(ttmlStylings, cueRegion);
+        }
     }, internalParse = function(data) {
-        var captionArray = [], converter = new X2JS([], "", false), errorMsg, cues, cue, startTime, endTime, cueStyleID, cueRegionID, cueStyle, cueRegion, ttmlStylings, ttmlLayout, nsttp, text;
+        var captionArray = [], errorMsg, cues, startTime, endTime, cueStyleID, cueRegionID, bodyStyleProperties = [], divStyleProperties = [], divRegionProperties = [], paragraphStyleProperties = [], paragraphRegionProperties = [], nsttp, cellResolution, cellUnit, videoHeight, videoWidth, textData;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+        ttmlLayout = ttml.tt.head.layout;
+        ttmlStylings = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
         }
+        cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        videoWidth = document.getElementById("videoPlayer").offsetWidth;
+        videoHeight = document.getElementById("videoPlayer").offsetHeight;
+        cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
+        ttmlLayout = [].concat(ttmlLayout);
+        ttmlStylings = [].concat(ttmlStylings);
         nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
         if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
             ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
         }
-        if (ttml.tt.body.div) {
-            cues = ttml.tt.body.div;
-        } else {
-            cues = ttml.tt.body;
-        }
+        cues = ttml.tt.body.div ? ttml.tt.body.div : ttml.tt.body;
         cues = [].concat(cues);
+        var bodyStyleID = ttml.tt["body@style"];
+        if (bodyStyleID) {
+            bodyStyleProperties = getStyleFromID(bodyStyleID);
+        }
+        var divStyleID = ttml.tt.body["div@style"];
+        if (divStyleID) {
+            divStyleProperties = getStyleFromID(divStyleID);
+        }
+        var divRegionID = ttml.tt.body["div@region"];
+        if (divRegionID) {
+            divRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
+        }
         if (!cues || cues.length === 0) {
             errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
-        ttmlLayout = ttml.tt.head.layout;
-        ttmlStylings = ttml.tt.head.styling;
-        if (!Array.isArray(ttmlLayout)) {
-            ttmlLayout = [ ttmlLayout ];
-        } else if (!Array.isArray(ttmlStylings)) {
-            ttmlStylings = [ ttmlStylings ];
-        }
-        console.warn("TTML Layout", ttmlLayout);
-        for (var i = 0; i < cues.length; i += 1) {
-            cue = cues[i];
+        cues.forEach(function(cue) {
             startTime = parseTimings(cue["p@begin"]);
             endTime = parseTimings(cue["p@end"]);
             cueStyleID = cue["p@style"];
             cueRegionID = cue["p@region"];
-            for (var j = 0; j < ttmlStylings.length; j++) {
-                var currStyle = ttmlStylings[j];
-                if (currStyle["style@xml:id"] === cueStyleID) {
-                    cueStyle = currStyle;
-                }
-            }
-            for (var j = 0; j < ttmlLayout.length; j++) {
-                var currReg = ttmlLayout[j];
-                if (currReg["region@xml:id"] === cueRegionID) {
-                    cueRegion = currReg;
-                }
-            }
-            console.warn("Cue Region", cueRegion);
-            var styleProperties = [];
-            for (var key in cueStyle) {
-                if (cueStyle.hasOwnProperty(key)) {
-                    var property = cueStyle[key];
-                    key = key.replace("style@tts:", "");
-                    key = key.replace("style@xml:", "");
-                    key = key.toLowerCase();
-                    if (key.indexOf("font") > -1 || key.indexOf("line") > -1 || key.indexOf("text") > -1) {
-                        key = key.substr(0, 4) + "-" + key.substr(4);
-                    } else if (key.indexOf("background") > -1) {
-                        key = key.substr(0, 10) + "-" + key.substr(10);
-                    } else if (key.indexOf("unicode") > -1) {
-                        key = key.substr(0, 7) + "-" + key.substr(7);
-                    }
-                    if (key.indexOf("style") > -1 || key.indexOf("id") > -1) {
-                        continue;
-                    }
-                    var result;
-                    if (key === "font-family") {
-                        result = key + ': "' + property + '";';
-                    } else {
-                        result = key + ": " + property + ";";
-                    }
-                    styleProperties.push(result);
-                }
-            }
             if (isNaN(startTime) || isNaN(endTime)) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
+            }
+            if (cueStyleID) {
+                paragraphStyleProperties = getStyleFromID(cueStyleID);
+            }
+            if (cueRegionID) {
+                paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, cueRegionID);
+            }
+            if (paragraphStyleProperties) {
+                paragraphStyleProperties.forEach(function(d, index) {
+                    if (d.indexOf("line-padding") > -1) {
+                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf("c")));
+                        var valuePx = value * cellUnit[0] + "px;";
+                        paragraphStyleProperties.splice(index, 1);
+                        paragraphStyleProperties.push("padding-left:" + valuePx);
+                        paragraphStyleProperties.push("padding-right:" + valuePx);
+                    }
+                });
             }
             if (cue["smpte:backgroundImage"] !== undefined) {
                 var images = ttml.tt.head.metadata.image_asArray;
@@ -5737,25 +5810,96 @@ MediaPlayer.utils.TTMLParser = function() {
                             id: images[j]["p@xml:id"],
                             data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
                             type: "image",
-                            style: styleProperties
+                            bodyStyle: bodyStyleProperties,
+                            divStyle: divStyleProperties,
+                            divRegion: divRegionProperties,
+                            paragraphRegion: paragraphRegionProperties
                         });
                     }
                 }
             } else {
                 cue.p = [].concat(cue.p);
-                text = "";
-                for (var k = 0; k < cue.p.length; k += 1) {
-                    text += cue.p[k]["span"] || cue.p[k];
-                }
+                textData = cue.p.map(function(caption) {
+                    if (caption.hasOwnProperty("br")) {
+                        return document.createElement("br");
+                    } else if (caption.hasOwnProperty("span")) {
+                        var inlineSpan = document.createElement("span");
+                        if (caption.hasOwnProperty("span@id")) {
+                            inlineSpan.id = caption["span@id"];
+                        }
+                        if (caption.hasOwnProperty("span@style")) {
+                            var styleBlock = getStyleFromID(caption["span@style"]);
+                            if (styleBlock) {
+                                styleBlock.forEach(function(d, index) {
+                                    if (d.indexOf("line-padding") > -1) {
+                                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf("c")));
+                                        var valuePx = value * cellUnit[0] + "px;";
+                                        styleBlock.splice(index, 1);
+                                        styleBlock.push("padding-left:" + valuePx);
+                                        styleBlock.push("padding-right:" + valuePx);
+                                    }
+                                });
+                            }
+                        }
+                        caption["span"] = [].concat(caption["span"]);
+                        if (caption["span"].length > 1) {
+                            caption["span"].forEach(function(el) {
+                                if (typeof el == "string" || el instanceof String) {
+                                    var span = document.createElement("span");
+                                    span.style.cssText = styleBlock.join(" ");
+                                    span.innerHTML = el;
+                                    inlineSpan.appendChild(span);
+                                } else if (el.hasOwnProperty("br")) {
+                                    inlineSpan.appendChild(document.createElement("br"));
+                                }
+                            });
+                        } else {
+                            inlineSpan.style.cssText = styleBlock.join(" ");
+                            inlineSpan.innerHTML = caption["span"];
+                        }
+                        var wrapper = document.createElement("div");
+                        styleBlock.forEach(function(d) {
+                            if (d.indexOf("text-align") > -1) {
+                                wrapper.style.cssText = d;
+                                wrapper.appendChild(inlineSpan);
+                            }
+                        });
+                        if (!wrapper.style.cssText) {
+                            return inlineSpan;
+                        } else {
+                            return wrapper;
+                        }
+                    } else {
+                        var spanElem = document.createElement("span");
+                        spanElem.className = "text";
+                        spanElem.style.cssText = paragraphStyleProperties.join(" ");
+                        spanElem.innerHTML = caption;
+                        var wrapper = document.createElement("div");
+                        paragraphStyleProperties.forEach(function(d) {
+                            if (d.indexOf("text-align") > -1) {
+                                wrapper.style.cssText = d;
+                                wrapper.appendChild(spanElem);
+                            }
+                        });
+                        if (!wrapper.style.cssText) {
+                            return spanElem;
+                        } else {
+                            return wrapper;
+                        }
+                    }
+                });
                 captionArray.push({
                     start: startTime,
                     end: endTime,
-                    data: text,
+                    data: textData,
                     type: "text",
-                    style: styleProperties
+                    bodyStyle: bodyStyleProperties,
+                    divStyle: divStyleProperties,
+                    divRegion: divRegionProperties,
+                    paragraphRegion: paragraphRegionProperties
                 });
             }
-        }
+        });
         return captionArray;
     };
     return {
@@ -5781,17 +5925,13 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
             var self = this, result, label, lang, samplesInfo, i, ccContent;
             if (mimeType == "fragmentedText") {
                 var fragmentExt;
+                var controls;
                 if (!this.initializationSegmentReceived) {
                     this.initializationSegmentReceived = true;
-                    label = mediaInfo.id;
-                    lang = mediaInfo.lang;
-                    this.textTrackExtensions = self.getTextTrackExtensions();
-                    this.textSourceBufferExt = self.getTextSourceBufferExtensions();
-                    this.textSourceBufferExt.initialize(self.videoModel);
-                    this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
-                    self.eventBus.dispatchEvent({
-                        type: MediaPlayer.events.TEXT_TRACK_ADDED
-                    });
+                    this.customCaptions = self.getCustomCaptions();
+                    this.customCaptions.initialize(self.videoModel);
+                    controls = self.system.getObject("customControls");
+                    controls.createControls(self.videoModel);
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
                 } else {
@@ -5803,8 +5943,10 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
-                            this.textSourceBufferExt.addCaptionToPlaylist(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
-                            this.textTrackExtensions.addCaptions(samplesInfo[i].dts / this.timescale, samplesInfo[i].duration / this.timescale, result);
+                            result = [].concat(result);
+                            for (var i = 0; i < result.length; i++) {
+                                this.customCaptions.addCueToPlaylist(result[i]);
+                            }
                         } catch (e) {}
                     }
                 }
@@ -5838,8 +5980,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
         getTextTrackExtensions: function() {
             return this.system.getObject("textTrackExtensions");
         },
-        getTextSourceBufferExtensions: function() {
-            return this.system.getObject("textSourceBufferExt");
+        getCustomCaptions: function() {
+            return this.system.getObject("customCaptions");
         },
         addEventListener: function(type, listener, useCapture) {
             this.eventBus.addEventListener(type, listener, useCapture);
@@ -7946,6 +8088,92 @@ MediaPlayer.dependencies.TextController.eventList = {
     ENAME_CLOSED_CAPTIONING_REQUESTED: "closedCaptioningRequested"
 };
 
+MediaPlayer.dependencies.CustomCaptions = function() {
+    "use strict";
+    var playlist, video, activeCue, captionContainer = document.getElementById("captionContainer"), regions = document.getElementById("captionRegion"), captionText = document.getElementById("captionText"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
+    function addRenderingToCaption(cue) {
+        var divRegionProperties = "", paragraphRegionProperties = "";
+        if (cue.bodyStyle) {
+            captionText.style.cssText = cue.bodyStyle.join("\n");
+        } else if (cue.divStyle) {
+            captionText.style.cssText = cue.divStyle.join("\n");
+        }
+        if (cue.divRegion) {
+            divRegionProperties = processRegionProperties(cue.divRegion);
+        }
+        if (cue.paragraphRegion) {
+            paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
+        }
+        if (!divRegionProperties) {
+            if (!paragraphRegionProperties) {
+                regions.style.cssText += defaultRegion;
+            } else {
+                regions.style.cssText += paragraphRegionProperties;
+            }
+        } else {
+            regions.style.cssText += divRegionProperties;
+        }
+    }
+    function processRegionProperties(inputArray) {
+        var outputString = "";
+        inputArray.forEach(function(property) {
+            if (property.indexOf("vertical-align") > -1) {
+                captionText.style.cssText += property;
+            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1 || property.indexOf("top") > -1 || property.indexOf("left") > -1) {
+                captionContainer.style.cssText += property;
+            } else {
+                outputString += property;
+            }
+        });
+        return outputString;
+    }
+    return {
+        initialize: function(videoModel) {
+            video = videoModel;
+            this.listen();
+            playlist = [];
+        },
+        listen: function() {
+            video.listen("timeupdate", this.onCaption);
+        },
+        addCueToPlaylist: function(cue) {
+            playlist.push(cue);
+            if (playlist.length === 1) {
+                activeCue = playlist[0];
+                this.onCaption();
+            }
+        },
+        onCaption: function() {
+            if (document.getElementById("captionRegion").style.display === "none" || playlist.length === 0) {
+                return;
+            }
+            var time = video.getCurrentTime();
+            var diff = Math.abs(time - activeCue.start);
+            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
+                return;
+            }
+            captionText.innerHTML = "";
+            playlist.forEach(function(cue) {
+                if (time >= cue.start && time <= cue.end) {
+                    var newDiff = Math.abs(time - cue.start);
+                    if (newDiff < diff) {
+                        diff = newDiff;
+                        activeCue = cue;
+                    }
+                    activeCue.data.forEach(function(d) {
+                        captionText.appendChild(d);
+                    });
+                    addRenderingToCaption(activeCue);
+                }
+            });
+        }
+    };
+};
+
+MediaPlayer.dependencies.CustomCaptions.prototype = {
+    constructor: MediaPlayer.dependencies.CustomCaptions
+};
+
 MediaPlayer.dependencies.MediaSourceExtensions = function() {
     "use strict";
 };
@@ -8299,66 +8527,6 @@ MediaPlayer.dependencies.SourceBufferExtensions.QUOTA_EXCEEDED_ERROR_CODE = 22;
 MediaPlayer.dependencies.SourceBufferExtensions.eventList = {
     ENAME_SOURCEBUFFER_REMOVE_COMPLETED: "sourceBufferRemoveCompleted",
     ENAME_SOURCEBUFFER_APPEND_COMPLETED: "sourceBufferAppendCompleted"
-};
-
-MediaPlayer.dependencies.TextSourceBufferExtensions = function() {
-    "use strict";
-    var cue, playlist, video;
-    function addStyleToCaption(style) {
-        var styleBlock = "";
-        for (var i = 0; i < style.length; i++) {
-            styleBlock += style[i] + "\n";
-        }
-        var styleElement = document.getElementsByTagName("style")[0];
-        styleElement.innerHTML = "#container {             position: relative;            display:inline-block;            }            #videoPlayer {            position: relative;            z-index: 1;            }            #captionContainer{            position: absolute;            z-index: 2147483647;            top: 0;            width: 100%;            }            #caption{" + styleBlock + "}";
-    }
-    return {
-        initialize: function(videoModel) {
-            video = videoModel;
-            this.listen();
-            playlist = [];
-        },
-        listen: function() {
-            video.listen("timeupdate", this.onCaption);
-            video.listen("webkitfullscreenchange", this.onFullscreen);
-        },
-        addCaptionToPlaylist: function(dts, duration, caption) {
-            var newCue = {};
-            newCue.decode = dts;
-            newCue.duration = duration;
-            newCue.data = caption;
-            playlist.push(newCue);
-        },
-        onCaption: function() {
-            if (playlist.length !== 0) {
-                var time = video.getCurrentTime();
-                cue = playlist[0];
-                var diff = Math.abs(time - cue.data[0].start);
-                for (var i = 0; i < playlist.length; i++) {
-                    if (time >= playlist[i].data[0].start) {
-                        var newDiff = Math.abs(time - playlist[i].data[0].start);
-                        if (newDiff < diff) {
-                            diff = newDiff;
-                            cue = playlist[i];
-                        }
-                        document.getElementById("caption").innerHTML = cue.data[0].data;
-                        if (cue.data[0].style) {
-                            addStyleToCaption(cue.data[0].style);
-                        }
-                    } else {
-                        continue;
-                    }
-                }
-            } else {
-                return;
-            }
-        },
-        onFullscreen: function() {}
-    };
-};
-
-MediaPlayer.dependencies.TextSourceBufferExtensions.prototype = {
-    constructor: MediaPlayer.dependencies.TextSourceBufferExtensions
 };
 
 MediaPlayer.utils.TextTrackExtensions = function() {
@@ -11084,6 +11252,153 @@ MediaPlayer.utils.Capabilities.prototype = {
         var canPlay = element.canPlayType(codec);
         return canPlay === "probably" || canPlay === "maybe";
     }
+};
+
+MediaPlayer.utils.CustomControls = function() {
+    "use strict";
+    return {
+        createControls: function(videoModel) {
+            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), caption = document.getElementById("caption"), captionArea = document.getElementById("captionRegion");
+            if (video.autoplay) {
+                playbutton.classList.add("icon-pause");
+                playbutton.classList.remove("icon-play");
+            }
+            setTimeout(function() {
+                controls.classList.add("controls-user-inactive");
+                controls.classList.remove("controls-user-active");
+            }, 3e3);
+            container.addEventListener("mousemove", function() {
+                if (controls.classList.contains("controls-user-inactive")) {
+                    controls.classList.add("controls-user-active");
+                    controls.classList.remove("controls-user-inactive");
+                    setTimeout(function() {
+                        controls.classList.add("controls-user-inactive");
+                        controls.classList.remove("controls-user-active");
+                    }, 3e3);
+                }
+            }, false);
+            video.addEventListener("playing", function() {
+                seek.classList.add("light");
+            }, false);
+            if (video.muted) {
+                mutebutton.classList.add("icon-volume");
+                mutebutton.classList.remove("icon-volume-2");
+                volume.value = 0;
+            } else {
+                mutebutton.classList.add("icon-volume-2");
+                mutebutton.classList.remove("icon-volume");
+            }
+            function playpause(e) {
+                if (video.paused) {
+                    video.play();
+                    playbutton.classList.add("icon-pause");
+                    playbutton.classList.remove("icon-play");
+                    seek.classList.add("light");
+                } else {
+                    video.pause();
+                    playbutton.classList.add("icon-play");
+                    playbutton.classList.remove("icon-pause");
+                    seek.classList.remove("light");
+                }
+            }
+            playbutton.addEventListener("click", playpause, false);
+            video.addEventListener("click", playpause, false);
+            captionArea.addEventListener("click", playpause, false);
+            caption.addEventListener("click", function() {
+                if (captionArea.style.display === "none") {
+                    captionArea.style.display = "table";
+                } else {
+                    captionArea.style.display = "none";
+                    var elems = document.getElementsByTagName("*"), i;
+                    for (i in elems) {
+                        if ((" " + elems[i].className + " ").indexOf(" " + "text" + " ") > -1) {
+                            elems[i].innerHTML = "";
+                        }
+                    }
+                }
+            }, false);
+            mutebutton.addEventListener("click", function() {
+                if (video.muted) {
+                    video.muted = false;
+                    mutebutton.classList.add("icon-volume-2");
+                    mutebutton.classList.remove("icon-volume");
+                    volume.value = vval;
+                } else {
+                    video.muted = true;
+                    volume.value = 0;
+                    mutebutton.classList.add("icon-volume");
+                    mutebutton.classList.remove("icon-volume-2");
+                }
+            }, false);
+            var isFullscreen = false;
+            fullscreenbutton.addEventListener("click", function() {
+                if (!isFullscreen) {
+                    if (video.requestFullscreen) {
+                        video.requestFullscreen();
+                    } else if (video.mozRequestFullScreen) {
+                        container.mozRequestFullScreen();
+                    } else if (video.webkitRequestFullscreen) {
+                        video.webkitRequestFullscreen();
+                    }
+                    isFullscreen = true;
+                    fullscreenbutton.classList.remove("icon-fullscreen-alt");
+                    fullscreenbutton.classList.add("icon-fullscreen-exit-alt");
+                } else {
+                    if (document.cancelFullScreen) {
+                        document.cancelFullScreen();
+                    } else if (document.mozCancelFullScreen) {
+                        document.mozCancelFullScreen();
+                    } else if (document.webkitCancelFullScreen) {
+                        document.webkitCancelFullScreen();
+                    }
+                    isFullscreen = false;
+                    fullscreenbutton.classList.add("icon-fullscreen-alt");
+                    fullscreenbutton.classList.remove("icon-fullscreen-exit-alt");
+                }
+            }, false);
+            seek.addEventListener("change", function() {
+                var time = video.duration * (seek.value / 100);
+                video.currentTime = time;
+            }, false);
+            seek.addEventListener("mousedown", function() {
+                video.pause();
+            }, false);
+            seek.addEventListener("mouseup", function() {
+                video.play();
+                playbutton.classList.remove("icon-play");
+                playbutton.classList.add("icon-pause");
+            }, false);
+            video.addEventListener("timeupdate", function() {
+                var value = 100 / video.duration * video.currentTime;
+                seek.value = value;
+            }, false);
+            video.addEventListener("timeupdate", function() {
+                var percent = Math.floor(100 / video.duration * video.currentTime);
+                progressbar.value = percent;
+                progressbar.getElementsByTagName("span")[0].innerHTML = percent;
+            }, false);
+            volume.addEventListener("change", function() {
+                video.volume = this.value;
+                vval = this.value;
+                if (this.value === 0) {
+                    video.muted = true;
+                    mutebutton.classList.add("icon-volume");
+                    mutebutton.classList.remove("icon-volume-2");
+                } else if (this.value !== 0) {
+                    video.muted = false;
+                    mutebutton.classList.add("icon-volume-2");
+                    mutebutton.classList.remove("icon-volume");
+                }
+            }, false);
+            video.addEventListener("ended", function() {
+                video.pause();
+                video.currentTime = 0;
+                playbutton.classList.add("icon-play");
+                playbutton.classList.remove("icon-pause");
+                seek.classList.remove("light");
+            });
+        }
+    };
 };
 
 MediaPlayer.utils.CustomTimeRanges = function() {
