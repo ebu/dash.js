@@ -32,15 +32,17 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
-        activeCue, // Active cue playing
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
         regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
-    /***** Method which assign to the HTML the styling and positioning in the right containers for every cue. *****/
+    /***** Method which assign to the HTML the styling and positioning in the right containers for every cue.
+     * -
+     *
+     * *****/
 
-    function addRenderingToCaption(cue) {
+    function addRenderingToCaption(data) {
         var divRegionProperties = "",
             paragraphRegionProperties = "";
 
@@ -50,10 +52,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
          * *****/
 
         // Extract the properties and affect them to the captionText container.
-        if (cue.bodyStyle) {
-            captionText.style.cssText = cue.bodyStyle.join("\n");
-        } else if (cue.divStyle) {
-            captionText.style.cssText = cue.divStyle.join("\n");
+        if (data.bodyStyle) {
+            captionText.style.cssText = data.bodyStyle.join("\n");
+        } else if (data.divStyle) {
+            captionText.style.cssText = data.divStyle.join("\n");
         }
 
         /***** Transform the region properties and affect to a CSS block.
@@ -62,14 +64,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
          * *****/
 
         // Extract the properties and affect specific properties to other containers than captionRegion.
-        if (cue.divRegion) {
-            divRegionProperties = processRegionProperties(cue.divRegion);
+        if (data.divRegion) {
+            divRegionProperties = processRegionProperties(data.divRegion);
         }
-        if (cue.paragraphRegion) {
-            paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
+        if (data.paragraphRegion) {
+            paragraphRegionProperties = processRegionProperties(data.paragraphRegion);
         }
-
-        // TODO: If there are regions on a p element and on a div.
         // Affect the other properties to the captionRegion container.
         if (!divRegionProperties) {
             if (!paragraphRegionProperties) {
@@ -83,7 +83,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     }
 
 
-    /***** Process specific properties from region to add them at the correct place. *****/
+    /**** Process specific properties from region to add them at the correct place. *****/
     function processRegionProperties(inputArray) {
         var outputString = "";
         inputArray.forEach(function(property) {
@@ -116,14 +116,14 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
         },
 
-        addCueToPlaylist: function(cue) {
-            // Add the cue to the playlist.
-            playlist.push(cue);
-            // Initialization of the first cue.
-            if (playlist.length === 1) {
-                activeCue = playlist[0];
-                this.onCaption();
-            }
+        addCaptionsToPlaylist: function(dts, duration, captions) {
+            var newCues = {};
+            // Record the cues Info for its parsing and displaying.
+            newCues.decode = dts; // dts: decode time stamp
+            newCues.duration = duration;
+            newCues.data = captions;
+            playlist.push(newCues);
+
         },
 
         /***** Function to determine the cue that should be played at the video current time. *****/
@@ -134,35 +134,30 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             var time = video.getCurrentTime();
-            var diff = Math.abs(time - activeCue.start);
-
-            // Check if we need to change the active cue.
-            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
-                return;
-            }
-
-            // Make sure the div is emptied before we add anything.
-            captionText.innerHTML = "";
+            var activeCue = playlist[0];
+            var diff = Math.abs(time - activeCue.data[0].start);
 
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
-                if (time >= cue.start && time <= cue.end) {
-                    var newDiff = Math.abs(time - cue.start);
+                if (time >= cue.data[0].start) {
+                    var newDiff = Math.abs(time - cue.data[0].start);
                     if (newDiff < diff) {
                         diff = newDiff;
                         activeCue = cue;
                     }
 
-                    /*** When the cue is found, we apply its text, style and positioning. ***/
+                    /** When the cue is found, we apply its text, style and positioning. **/
+                        // Make sure the div is emptied before we add anything.
+                    captionText.innerHTML = "";
 
-                    // Add the HTML elements to the     captionText container.
-                    activeCue.data.forEach(function(d) {
+                    // Add the text HTML element to captionText container.
+                    activeCue.data[0].data.forEach(function(d) {
                         captionText.appendChild(d);
                     });
 
                     // Apply the styling and positioning to our text.
-                    addRenderingToCaption(activeCue);
+                    addRenderingToCaption(activeCue.data[0]);
                 }
             });
         }

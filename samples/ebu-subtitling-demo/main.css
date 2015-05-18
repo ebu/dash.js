@@ -17,7 +17,6 @@ width: 100%;
 .captionContainer{
     position: absolute;
     z-index: 2147483647;
-    font-size: 32px;
 }
 
 .captionRegion{
@@ -33,7 +32,6 @@ width: 100%;
     border: 0;
     line-height: 0px;
     display: table-cell;
-    text-align: center;
 }
 
 
