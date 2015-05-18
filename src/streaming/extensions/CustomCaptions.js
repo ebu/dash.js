@@ -32,7 +32,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
-        activeCue,
+        activeCue, // Active cue playing
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
         regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
@@ -43,7 +43,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
      *
      * *****/
 
-    function addRenderingToCaption(data) {
+    function addRenderingToCaption(cue) {
         var divRegionProperties = "",
             paragraphRegionProperties = "";
 
@@ -53,10 +53,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
          * *****/
 
         // Extract the properties and affect them to the captionText container.
-        if (data.bodyStyle) {
-            captionText.style.cssText = data.bodyStyle.join("\n");
-        } else if (data.divStyle) {
-            captionText.style.cssText = data.divStyle.join("\n");
+        if (cue.bodyStyle) {
+            captionText.style.cssText = cue.bodyStyle.join("\n");
+        } else if (cue.divStyle) {
+            captionText.style.cssText = cue.divStyle.join("\n");
         }
 
         /***** Transform the region properties and affect to a CSS block.
@@ -65,11 +65,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
          * *****/
 
         // Extract the properties and affect specific properties to other containers than captionRegion.
-        if (data.divRegion) {
-            divRegionProperties = processRegionProperties(data.divRegion);
+        if (cue.divRegion) {
+            divRegionProperties = processRegionProperties(cue.divRegion);
         }
-        if (data.paragraphRegion) {
-            paragraphRegionProperties = processRegionProperties(data.paragraphRegion);
+        if (cue.paragraphRegion) {
+            paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
         }
         // Affect the other properties to the captionRegion container.
         if (!divRegionProperties) {
@@ -117,23 +117,13 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
         },
 
-        addCaptionsToPlaylist: function(dts, duration, captions) {
-            var newCues = {};
-            // Record the cues Info for its parsing and displaying.
-            newCues.decode = dts; // dts: decode time stamp
-            newCues.duration = duration;
-            newCues.data = captions;
-            playlist.push(newCues);
-
+        addCueToPlaylist: function(cue) {
+            // Add the cue to the playlist.
+            playlist.push(cue);
             // Initialization of the first cue.
             if (playlist.length === 1) {
                 activeCue = playlist[0];
-                // Add the text HTML element to captionText container.
-                activeCue.data[0].data.forEach(function(d) {
-                    captionText.appendChild(d);
-                });
-                // Apply the styling and positioning to our text.
-                addRenderingToCaption(activeCue.data[0]);
+                this.onCaption();
             }
         },
 
@@ -145,18 +135,18 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             var time = video.getCurrentTime();
-            var diff = Math.abs(time - activeCue.data[0].start);
+            var diff = Math.abs(time - activeCue.start);
 
             // Check if we need to change the active cue.
-            if (time > activeCue.data[0].start && time < activeCue.data[0].end) {
+            if (time > activeCue.start && time < activeCue.end) {
                 return;
             }
 
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
-                if (time >= cue.data[0].start) {
-                    var newDiff = Math.abs(time - cue.data[0].start);
+                if (time >= cue.start) {
+                    var newDiff = Math.abs(time - cue.start);
                     if (newDiff < diff) {
                         diff = newDiff;
                         activeCue = cue;
@@ -167,12 +157,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     captionText.innerHTML = "";
 
                     // Add the text HTML element to captionText container.
-                    activeCue.data[0].data.forEach(function(d) {
+                    activeCue.data.forEach(function(d) {
                         captionText.appendChild(d);
                     });
 
                     // Apply the styling and positioning to our text.
-                    addRenderingToCaption(activeCue.data[0]);
+                    addRenderingToCaption(activeCue);
                 }
             });
         }

@@ -44,7 +44,7 @@ MediaPlayer.utils.TTMLParser = function() {
         // - Exactly 3 decimal places must be used for the milliseconds component (include leading zeros).
         // R0031 -For time expressions that use the hh:mm:ss:ff format, the following constraints apply:
         // - Exactly 2 digits must be used in each of the hours, minutes, second, and frame components (include leading zeros).
-        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(:[0-9][0-9]))$/,
+        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/,
         ttml,
         ttmlStylings,
         ttmlLayout,
@@ -118,7 +118,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // For every styles available.
             for (var j = 0; j < ttmlStylings.length; j++) {
                 var currStyle = ttmlStylings[j];
-                if (currStyle['style@xml:id'] === cueStyleID) {
+                if (currStyle['style@xml:id'] === cueStyleID || currStyle['style@id'] === cueStyleID) {
                     // Return the style corresponding to the ID in parameter.
                     return currStyle;
                 }
@@ -130,7 +130,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // For every region available.
             for (var j = 0; j < ttmlLayout.length; j++) {
                 var currReg = ttmlLayout[j];
-                if (currReg['region@xml:id'] === cueRegionID) {
+                if (currReg['region@xml:id'] === cueRegionID || currReg['region@id'] === cueRegionID) {
                     // Return the region corresponding to the ID in parameter.
                     return currReg;
                 }
@@ -149,6 +149,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     //Clean the properties from the parsing
                     key = key.replace("style@tts:", "");
                     key = key.replace("style@xml:", "");
+                    key = key.replace("style@ebutts:", "");
+                    key = key.replace("style@", "");
+
                     // Clean the properties' names
                     key = camelCaseToDash(key);
                     // Not needed to add these.
@@ -181,6 +184,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 //Clean the properties from the parsing
                 key = key.replace("region@tts:", "");
                 key = key.replace("region@xml:", "");
+                key = key.replace("region@:", "");
                 // Clean the properties' names
                 key = camelCaseToDash(key);
                 // Not needed to add these.
@@ -339,17 +343,18 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (cueRegionID) {
                     paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, cueRegionID);
                 }
-
                 // Line padding
-                paragraphStyleProperties.forEach(function(d, index) {
-                    if (d.indexOf("line-padding") > -1) {
-                        var value = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
-                        var valuePx = value * cellUnit[0] + "px;";
-                        paragraphStyleProperties.splice(index, 1);
-                        paragraphStyleProperties.push("padding-left:" + valuePx);
-                        paragraphStyleProperties.push("padding-right:" + valuePx);
-                    }
-                });
+                if(paragraphStyleProperties) {
+                    paragraphStyleProperties.forEach(function (d, index) {
+                        if (d.indexOf("line-padding") > -1) {
+                            var value   = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
+                            var valuePx = value * cellUnit[0] + "px;";
+                            paragraphStyleProperties.splice(index, 1);
+                            paragraphStyleProperties.push("padding-left:" + valuePx);
+                            paragraphStyleProperties.push("padding-right:" + valuePx);
+                        }
+                    });
+                }
 
                 if (cue["smpte:backgroundImage"] !== undefined) {
                     var images = ttml.tt.head.metadata.image_asArray;
@@ -388,9 +393,36 @@ MediaPlayer.utils.TTMLParser = function() {
                             // Compute the style of the span
                             if (caption.hasOwnProperty('span@style')) {
                                 var styleBlock = getStyleFromID(caption['span@style']);
-                                inlineSpan.style.cssText = styleBlock.join(" ");
+                                if(styleBlock) {
+                                    styleBlock.forEach(function (d, index) {
+                                        if (d.indexOf("line-padding") > -1) {
+                                            var value   = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
+                                            var valuePx = value * cellUnit[0] + "px;";
+                                            styleBlock.splice(index, 1);
+                                            styleBlock.push("padding-left:" + valuePx);
+                                            styleBlock.push("padding-right:" + valuePx);
+                                        }
+                                    });
+                                }
                             }
-                            inlineSpan.innerHTML = caption['span'];
+                            // If the span has multi lines (<br/)
+                            caption['span'] = [].concat(caption['span']);
+                            if(caption['span'].length > 1){
+                                caption['span'].forEach(function(el){
+                                    if(typeof el == 'string' || el instanceof String){
+                                        var span = document.createElement('span');
+                                        span.style.cssText = styleBlock.join(" ");
+                                        span.innerHTML = el;
+                                        inlineSpan.appendChild(span);
+                                    } else if (el.hasOwnProperty('br')){
+                                        inlineSpan.appendChild(document.createElement('br'));
+                                    }
+                                });
+                            } else {
+                                inlineSpan.style.cssText = styleBlock.join(" ");
+                                inlineSpan.innerHTML = caption['span'];
+
+                            }
 
                             // Create a div that will wrap around the span to control the text alignment.
                             var wrapper = document.createElement('div');
