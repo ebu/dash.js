@@ -32,16 +32,22 @@ MediaPlayer.utils.TTMLParser = function() {
     "use strict";
 
     /*
-     * This TTML parser follows "EBU-TT-D SUBTITLING DISTRIBUTION FORMAT - tech3380" spec - https://tech.ebu.ch/docs/tech/tech3380.pdf.
+     * This TTML parser follows "TTML Simple Delivery Profile for Closed Captions (US)" spec - http://www.w3.org/TR/ttml10-sdp-us/
      * */
     var SECONDS_IN_HOUR = 60 * 60,
         SECONDS_IN_MIN = 60,
+        // R0028 - A document must not contain a <timeExpression> value that does not conform to the subset of clock-time that
+        // matches either of the following patterns: hh:mm:ss.mss or hh:mm:ss:ff, where hh denotes hours (00-23),
+        // mm denotes minutes (00-59), ss denotes seconds (00-59), mss denotes milliseconds (000-999), and ff denotes frames (00-frameRate - 1).
+        // R0030 - For time expressions that use the hh:mm:ss.mss format, the following constraints apply:
+        // - Exactly 2 digits must be used in each of the hours, minutes, and second components (include leading zeros).
+        // - Exactly 3 decimal places must be used for the milliseconds component (include leading zeros).
+        // R0031 -For time expressions that use the hh:mm:ss:ff format, the following constraints apply:
+        // - Exactly 2 digits must be used in each of the hours, minutes, second, and frame components (include leading zeros).
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/,
         ttml,
         ttmlStylings,
         ttmlLayout,
-        cellResolution,
-        cellUnit,
 
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
@@ -59,6 +65,9 @@ MediaPlayer.utils.TTMLParser = function() {
             parseFloat(timeParts[1]) * SECONDS_IN_MIN +
             parseFloat(timeParts[2]));
 
+            // R0031 -For time expressions that use the hh:mm:ss:ff format, the following constraints apply:
+            //  - A ttp:frameRate attribute must be present on the tt element.
+            //  - A ttp:frameRateMultiplier attribute may be present on the tt element.
             if (timeParts[3]) {
                 frameRate = ttml['tt@ttp:frameRate'];
                 if (frameRate && !isNaN(frameRate)) {
@@ -78,6 +87,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false,
                 hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
 
+            // R001 - A document must contain a tt element.
+            // R002 - A document must contain both a head and body element.
+            // R003 - A document must contain both a styling and a layout element.
             if (hasTt && hasHead && hasLayout && hasStyling && hasBody) {
                 passed = true;
             }
@@ -125,7 +137,7 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         },
 
-        // Compute the style properties to return an array with the cleaned properties.
+        // Compute the style properties to return an array with the cleaned properties
         computeStyle = function(cueStyle) {
             var properties = [];
 
@@ -134,41 +146,31 @@ MediaPlayer.utils.TTMLParser = function() {
                     var property = cueStyle[key];
                     var result;
 
-                    //Clean the properties from the parsing.
+                    //Clean the properties from the parsing
                     key = key.replace("style@tts:", "");
                     key = key.replace("style@xml:", "");
                     key = key.replace("style@ebutts:", "");
                     key = key.replace("style@", "");
 
-                    // Clean the properties' names.
+                    // Clean the properties' names
                     key = camelCaseToDash(key);
-
                     // Not needed to add these.
                     if (key === 'style' || key === 'id') {
                         continue;
                     }
-
-                    // Check for line-padding and font-family properties.
-                    if (key === 'line-padding') {
-                        // Use padding-left/right for line-padding.
-                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
-                        var valuePx = value * cellUnit[0] + "px;";
-                        properties.push("padding-left:" + valuePx);
-                        properties.push("padding-right:" + valuePx);
-                    } else if (key === "font-family") {
-                        // Add quotes for font-family.
+                    // Add quotes for font-family
+                    if (key === "font-family") {
                         result = key + ":'" + property + "';";
-                        properties.push(result);
                     } else {
                         result = key + ":" + property + ";";
-                        properties.push(result);
                     }
+                    properties.push(result);
                 }
             }
             return properties;
         },
 
-        // Compute the region properties to return an array with the cleaned properties.
+        // Compute the region properties to return an array with the cleaned properties
         computeRegion = function(ttmlStylings, cueRegion) {
             var properties = [];
 
@@ -179,11 +181,11 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 var property = cueRegion[key];
 
-                //Clean the properties from the parsing.
+                //Clean the properties from the parsing
                 key = key.replace("region@tts:", "");
                 key = key.replace("region@xml:", "");
                 key = key.replace("region@:", "");
-                // Clean the properties' names.
+                // Clean the properties' names
                 key = camelCaseToDash(key);
                 // Not needed to add these.
                 if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
@@ -223,20 +225,20 @@ MediaPlayer.utils.TTMLParser = function() {
             return properties;
         },
 
-        // Return the computed style from a certain ID.
+        // Return the computed style from a certain ID
         getStyleFromID = function(id) {
             var cueStyle = getStyle(ttmlStylings, id);
             if (cueStyle) {
-                // Compute the style for the cue in CSS form.
+                // Compute the style for the cue in CSS form
                 return computeStyle(cueStyle);
             }
         },
 
-        // Return the computed region from a certain ID.
+        // Return the computed region from a certain ID
         getRegionFromID = function(ttmlLayout, ttmlStylings, id) {
             var cueRegion = getRegion(ttmlLayout, id);
             if (cueRegion) {
-                // Compute the style for the cue in CSS form.
+                // Compute the style for the cue in CSS form
                 return computeRegion(ttmlStylings, cueRegion);
             }
         },
@@ -245,16 +247,18 @@ MediaPlayer.utils.TTMLParser = function() {
             var captionArray = [],
                 errorMsg,
                 cues,
-                pStartTime,
-                pEndTime,
-                pStyleID,
-                pRegionID,
+                startTime,
+                endTime,
+                cueStyleID,
+                cueRegionID,
                 bodyStyleProperties = [],
                 divStyleProperties = [],
                 divRegionProperties = [],
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
                 nsttp,
+                cellResolution,
+                cellUnit,
                 videoHeight,
                 videoWidth,
                 textData;
@@ -287,74 +291,78 @@ MediaPlayer.utils.TTMLParser = function() {
             if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
                 ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
             }
-            // Extract the cues.
             cues = (ttml.tt.body.div) ? ttml.tt.body.div : ttml.tt.body;
 
-
-            // If only one cue, put it in an array.
+            // If only one cue, put it in an array
             cues = [].concat(cues);
 
-            // Check if cues is not empty or undefined.
-            if (!cues || cues.length === 0) {
-                errorMsg = "TTML document does not contain any cues";
-                throw errorMsg;
-            }
-
-            // If body has a style.
+            // If body has a style
             var bodyStyleID = ttml.tt['body@style'];
             if (bodyStyleID) {
                 bodyStyleProperties = getStyleFromID(bodyStyleID);
             }
 
-            // TODO: Adapt for several div.
-            // If div has a style.
+            // If div has a style
             var divStyleID = ttml.tt.body['div@style'];
             if (divStyleID) {
                 divStyleProperties = getStyleFromID(divStyleID);
             }
-            // If div has a region.
+            // If div has a region
             var divRegionID = ttml.tt.body['div@region'];
             if (divRegionID) {
                 divRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
             }
 
-            // TODO: Parse timings on span elements.
-            // Parsing of every cue.
+            // Check if cues is not empty or undefined
+            if (!cues || cues.length === 0) {
+                errorMsg = "TTML document does not contain any cues";
+                throw errorMsg;
+            }
+
+            // Parsing of every cue
             cues.forEach(function(cue) {
-                // Obtain the start and end time of the cue.
-                pStartTime = parseTimings(cue['p@begin']);
-                pEndTime = parseTimings(cue['p@end']);
+                // Obtain the start and end time of the cue
+                startTime = parseTimings(cue['p@begin']);
+                endTime = parseTimings(cue['p@end']);
+                // Obtain the style and region assigned to the cue if there is
+                cueStyleID = cue['p@style'];
+                cueRegionID = cue['p@region'];
 
-                // Obtain the style and region assigned to the cue if there is one.
-                pStyleID = cue['p@style'];
-                pRegionID = cue['p@region'];
-
-                // Error if timing is not specified.
-                if (isNaN(pStartTime) || isNaN(pEndTime)) {
+                // Error if timing is not specified
+                if (isNaN(startTime) || isNaN(endTime)) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
 
-                /*** If p specify a style and / or a region. ***/
-
-                // Find the right style for our cue.
-                if (pStyleID) {
-                    paragraphStyleProperties = getStyleFromID(pStyleID);
+                // Find the right style for our cue
+                if (cueStyleID) {
+                    paragraphStyleProperties = getStyleFromID(cueStyleID);
                 }
 
-                // Find the right region for our cue.
-                if (pRegionID) {
-                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
+                // Find the right region for our cue
+                if (cueRegionID) {
+                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, cueRegionID);
+                }
+                // Line padding
+                if(paragraphStyleProperties) {
+                    paragraphStyleProperties.forEach(function (d, index) {
+                        if (d.indexOf("line-padding") > -1) {
+                            var value   = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
+                            var valuePx = value * cellUnit[0] + "px;";
+                            paragraphStyleProperties.splice(index, 1);
+                            paragraphStyleProperties.push("padding-left:" + valuePx);
+                            paragraphStyleProperties.push("padding-right:" + valuePx);
+                        }
+                    });
                 }
 
-                // If cues are SMPTE images.
                 if (cue["smpte:backgroundImage"] !== undefined) {
                     var images = ttml.tt.head.metadata.image_asArray;
                     for (var j = 0; j < images.length; j += 1) {
                         if (("#" + images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
                             captionArray.push({
-                                start: pStartTime,
-                                end: pEndTime,
+                                start: startTime,
+                                end: endTime,
                                 id: images[j]["p@xml:id"],
                                 data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
                                 type: "image",
@@ -366,42 +374,47 @@ MediaPlayer.utils.TTMLParser = function() {
                         }
                     }
                 }
-                // If cues are not SMPTE images, extract the texts, styles and regions.
+                // If cues are not SMPTE images, extract the text
                 else {
                     cue.p = [].concat(cue.p);
 
-                    /*** Parse every cue in the ttml document and create elements accordingly. ***/
                     textData = cue.p.map(function(caption) {
-
-                        /*** Create a br element if there is one in the cue. ***/
+                        // Add a <br/> element for a new line
                         if (caption.hasOwnProperty('br')) {
                             return document.createElement('br');
                         }
-
-                        /*** Create the inline span element if there is one in the cue. ***/
+                        // Create the inline span element
                         else if (caption.hasOwnProperty('span')) {
-                            // If span comprises several elements (text lines and br elements for example).
-                            caption['span'] = [].concat(caption['span']);
-                            // Create the inline span.
                             var inlineSpan = document.createElement('span');
-
-                            // Extract the style of the span.
+                            // Set the id of the span
+                            if (caption.hasOwnProperty('span@id')) {
+                                inlineSpan.id = caption['span@id'];
+                            }
+                            // Compute the style of the span
                             if (caption.hasOwnProperty('span@style')) {
                                 var styleBlock = getStyleFromID(caption['span@style']);
+                                if(styleBlock) {
+                                    styleBlock.forEach(function (d, index) {
+                                        if (d.indexOf("line-padding") > -1) {
+                                            var value   = parseFloat(d.slice(d.indexOf(":") + 1, d.indexOf('c')));
+                                            var valuePx = value * cellUnit[0] + "px;";
+                                            styleBlock.splice(index, 1);
+                                            styleBlock.push("padding-left:" + valuePx);
+                                            styleBlock.push("padding-right:" + valuePx);
+                                        }
+                                    });
+                                }
                             }
-
-                            // If the span has <br/> elements, add them as child nodes.
-                            if (caption['span'].length > 1) {
-                                caption['span'].forEach(function(el) {
-                                    if (typeof el == 'string' || el instanceof String) {
-                                        // Create a new span for each text line.
+                            // If the span has multi lines (<br/)
+                            caption['span'] = [].concat(caption['span']);
+                            if(caption['span'].length > 1){
+                                caption['span'].forEach(function(el){
+                                    if(typeof el == 'string' || el instanceof String){
                                         var span = document.createElement('span');
-                                        // Apply the span style to the inline text.
                                         span.style.cssText = styleBlock.join(" ");
                                         span.innerHTML = el;
                                         inlineSpan.appendChild(span);
-                                    } else if (el.hasOwnProperty('br')) {
-                                        // Create a br element if it is one.
+                                    } else if (el.hasOwnProperty('br')){
                                         inlineSpan.appendChild(document.createElement('br'));
                                     }
                                 });
@@ -411,8 +424,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
                             }
 
-                            // Create a div that will wrap around the span if we have a text align property.
-                            // So that the text-align property concerns only this specific span element.
+                            // Create a div that will wrap around the span to control the text alignment.
                             var wrapper = document.createElement('div');
                             styleBlock.forEach(function(d) {
                                 if (d.indexOf('text-align') > -1) {
@@ -423,12 +435,11 @@ MediaPlayer.utils.TTMLParser = function() {
                             if (!wrapper.style.cssText) {
                                 return inlineSpan
                             } else {
-                                // If the wrapper has been set, we affect the wrapper.
                                 return wrapper;
                             }
 
                         }
-                        /*** If it is only p element ***/
+                        // If it is only text in a <p>
                         else {
                             var spanElem = document.createElement('span');
                             spanElem.className = 'text';
@@ -437,7 +448,6 @@ MediaPlayer.utils.TTMLParser = function() {
                             spanElem.innerHTML = caption;
 
                             // Create a div that will wrap around the span to control the text alignment.
-                            // So that the text-align property concerns only this specific p element.
                             var wrapper = document.createElement('div');
                             paragraphStyleProperties.forEach(function(d) {
                                 if (d.indexOf('text-align') > -1) {
@@ -457,8 +467,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     });
 
                     captionArray.push({
-                        start: pStartTime,
-                        end: pEndTime,
+                        start: startTime,
+                        end: endTime,
                         data: textData,
                         type: "text",
                         bodyStyle: bodyStyleProperties,
