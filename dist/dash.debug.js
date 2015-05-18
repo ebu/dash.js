@@ -5925,8 +5925,8 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                         try {
                             result = parser.parse(ccContent);
                             result = [].concat(result);
-                            for (var i = 0; i < result.length; i++) {
-                                this.customCaptions.addCueToPlaylist(result[i]);
+                            for (var j = 0; j < result.length; j++) {
+                                this.customCaptions.addCueToPlaylist(result[j]);
                             }
                         } catch (e) {}
                     }
