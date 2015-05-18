@@ -32,6 +32,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
+        activeCue,
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
         regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
@@ -124,6 +125,16 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             newCues.data = captions;
             playlist.push(newCues);
 
+            // Initialization of the first cue.
+            if (playlist.length === 1) {
+                activeCue = playlist[0];
+                // Add the text HTML element to captionText container.
+                activeCue.data[0].data.forEach(function(d) {
+                    captionText.appendChild(d);
+                });
+                // Apply the styling and positioning to our text.
+                addRenderingToCaption(activeCue.data[0]);
+            }
         },
 
         /***** Function to determine the cue that should be played at the video current time. *****/
@@ -134,8 +145,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             var time = video.getCurrentTime();
-            var activeCue = playlist[0];
             var diff = Math.abs(time - activeCue.data[0].start);
+
+            // Check if we need to change the active cue.
+            if (time > activeCue.data[0].start && time < activeCue.data[0].end) {
+                return;
+            }
 
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
