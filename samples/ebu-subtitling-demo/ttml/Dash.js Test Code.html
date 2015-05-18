@@ -1,0 +1,42 @@
+<!doctype html>
+<html>
+
+<head>
+    <title>Dash.js Test Code</title>
+    <style>
+    </style>
+
+    <link rel="stylesheet" href="ttml/playerframework.min.css">
+    <link rel="stylesheet" href="ttml/style.css">
+
+    <script src="ttml/playerframework.debug.js"></script>
+</head>
+<body>
+<h1>Dash.js Test Code</h1>
+
+<!-- DASH.JS VIDEO PLAYER -->
+<div id="container">
+
+    <video id="videoPlayer" controls="true">
+    </video>
+    <div id="captionContainer"><div id="caption"></div></div>
+
+</div>
+
+<script src="/dist/dash.all.js"></script>
+
+<!-- DASH.JS PLAYER SET UP -->
+<script>
+    (function(){
+        var url = "http://localhost:8080/samples/ebu-subtitling-demo/sources/test-dash-10s-subs-rand-dashavc264/manifest-test-dash-10s-subs-rand-dashavc264-2.mpd";
+        var context = new Dash.di.DashContext();
+        var player = new MediaPlayer(context);
+        player.startup();
+        player.attachView(document.querySelector("#videoPlayer"));
+        player.attachSource(url);
+
+    })();
+</script>
+
+</body>
+</html>
