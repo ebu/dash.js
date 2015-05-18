@@ -77,6 +77,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
 
                         this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
+                        console.warn(ccContent);
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
