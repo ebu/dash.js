@@ -8071,7 +8071,7 @@ MediaPlayer.dependencies.TextController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionContainer = document.getElementById("captionContainer"), regions = document.getElementById("captionRegion"), captionText = document.getElementById("captionText"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
+    var playlist, video, activeCue, captionContainer = document.getElementById("captionContainer"), captionRegion = document.getElementById("captionRegion"), captionText = document.getElementById("captionText"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
     function addRenderingToCaption(cue) {
         var divRegionProperties = "", paragraphRegionProperties = "";
         if (cue.bodyStyle) {
@@ -8087,12 +8087,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         }
         if (!divRegionProperties) {
             if (!paragraphRegionProperties) {
-                regions.style.cssText += defaultRegion;
+                captionRegion.style.cssText += defaultRegion;
             } else {
-                regions.style.cssText += paragraphRegionProperties;
+                captionRegion.style.cssText += paragraphRegionProperties;
             }
         } else {
-            regions.style.cssText += divRegionProperties;
+            captionRegion.style.cssText += divRegionProperties;
         }
     }
     function processRegionProperties(inputArray) {
@@ -8125,7 +8125,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
         },
         onCaption: function() {
-            if (document.getElementById("captionRegion").style.display === "none" || playlist.length === 0) {
+            if (captionRegion.style.display === "none" || playlist.length === 0) {
                 return;
             }
             var time = video.getCurrentTime();
@@ -8134,6 +8134,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             captionText.innerHTML = "";
+            captionRegion.style.cssText = "";
             playlist.forEach(function(cue) {
                 if (time >= cue.start && time <= cue.end) {
                     var newDiff = Math.abs(time - cue.start);

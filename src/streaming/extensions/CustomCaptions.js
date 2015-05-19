@@ -34,7 +34,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         video, // video from the VideoModel
         activeCue, // Active cue playing
         captionContainer = document.getElementById('captionContainer'), // container of the caption region
-        regions = document.getElementById('captionRegion'), // container of the captionText, represent the region
+        captionRegion = document.getElementById('captionRegion'), // container of the captionText, represent the region
         captionText = document.getElementById('captionText'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
@@ -73,12 +73,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         // Affect the other properties to the captionRegion container.
         if (!divRegionProperties) {
             if (!paragraphRegionProperties) {
-                regions.style.cssText += defaultRegion;
+                captionRegion.style.cssText += defaultRegion;
             } else {
-                regions.style.cssText += paragraphRegionProperties;
+                captionRegion.style.cssText += paragraphRegionProperties;
             }
         } else {
-            regions.style.cssText += divRegionProperties;
+            captionRegion.style.cssText += divRegionProperties;
         }
     }
 
@@ -130,7 +130,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         onCaption: function() {
 
             // Check if we have a cue to play and if the cc is turned on.
-            if (document.getElementById('captionRegion').style.display === 'none' || playlist.length === 0) {
+            if (captionRegion.style.display === 'none' || playlist.length === 0) {
                 return;
             }
             var time = video.getCurrentTime();
@@ -143,6 +143,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
             // Make sure the div is emptied before we add anything.
             captionText.innerHTML = "";
+            captionRegion.style.cssText = "";
 
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
