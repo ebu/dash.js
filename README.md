@@ -2,6 +2,7 @@
 # EBU-TT-D Subtitling within dash.js
 
 This is a fork of dash.js with as purpose to *experiment* with the support for XML based subtitles like EBU-TT-D within dash.js
+Please note the code has not been fully tested yet and no claims are made in terms of feature completeness or correctness of the implementation!
 
 The current work focuses on an HTML/CSS overlay to replace the native approach. This solution allows dash.js to render the subtitles and its properties closer to the author's intentions. In fact, CSS properties are very close to the ones used in EBU-TT-D. The approach is also quite versatile as it allows us to reproduce properties that are not part of the CSS specification.
 
