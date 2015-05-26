@@ -143,8 +143,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
             // Make sure the div is emptied before we add anything.
             captionText.innerHTML = "";
-            captionRegion.style.cssText = "";
-
+            if (!activeCue.showBackground) {
+                captionRegion.style.cssText = "";
+            }
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking

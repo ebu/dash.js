@@ -42,6 +42,7 @@ MediaPlayer.utils.TTMLParser = function() {
         ttmlLayout,
         cellResolution,
         cellUnit,
+        showBackground,
 
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
@@ -186,7 +187,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 // Clean the properties' names.
                 key = camelCaseToDash(key);
                 // Not needed to add these.
-                if (key === "show-background" || key === "region" || key === "id") {
+                if (key === "region" || key === "id") {
                     continue;
                 }
                 /***
@@ -268,6 +269,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 } else if (key === "style") {
                     var styleFromID = getStyleFromID(property);
                     properties.push(styleFromID);
+                } else if (key === "show-background"){
+                    showBackground = (property === "always")? true : false;
                 } else {
                     var result;
                     result = key + ':' + property + ';';
@@ -415,7 +418,8 @@ MediaPlayer.utils.TTMLParser = function() {
                                 bodyStyle: bodyStyleProperties,
                                 divStyle: divStyleProperties,
                                 divRegion: divRegionProperties,
-                                paragraphRegion: paragraphRegionProperties
+                                paragraphRegion: paragraphRegionProperties,
+                                showBackground: showBackground
                             });
                         }
                     }
@@ -518,7 +522,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         bodyStyle: bodyStyleProperties,
                         divStyle: divStyleProperties,
                         divRegion: divRegionProperties,
-                        paragraphRegion: paragraphRegionProperties
+                        paragraphRegion: paragraphRegionProperties,
+                        showBackground: showBackground
                     });
                 }
             });
