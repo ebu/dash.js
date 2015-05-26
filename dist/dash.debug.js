@@ -5705,7 +5705,7 @@ MediaPlayer.utils.TTMLParser = function() {
             key = key.replace("region@xml:", "");
             key = key.replace("region@:", "");
             key = camelCaseToDash(key);
-            if (key === "writing-mode" || key === "show-background" || key === "region" || key === "id") {
+            if (key === "show-background" || key === "region" || key === "id") {
                 continue;
             }
             if (key === "extent") {
@@ -5723,6 +5723,17 @@ MediaPlayer.utils.TTMLParser = function() {
                     after: "vertical-align: bottom"
                 };
                 properties.push(displayAlign[property]);
+            } else if (key === "writing-mode") {
+                var writingMode = {
+                    lrtb: "-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;",
+                    rltb: "-ms-writing-mode: rl-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;                                   direction: rtl;                                   unicode-bidi: bidi-override;",
+                    tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                    -webkit-writing-mode: vertical-rl;                                   -moz-writing-mode: vertical-rl;                                   -ms-writing-mode: vertical-rl;                                   writing-mode: vertical-rl; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
+                    tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */                                    -webkit-writing-mode: vertical-lr;                                   -moz-writing-mode: vertical-lr;                                   -ms-writing-mode: vertical-lr;                                   writing-mode: vertical-lr; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
+                    lr: "-ms-writing-mode: lr-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;",
+                    rl: "-ms-writing-mode: rl-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;                                 direction: rtl;",
+                    tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                  -webkit-writing-mode: vertical-rl;                                 -moz-writing-mode: vertical-rl;                                 -ms-writing-mode: vertical-rl;                                 writing-mode: vertical-rl; /* new syntax */                                 -webkit-text-orientation: upright;                                 -moz-text-orientation: upright;                                 -ms-text-orientation: upright;                                 text-orientation: upright;"
+                };
+                properties.push(writingMode[property]);
             } else if (key === "style") {
                 var styleFromID = getStyleFromID(property);
                 properties.push(styleFromID);
