@@ -148,7 +148,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     if (key === 'style' || key === 'id') {
                         continue;
                     }
-
                     // Check for line-padding and font-family properties.
                     if (key === 'line-padding') {
                         // Use padding-left/right for line-padding.
@@ -172,7 +171,6 @@ MediaPlayer.utils.TTMLParser = function() {
         // Compute the region properties to return an array with the cleaned properties.
         computeRegion = function(ttmlStylings, cueRegion) {
             var properties = [];
-
             for (var key in cueRegion) {
                 if (!cueRegion.hasOwnProperty(key)) {
                     continue;
@@ -268,7 +266,9 @@ MediaPlayer.utils.TTMLParser = function() {
                         properties.push(writingMode[property]);
                 } else if (key === "style") {
                     var styleFromID = getStyleFromID(property);
-                    properties.push(styleFromID);
+                    styleFromID.forEach(function(prop){
+                        properties.push(prop);
+                    });
                 } else if (key === "show-background"){
                     showBackground = (property === "always")? true : false;
                 } else {
@@ -296,6 +296,30 @@ MediaPlayer.utils.TTMLParser = function() {
                 // Compute the style for the cue in CSS form.
                 return computeRegion(ttmlStylings, cueRegion);
             }
+        },
+
+        arrayContains = function(text, array){
+            var res = false;
+            array.forEach(function(str){
+                if(str.indexOf(text) > -1){
+                    res = true;
+                }
+            });
+            return res;
+        },
+
+        indexOfProperty = function(text, array){
+            return array.indexOf(text);
+        },
+
+        propertyFromArray = function(text, array){
+            var res = '';
+            array.forEach(function(str){
+                if(str.indexOf(text) > -1){
+                    res = str;
+                }
+            });
+            return res;
         },
 
         internalParse = function(data) {
@@ -382,6 +406,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 pStartTime = parseTimings(cue['p@begin']);
                 pEndTime = parseTimings(cue['p@end']);
 
+                // TODO: check for span, if yes, check for timings information
+
                 // Obtain the style and region assigned to the cue if there is one.
                 pStyleID = cue['p@style'];
                 pRegionID = cue['p@region'];
@@ -394,15 +420,59 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 /*** If p specify a style and / or a region. ***/
 
+                // Find the right region for our cue.
+                var outerSpanVH = '';
+                if (pRegionID) {
+                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
+                }
+
                 // Find the right style for our cue.
                 if (pStyleID) {
                     paragraphStyleProperties = getStyleFromID(pStyleID);
                 }
 
-                // Find the right region for our cue.
-                if (pRegionID) {
-                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
+                var height = 'height';
+                if(arrayContains(height, paragraphRegionProperties)){
+                    var value = propertyFromArray(height, paragraphRegionProperties);
+                    // TODO: Change so it is dynamic and elegant!
+                    // videoHeight in 16:9 display, in vh unit.
+                    var videoHeightVH = 90;
+                    value = Number(value.match(/(\d+)/)[0]);
+                    value = value/100 * videoHeightVH;
+                    outerSpanVH = "line-height: " + value + "vh;";
                 }
+
+                // Text Align needs to be set at the region level.
+                var textAlign = 'text-align';
+                if(arrayContains(textAlign, paragraphStyleProperties)){
+                    var value = propertyFromArray(textAlign, paragraphStyleProperties);
+                    var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
+                    console.warn(paragraphStyleProperties);
+                    paragraphRegionProperties.push(value);
+                    paragraphStyleProperties.splice(idTxtAl,1);
+                }
+
+                var verticalAlign = 'vertical-align';
+                if(arrayContains(verticalAlign, paragraphRegionProperties)){
+                    var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
+                    var idVerAl = indexOfProperty(value, paragraphRegionProperties);
+                    console.warn(idVerAl);
+                    paragraphStyleProperties.push(value);
+                    paragraphRegionProperties.splice(idVerAl,1);
+                }
+                console.warn(paragraphStyleProperties);
+                console.warn(paragraphRegionProperties);
+
+                // Create an outer span element: needed so that inner content
+                // can be vertically aligned to something.
+                var outerSpan = document.createElement('span');
+                outerSpan.className = 'outerSpan';
+                // TODO: find the correct value for default line-height.
+                outerSpan.style.cssText = outerSpanVH? outerSpanVH: "18vh";
+
+                // Create an inner Span containing the cue and its children if there are.
+                var innerSpan = document.createElement('span');
+                innerSpan.className = 'innerSpan';
 
                 // If cues are SMPTE images.
                 if (cue["smpte:backgroundImage"] !== undefined) {
@@ -424,16 +494,19 @@ MediaPlayer.utils.TTMLParser = function() {
                         }
                     }
                 }
-                // If cues are not SMPTE images, extract the texts, styles and regions.
+                /*** Parse every cue in the ttml document and create elements accordingly.
+                 * If cues are not SMPTE images:
+                 * We need to treat every inline element inside the cue (span or br)
+                 ***/
                 else {
+                    // If the cue has only one element, it needs to be put in an array.
                     cue.p = [].concat(cue.p);
 
-                    /*** Parse every cue in the ttml document and create elements accordingly. ***/
-                    textData = cue.p.map(function(caption) {
-
+                    // For each element, we add it properly in the cue.
+                    cue.p.forEach(function(caption) {
                         /*** Create a br element if there is one in the cue. ***/
                         if (caption.hasOwnProperty('br')) {
-                            return document.createElement('br');
+                            innerSpan.appendChild(document.createElement('br'));
                         }
 
                         /*** Create the inline span element if there is one in the cue. ***/
@@ -452,67 +525,32 @@ MediaPlayer.utils.TTMLParser = function() {
                             if (caption['span'].length > 1) {
                                 caption['span'].forEach(function(el) {
                                     if (typeof el == 'string' || el instanceof String) {
-                                        // Create a new span for each text line.
-                                        var span = document.createElement('span');
-                                        // Apply the span style to the inline text.
-                                        span.style.cssText = styleBlock.join(" ");
-                                        span.innerHTML = el;
-                                        inlineSpan.appendChild(span);
+                                        var textNode = document.createTextNode(el);
+                                        inlineSpan.appendChild(textNode);
                                     } else if (el.hasOwnProperty('br')) {
                                         // Create a br element if it is one.
                                         inlineSpan.appendChild(document.createElement('br'));
                                     }
                                 });
                             } else {
+                                // Affect the style and text to the inline span.
                                 inlineSpan.style.cssText = styleBlock.join(" ");
                                 inlineSpan.innerHTML = caption['span'];
-
+                                innerSpan.appendChild(inlineSpan);
                             }
-
-                            // Create a div that will wrap around the span if we have a text align property.
-                            // So that the text-align property concerns only this specific span element.
-                            var wrapper = document.createElement('div');
-                            styleBlock.forEach(function(d) {
-                                if (d.indexOf('text-align') > -1) {
-                                    wrapper.style.cssText = d;
-                                    wrapper.appendChild(inlineSpan);
-                                }
-                            });
-                            if (!wrapper.style.cssText) {
-                                return inlineSpan
-                            } else {
-                                // If the wrapper has been set, we affect the wrapper.
-                                return wrapper;
-                            }
-
                         }
-                        /*** If it is only p element ***/
+                        /*** Add the text that is not in any inline element ***/
                         else {
-                            var spanElem = document.createElement('span');
-                            spanElem.className = 'text';
-
-                            spanElem.style.cssText = paragraphStyleProperties.join(" ");
-                            spanElem.innerHTML = caption;
-
-                            // Create a div that will wrap around the span to control the text alignment.
-                            // So that the text-align property concerns only this specific p element.
-                            var wrapper = document.createElement('div');
-                            paragraphStyleProperties.forEach(function(d) {
-                                if (d.indexOf('text-align') > -1) {
-                                    wrapper.style.cssText = d;
-                                    wrapper.appendChild(spanElem);
-                                }
-                            });
-
-
-                            if (!wrapper.style.cssText) {
-                                return spanElem;
-                            } else {
-                                return wrapper;
-                            }
-
+                            // Affect the text to the inner span.
+                            var textNode = document.createTextNode(caption);
+                            innerSpan.appendChild(textNode);
+                            innerSpan.style.cssText = paragraphStyleProperties.join(" ");
                         }
                     });
+
+                    outerSpan.appendChild(innerSpan);
+
+                    textData = outerSpan;
 
                     captionArray.push({
                         start: pStartTime,

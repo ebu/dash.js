@@ -33,9 +33,8 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
         activeCue, // Active cue playing
-        captionContainer = document.getElementById('captionContainer'), // container of the caption region
         captionRegion = document.getElementById('captionRegion'), // container of the captionText, represent the region
-        captionText = document.getElementById('captionText'), // container with all the text
+        captionText = document.getElementById('innerSpan'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
     /***** Method which assign to the HTML the styling and positioning in the right containers for every cue. *****/
@@ -50,9 +49,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
          * *****/
 
         // Extract the properties and affect them to the captionText container.
-        if (cue.bodyStyle) {
+        if (cue.bodyStyle.length > 0) {
             captionText.style.cssText = cue.bodyStyle.join("\n");
-        } else if (cue.divStyle) {
+        } else if (cue.divStyle.length > 0) {
             captionText.style.cssText = cue.divStyle.join("\n");
         }
 
@@ -88,12 +87,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         var outputString = "";
         inputArray.forEach(function(property) {
             // Vertical-align must be applied to the captionText container (display table).
-            // Width, heigth, top and left must be applied to the captionContainer.
-            if (property.indexOf("vertical-align") > -1) {
-                captionText.style.cssText += property;
-            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1 ||
+            // Width, heigth, top and left must be applied to the captionRegion.
+            if (property.indexOf("width") > -1 || property.indexOf("height") > -1 ||
                 property.indexOf("top") > -1 || property.indexOf("left") > -1) {
-                captionContainer.style.cssText += property;
+                captionRegion.style.cssText += property;
             } else {
                 outputString += property;
             }
@@ -137,15 +134,19 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             var diff = Math.abs(time - activeCue.start);
 
             // Check if we need to change the active cue.
-            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
+            if (time > activeCue.start && time < activeCue.end && captionRegion.childElementCount > 0) {
                 return;
             }
 
-            // Make sure the div is emptied before we add anything.
-            captionText.innerHTML = "";
+            // Make sure the region is emptied before we add anything.
+            while (captionRegion.firstChild) {
+                captionRegion.removeChild(captionRegion.firstChild);
+            }
+
             if (!activeCue.showBackground) {
                 captionRegion.style.cssText = "";
             }
+
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
@@ -158,13 +159,13 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
                     /*** When the cue is found, we apply its text, style and positioning. ***/
 
-                    // Add the HTML elements to the     captionText container.
-                    activeCue.data.forEach(function(d) {
-                        captionText.appendChild(d);
-                    });
+                    // Add the HTML elements to the captionText container.
+                    if(activeCue.data){
+                        captionRegion.appendChild(activeCue.data);
 
-                    // Apply the styling and positioning to our text.
-                    addRenderingToCaption(activeCue);
+                        // Apply the styling and positioning to our text.
+                        addRenderingToCaption(activeCue);
+                    }
                 }
             });
         }

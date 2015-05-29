@@ -5617,7 +5617,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, cellResolution, cellUnit, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, cellResolution, cellUnit, showBackground, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5705,7 +5705,7 @@ MediaPlayer.utils.TTMLParser = function() {
             key = key.replace("region@xml:", "");
             key = key.replace("region@:", "");
             key = camelCaseToDash(key);
-            if (key === "show-background" || key === "region" || key === "id") {
+            if (key === "region" || key === "id") {
                 continue;
             }
             if (key === "extent") {
@@ -5736,7 +5736,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push(writingMode[property]);
             } else if (key === "style") {
                 var styleFromID = getStyleFromID(property);
-                properties.push(styleFromID);
+                styleFromID.forEach(function(prop) {
+                    properties.push(prop);
+                });
+            } else if (key === "show-background") {
+                showBackground = property === "always" ? true : false;
             } else {
                 var result;
                 result = key + ":" + property + ";";
@@ -5754,6 +5758,24 @@ MediaPlayer.utils.TTMLParser = function() {
         if (cueRegion) {
             return computeRegion(ttmlStylings, cueRegion);
         }
+    }, arrayContains = function(text, array) {
+        var res = false;
+        array.forEach(function(str) {
+            if (str.indexOf(text) > -1) {
+                res = true;
+            }
+        });
+        return res;
+    }, indexOfProperty = function(text, array) {
+        return array.indexOf(text);
+    }, propertyFromArray = function(text, array) {
+        var res = "";
+        array.forEach(function(str) {
+            if (str.indexOf(text) > -1) {
+                res = str;
+            }
+        });
+        return res;
     }, internalParse = function(data) {
         var captionArray = [], errorMsg, cues, pStartTime, pEndTime, pStyleID, pRegionID, bodyStyleProperties = [], divStyleProperties = [], divRegionProperties = [], paragraphStyleProperties = [], paragraphRegionProperties = [], nsttp, videoHeight, videoWidth, textData;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
@@ -5800,12 +5822,44 @@ MediaPlayer.utils.TTMLParser = function() {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            if (pStyleID) {
-                paragraphStyleProperties = getStyleFromID(pStyleID);
-            }
+            var outerSpanVH = "";
             if (pRegionID) {
                 paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
             }
+            if (pStyleID) {
+                paragraphStyleProperties = getStyleFromID(pStyleID);
+            }
+            var height = "height";
+            if (arrayContains(height, paragraphRegionProperties)) {
+                var value = propertyFromArray(height, paragraphRegionProperties);
+                var videoHeightVH = 90;
+                value = Number(value.match(/(\d+)/)[0]);
+                value = value / 100 * videoHeightVH;
+                outerSpanVH = "line-height: " + value + "vh;";
+            }
+            var textAlign = "text-align";
+            if (arrayContains(textAlign, paragraphStyleProperties)) {
+                var value = propertyFromArray(textAlign, paragraphStyleProperties);
+                var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
+                console.warn(paragraphStyleProperties);
+                paragraphRegionProperties.push(value);
+                paragraphStyleProperties.splice(idTxtAl, 1);
+            }
+            var verticalAlign = "vertical-align";
+            if (arrayContains(verticalAlign, paragraphRegionProperties)) {
+                var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
+                var idVerAl = indexOfProperty(value, paragraphRegionProperties);
+                console.warn(idVerAl);
+                paragraphStyleProperties.push(value);
+                paragraphRegionProperties.splice(idVerAl, 1);
+            }
+            console.warn(paragraphStyleProperties);
+            console.warn(paragraphRegionProperties);
+            var outerSpan = document.createElement("span");
+            outerSpan.className = "outerSpan";
+            outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
+            var innerSpan = document.createElement("span");
+            innerSpan.className = "innerSpan";
             if (cue["smpte:backgroundImage"] !== undefined) {
                 var images = ttml.tt.head.metadata.image_asArray;
                 for (var j = 0; j < images.length; j += 1) {
@@ -5819,15 +5873,16 @@ MediaPlayer.utils.TTMLParser = function() {
                             bodyStyle: bodyStyleProperties,
                             divStyle: divStyleProperties,
                             divRegion: divRegionProperties,
-                            paragraphRegion: paragraphRegionProperties
+                            paragraphRegion: paragraphRegionProperties,
+                            showBackground: showBackground
                         });
                     }
                 }
             } else {
                 cue.p = [].concat(cue.p);
-                textData = cue.p.map(function(caption) {
+                cue.p.forEach(function(caption) {
                     if (caption.hasOwnProperty("br")) {
-                        return document.createElement("br");
+                        innerSpan.appendChild(document.createElement("br"));
                     } else if (caption.hasOwnProperty("span")) {
                         caption["span"] = [].concat(caption["span"]);
                         var inlineSpan = document.createElement("span");
@@ -5837,10 +5892,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         if (caption["span"].length > 1) {
                             caption["span"].forEach(function(el) {
                                 if (typeof el == "string" || el instanceof String) {
-                                    var span = document.createElement("span");
-                                    span.style.cssText = styleBlock.join(" ");
-                                    span.innerHTML = el;
-                                    inlineSpan.appendChild(span);
+                                    var textNode = document.createTextNode(el);
+                                    inlineSpan.appendChild(textNode);
                                 } else if (el.hasOwnProperty("br")) {
                                     inlineSpan.appendChild(document.createElement("br"));
                                 }
@@ -5848,38 +5901,16 @@ MediaPlayer.utils.TTMLParser = function() {
                         } else {
                             inlineSpan.style.cssText = styleBlock.join(" ");
                             inlineSpan.innerHTML = caption["span"];
-                        }
-                        var wrapper = document.createElement("div");
-                        styleBlock.forEach(function(d) {
-                            if (d.indexOf("text-align") > -1) {
-                                wrapper.style.cssText = d;
-                                wrapper.appendChild(inlineSpan);
-                            }
-                        });
-                        if (!wrapper.style.cssText) {
-                            return inlineSpan;
-                        } else {
-                            return wrapper;
+                            innerSpan.appendChild(inlineSpan);
                         }
                     } else {
-                        var spanElem = document.createElement("span");
-                        spanElem.className = "text";
-                        spanElem.style.cssText = paragraphStyleProperties.join(" ");
-                        spanElem.innerHTML = caption;
-                        var wrapper = document.createElement("div");
-                        paragraphStyleProperties.forEach(function(d) {
-                            if (d.indexOf("text-align") > -1) {
-                                wrapper.style.cssText = d;
-                                wrapper.appendChild(spanElem);
-                            }
-                        });
-                        if (!wrapper.style.cssText) {
-                            return spanElem;
-                        } else {
-                            return wrapper;
-                        }
+                        var textNode = document.createTextNode(caption);
+                        innerSpan.appendChild(textNode);
+                        innerSpan.style.cssText = paragraphStyleProperties.join(" ");
                     }
                 });
+                outerSpan.appendChild(innerSpan);
+                textData = outerSpan;
                 captionArray.push({
                     start: pStartTime,
                     end: pEndTime,
@@ -5888,7 +5919,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     bodyStyle: bodyStyleProperties,
                     divStyle: divStyleProperties,
                     divRegion: divRegionProperties,
-                    paragraphRegion: paragraphRegionProperties
+                    paragraphRegion: paragraphRegionProperties,
+                    showBackground: showBackground
                 });
             }
         });
@@ -8082,12 +8114,12 @@ MediaPlayer.dependencies.TextController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionContainer = document.getElementById("captionContainer"), captionRegion = document.getElementById("captionRegion"), captionText = document.getElementById("captionText"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
+    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), captionText = document.getElementById("innerSpan"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
     function addRenderingToCaption(cue) {
         var divRegionProperties = "", paragraphRegionProperties = "";
-        if (cue.bodyStyle) {
+        if (cue.bodyStyle.length > 0) {
             captionText.style.cssText = cue.bodyStyle.join("\n");
-        } else if (cue.divStyle) {
+        } else if (cue.divStyle.length > 0) {
             captionText.style.cssText = cue.divStyle.join("\n");
         }
         if (cue.divRegion) {
@@ -8109,10 +8141,8 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     function processRegionProperties(inputArray) {
         var outputString = "";
         inputArray.forEach(function(property) {
-            if (property.indexOf("vertical-align") > -1) {
-                captionText.style.cssText += property;
-            } else if (property.indexOf("width") > -1 || property.indexOf("height") > -1 || property.indexOf("top") > -1 || property.indexOf("left") > -1) {
-                captionContainer.style.cssText += property;
+            if (property.indexOf("width") > -1 || property.indexOf("height") > -1 || property.indexOf("top") > -1 || property.indexOf("left") > -1) {
+                captionRegion.style.cssText += property;
             } else {
                 outputString += property;
             }
@@ -8141,11 +8171,15 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
             var time = video.getCurrentTime();
             var diff = Math.abs(time - activeCue.start);
-            if (time > activeCue.start && time < activeCue.end && captionText.innerHTML) {
+            if (time > activeCue.start && time < activeCue.end && captionRegion.childElementCount > 0) {
                 return;
             }
-            captionText.innerHTML = "";
-            captionRegion.style.cssText = "";
+            while (captionRegion.firstChild) {
+                captionRegion.removeChild(captionRegion.firstChild);
+            }
+            if (!activeCue.showBackground) {
+                captionRegion.style.cssText = "";
+            }
             playlist.forEach(function(cue) {
                 if (time >= cue.start && time <= cue.end) {
                     var newDiff = Math.abs(time - cue.start);
@@ -8153,10 +8187,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         diff = newDiff;
                         activeCue = cue;
                     }
-                    activeCue.data.forEach(function(d) {
-                        captionText.appendChild(d);
-                    });
-                    addRenderingToCaption(activeCue);
+                    if (activeCue.data) {
+                        captionRegion.appendChild(activeCue.data);
+                        addRenderingToCaption(activeCue);
+                    }
                 }
             });
         }

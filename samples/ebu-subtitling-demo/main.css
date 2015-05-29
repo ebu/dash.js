@@ -1,11 +1,10 @@
 .container{
-    width:1280px;
-    height:720px;
-    position: relative;
-    margin: 0;
-    padding: 0;
+    width:160vh; /* 16:9 */
+    height:90vh; /* 16:9 */
+    position: absolute;
     display: block;
     overflow: hidden;
+    margin: 0;
 }
 .video {
     position: relative;
@@ -14,28 +13,15 @@
     width: 100%;
 }
 
-.captionContainer{
+.captionRegion{
     position: absolute;
     z-index: 2147483647;
-    font-size: 24px;
-}
-
-.captionRegion{
-    width:100%;
-    height: 100%;
-    display: table;
-    table-layout: fixed;
-}
-
-.captionText{
     margin: 0;
-    padding: 0;
-    border: 0;
-    line-height: 0px;
-    display: table-cell;
+    }
+
+.innerSpan{
+    display: inline-block;
 }
-
-
 .controls-user-active{
     visibility: visible;
 }
@@ -198,8 +184,6 @@ dfn {
  * Address differences between Firefox and other browsers.
  */
 hr {
-    -moz-box-sizing: content-box;
-    box-sizing: content-box;
     height: 0;
 }
 
@@ -444,11 +428,6 @@ table {
     -webkit-font-smoothing: antialiased;
     font-smoothing: antialiased;
     text-rendering: optimizeLegibility;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    -ms-box-sizing: border-box;
-    -o-box-sizing: border-box;
-    box-sizing: border-box;
 }
 
 header{
@@ -601,8 +580,6 @@ body {
 }
 
 * {
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
     border: 0;
 }
 
