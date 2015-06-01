@@ -5670,7 +5670,6 @@ MediaPlayer.utils.TTMLParser = function() {
         for (var key in cueStyle) {
             if (cueStyle.hasOwnProperty(key)) {
                 var property = cueStyle[key];
-                var result;
                 key = key.replace("style@tts:", "");
                 key = key.replace("style@xml:", "");
                 key = key.replace("style@ebutts:", "");
@@ -5721,7 +5720,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         nowrap: "white-space: nowrap;"
                     };
                     properties.push(wrapOption[property]);
-                } else if (key = "unicode-bidi") {
+                } else if (key === "unicode-bidi") {
                     var unicodeBidi = {
                         normal: "unicode-bidi: normal;",
                         embed: "unicode-bidi: embed;",
@@ -5729,8 +5728,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     };
                     properties.push(unicodeBidi[property]);
                 } else {
-                    result = key + ":" + property + ";";
-                    properties.push(result);
+                    properties.push(key + ":" + property + ";");
                 }
             }
         }
@@ -5882,7 +5880,6 @@ MediaPlayer.utils.TTMLParser = function() {
             if (arrayContains(textAlign, paragraphStyleProperties)) {
                 var value = propertyFromArray(textAlign, paragraphStyleProperties);
                 var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
-                console.warn(paragraphStyleProperties);
                 paragraphRegionProperties.push(value);
                 paragraphStyleProperties.splice(idTxtAl, 1);
             }
@@ -5890,12 +5887,9 @@ MediaPlayer.utils.TTMLParser = function() {
             if (arrayContains(verticalAlign, paragraphRegionProperties)) {
                 var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
                 var idVerAl = indexOfProperty(value, paragraphRegionProperties);
-                console.warn(idVerAl);
                 paragraphStyleProperties.push(value);
                 paragraphRegionProperties.splice(idVerAl, 1);
             }
-            console.warn(paragraphStyleProperties);
-            console.warn(paragraphRegionProperties);
             var outerSpan = document.createElement("span");
             outerSpan.className = "outerSpan";
             outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";

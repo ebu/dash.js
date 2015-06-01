@@ -129,11 +129,9 @@ MediaPlayer.utils.TTMLParser = function() {
         // Compute the style properties to return an array with the cleaned properties.
         computeStyle = function(cueStyle) {
             var properties = [];
-
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     var property = cueStyle[key];
-                    var result;
 
                     //Clean the properties from the parsing.
                     key = key.replace("style@tts:", "");
@@ -143,7 +141,6 @@ MediaPlayer.utils.TTMLParser = function() {
 
                     // Clean the properties' names.
                     key = camelCaseToDash(key);
-
                     // Not needed to add these.
                     if (key === 'style' || key === 'id') {
                         continue;
@@ -175,7 +172,7 @@ MediaPlayer.utils.TTMLParser = function() {
                             nowrap: "white-space: nowrap;"
                         };
                         properties.push(wrapOption[property]);
-                    } else if(key = "unicode-bidi") {
+                    } else if(key === "unicode-bidi") {
                         var unicodeBidi = {
                             normal: "unicode-bidi: normal;",
                             embed: "unicode-bidi: embed;",
@@ -183,8 +180,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         };
                         properties.push(unicodeBidi[property]);
                     } else {
-                        result = key + ":" + property + ";";
-                        properties.push(result);
+                        properties.push(key + ":" + property + ";");
                     }
                 }
             }
@@ -470,7 +466,6 @@ MediaPlayer.utils.TTMLParser = function() {
                 if(arrayContains(textAlign, paragraphStyleProperties)){
                     var value = propertyFromArray(textAlign, paragraphStyleProperties);
                     var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
-                    console.warn(paragraphStyleProperties);
                     paragraphRegionProperties.push(value);
                     paragraphStyleProperties.splice(idTxtAl,1);
                 }
@@ -479,12 +474,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 if(arrayContains(verticalAlign, paragraphRegionProperties)){
                     var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
                     var idVerAl = indexOfProperty(value, paragraphRegionProperties);
-                    console.warn(idVerAl);
                     paragraphStyleProperties.push(value);
                     paragraphRegionProperties.splice(idVerAl,1);
                 }
-                console.warn(paragraphStyleProperties);
-                console.warn(paragraphRegionProperties);
 
                 // Create an outer span element: needed so that inner content
                 // can be vertically aligned to something.

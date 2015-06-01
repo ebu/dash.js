@@ -5,6 +5,7 @@
     display: block;
     overflow: hidden;
     margin: 0;
+    font-size: 3vh;
 }
 .video {
     position: relative;
