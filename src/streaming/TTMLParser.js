@@ -153,12 +153,35 @@ MediaPlayer.utils.TTMLParser = function() {
                         // Use padding-left/right for line-padding.
                         var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
                         var valuePx = value * cellUnit[0] + "px;";
-                        properties.push("padding-left:" + valuePx);
-                        properties.push("padding-right:" + valuePx);
+                        properties.push("padding-left:" + valuePx + ';');
+                        properties.push("padding-right:" + valuePx + ';');
                     } else if (key === "font-family") {
-                        // Add quotes for font-family.
-                        result = key + ":'" + property + "';";
-                        properties.push(result);
+                        var font;
+                        switch (property){
+                            case 'default': font = 'font-family: monospace, sans-serif;';
+                            case 'monospace': font = 'font-family: monospace;';
+                            case 'sanserif': font = 'font-family: sans-serif;';
+                            case 'serif': font = 'font-family: serif;';
+                            case 'monospaceSansSerif': font = 'font-family: monospace, sans-serif;';
+                            case 'monospaceSerif': font = 'font-family: monospace, serif;';
+                            case 'proportionalSansSerif': font = 'font-family: Arial;';
+                            case 'proportionalSerif': font = 'font-family: Times New Roman;';
+                            default: font = 'font-family: '+ property + ';';
+                        }
+                        properties.push(font);
+                    } else if (key === 'wrap-option'){
+                        var wrapOption = {
+                            wrap: "white-space: normal;",
+                            nowrap: "white-space: nowrap;"
+                        };
+                        properties.push(wrapOption[property]);
+                    } else if(key = "unicode-bidi") {
+                        var unicodeBidi = {
+                            normal: "unicode-bidi: normal;",
+                            embed: "unicode-bidi: embed;",
+                            bidiOverride: "unicode-bidi: bidi-override;"
+                        };
+                        properties.push(unicodeBidi[property]);
                     } else {
                         result = key + ":" + property + ";";
                         properties.push(result);
@@ -207,7 +230,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     var displayAlign = {
                         before: "vertical-align: top;",
                         center: "vertical-align: middle;",
-                        after: "vertical-align: bottom"
+                        after: "vertical-align: bottom;"
                     };
                     properties.push(displayAlign[property]);
                 } else if(key === 'writing-mode'){
