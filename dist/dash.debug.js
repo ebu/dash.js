@@ -5787,7 +5787,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(prop);
                 });
             } else if (key === "show-background") {
-                showBackground = property === "always" ? true : false;
+                showBackground = property === "always";
             } else {
                 var result;
                 result = key + ":" + property + ";";
@@ -8174,34 +8174,16 @@ MediaPlayer.dependencies.TextController.eventList = {
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
-    function addRenderingToCaption(cue) {
-        var divRegionProperties = "", paragraphRegionProperties = "";
-        if (cue.divRegion) {
-            divRegionProperties = processRegionProperties(cue.divRegion);
-        }
-        if (cue.paragraphRegion) {
-            paragraphRegionProperties = processRegionProperties(cue.paragraphRegion);
-        }
-        if (!divRegionProperties) {
-            if (!paragraphRegionProperties) {
-                captionRegion.style.cssText += defaultRegion;
+    function addPostioningToCaption(cue) {
+        if (cue.divRegion.length == 0) {
+            if (cue.paragraphRegion == 0) {
+                captionRegion.style.cssText = defaultRegion;
             } else {
-                captionRegion.style.cssText += paragraphRegionProperties;
+                captionRegion.style.cssText = cue.paragraphRegion.join(" ");
             }
         } else {
-            captionRegion.style.cssText += divRegionProperties;
+            captionRegion.style.cssText = cue.divRegion.join(" ");
         }
-    }
-    function processRegionProperties(inputArray) {
-        var outputString = "";
-        inputArray.forEach(function(property) {
-            if (property.indexOf("width") > -1 || property.indexOf("height") > -1 || property.indexOf("top") > -1 || property.indexOf("left") > -1) {
-                captionRegion.style.cssText += property;
-            } else {
-                outputString += property;
-            }
-        });
-        return outputString;
     }
     return {
         initialize: function(videoModel) {
@@ -8243,7 +8225,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                     if (activeCue.data) {
                         captionRegion.appendChild(activeCue.data);
-                        addRenderingToCaption(activeCue);
+                        addPostioningToCaption(activeCue);
                     }
                 }
             });

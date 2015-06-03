@@ -37,12 +37,12 @@ MediaPlayer.utils.TTMLParser = function() {
     var SECONDS_IN_HOUR = 60 * 60,
         SECONDS_IN_MIN = 60,
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/,
-        ttml,
-        ttmlStylings,
-        ttmlLayout,
-        cellResolution,
-        cellUnit,
-        showBackground,
+        ttml, // contains the whole ttml document received
+        ttmlStylings, // contains the styling information from the document
+        ttmlLayout, // contains the positioning information from the document
+        cellResolution, // Expresses a virtual visual grid composed of horizontal and vertical cells
+        cellUnit, // cellReprensentation represented as a unit in pixels
+        showBackground, // constraints on when the background color of a region is intended to be presented.
 
         parseTimings = function(timingStr) {
             var test = timingRegex.test(timingStr),
@@ -98,6 +98,7 @@ MediaPlayer.utils.TTMLParser = function() {
             return r[0];
         },
 
+        // backgroundColor = background-color
         camelCaseToDash = function(key) {
             return key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
         },
@@ -153,9 +154,9 @@ MediaPlayer.utils.TTMLParser = function() {
                         properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
                     } else if (key === "font-family") {
                         var font;
-                        switch (property){
+                        switch (property) {
                             case "monospace":
-                                font = 'font-family: monospace;' ;
+                                font = 'font-family: monospace;';
                                 break;
                             case "sansSerif":
                                 font = 'font-family: sans-serif;';
@@ -179,17 +180,17 @@ MediaPlayer.utils.TTMLParser = function() {
                                 font = 'font-family: monospace, sans-serif;';
                                 break;
                             default:
-                                font = 'font-family: '+ property + ';';
+                                font = 'font-family: ' + property + ';';
                                 break;
                         }
                         properties.push(font);
-                    } else if (key === 'wrap-option'){
+                    } else if (key === 'wrap-option') {
                         var wrapOption = {
                             wrap: "white-space: normal;",
                             noWrap: "white-space: nowrap;"
                         };
                         properties.push(wrapOption[property]);
-                    } else if(key === "unicode-bidi") {
+                    } else if (key === "unicode-bidi") {
                         var unicodeBidi = {
                             normal: "unicode-bidi: normal;",
                             embed: "unicode-bidi: embed;",
@@ -208,6 +209,7 @@ MediaPlayer.utils.TTMLParser = function() {
         computeRegion = function(ttmlStylings, cueRegion) {
             var properties = [];
             for (var key in cueRegion) {
+
                 if (!cueRegion.hasOwnProperty(key)) {
                     continue;
                 }
@@ -246,21 +248,21 @@ MediaPlayer.utils.TTMLParser = function() {
                         after: "vertical-align: bottom;"
                     };
                     properties.push(displayAlign[property]);
-                } else if(key === 'writing-mode'){
-                        var writingMode = {
-                            lrtb: "-ms-writing-mode: lr-tb;\
+                } else if (key === 'writing-mode') {
+                    var writingMode = {
+                        lrtb: "-ms-writing-mode: lr-tb;\
                                    -webkit-writing-mode: horizontal-tb;\
                                    -moz-writing-mode: horizontal-tb;\
                                    -ms-writing-mode: horizontal-tb;\
                                    writing-mode: horizontal-tb;",
-                            rltb: "-ms-writing-mode: rl-tb;\
+                        rltb: "-ms-writing-mode: rl-tb;\
                                    -webkit-writing-mode: horizontal-tb;\
                                    -moz-writing-mode: horizontal-tb;\
                                    -ms-writing-mode: horizontal-tb;\
                                    writing-mode: horizontal-tb;\
                                    direction: rtl;\
                                    unicode-bidi: bidi-override;",
-                            tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */ \
+                        tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */ \
                                    -webkit-writing-mode: vertical-rl;\
                                    -moz-writing-mode: vertical-rl;\
                                    -ms-writing-mode: vertical-rl;\
@@ -269,7 +271,7 @@ MediaPlayer.utils.TTMLParser = function() {
                                    -moz-text-orientation: upright;\
                                    -ms-text-orientation: upright;\
                                    text-orientation: upright;",
-                            tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */ \
+                        tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */ \
                                    -webkit-writing-mode: vertical-lr;\
                                    -moz-writing-mode: vertical-lr;\
                                    -ms-writing-mode: vertical-lr;\
@@ -278,18 +280,18 @@ MediaPlayer.utils.TTMLParser = function() {
                                    -moz-text-orientation: upright;\
                                    -ms-text-orientation: upright;\
                                    text-orientation: upright;",
-                            lr: "-ms-writing-mode: lr-tb;\
+                        lr: "-ms-writing-mode: lr-tb;\
                                  -webkit-writing-mode: horizontal-tb;\
                                  -moz-writing-mode: horizontal-tb;\
                                  -ms-writing-mode: horizontal-tb;\
                                  writing-mode: horizontal-tb;",
-                            rl: "-ms-writing-mode: rl-tb;\
+                        rl: "-ms-writing-mode: rl-tb;\
                                  -webkit-writing-mode: horizontal-tb;\
                                  -moz-writing-mode: horizontal-tb;\
                                  -ms-writing-mode: horizontal-tb;\
                                  writing-mode: horizontal-tb;\
                                  direction: rtl;",
-                            tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */ \
+                        tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */ \
                                  -webkit-writing-mode: vertical-rl;\
                                  -moz-writing-mode: vertical-rl;\
                                  -ms-writing-mode: vertical-rl;\
@@ -298,23 +300,23 @@ MediaPlayer.utils.TTMLParser = function() {
                                  -moz-text-orientation: upright;\
                                  -ms-text-orientation: upright;\
                                  text-orientation: upright;"
-                        };
-                        properties.push(writingMode[property]);
+                    };
+                    properties.push(writingMode[property]);
                 } else if (key === "style") {
                     var styleFromID = getStyleFromID(property);
-                    styleFromID.forEach(function(prop){
+                    styleFromID.forEach(function(prop) {
                         properties.push(prop);
                     });
-                } else if (key === "show-background"){
-                    showBackground = (property === "always")? true : false;
+                } else if (key === "show-background") {
+                    showBackground = (property === "always");
                 } else {
                     var result;
                     result = key + ':' + property + ';';
                     properties.push(result);
                 }
             }
-            if (showBackground === undefined){
-              showBackground = false;
+            if (showBackground === undefined) {
+                showBackground = false;
             }
             return properties;
         },
@@ -337,24 +339,27 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         },
 
-        arrayContains = function(text, array){
+        // Return whether or not an array contains a certain text
+        arrayContains = function(text, array) {
             var res = false;
-            array.forEach(function(str){
-                if(str.indexOf(text) > -1){
+            array.forEach(function(str) {
+                if (str.indexOf(text) > -1) {
                     res = true;
                 }
             });
             return res;
         },
 
-        indexOfProperty = function(text, array){
+        // Return the index of text in the array (must be exact term)
+        indexOfProperty = function(text, array) {
             return array.indexOf(text);
         },
 
-        propertyFromArray = function(text, array){
+        // Return the whole value that contains "text"
+        propertyFromArray = function(text, array) {
             var res = '';
-            array.forEach(function(str){
-                if(str.indexOf(text) > -1){
+            array.forEach(function(str) {
+                if (str.indexOf(text) > -1) {
                     res = str;
                 }
             });
@@ -463,45 +468,45 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (pStyleID) {
                     paragraphStyleProperties = getStyleFromID(pStyleID);
                 }
-                if (divStyleID ) {
+                if (divStyleID) {
                     paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID));
                 }
-                if (bodyStyleID ) {
+                if (bodyStyleID) {
                     paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(bodyStyleID));
                 }
 
                 // Line-height of outerSpan needs to be set so that inner content
                 // can be vertically aligned to something.
                 var height = 'height';
-                if(arrayContains(height, paragraphRegionProperties)){
+                if (arrayContains(height, paragraphRegionProperties)) {
                     var value = propertyFromArray(height, paragraphRegionProperties);
                     // TODO: Change so it is dynamic and elegant!
                     // videoHeight in 16:9 display, in vh unit.
                     var videoHeightVH = 90;
                     value = Number(value.match(/(\d+)/)[0]);
-                    value = value/100 * videoHeightVH;
+                    value = value / 100 * videoHeightVH;
                     outerSpanVH = "line-height: " + value + "vh;";
                 }
 
                 // Text Align needs to be set at the region level (outerSpan).
                 var textAlign = 'text-align';
-                if(arrayContains(textAlign, paragraphStyleProperties)){
+                if (arrayContains(textAlign, paragraphStyleProperties)) {
                     var value = propertyFromArray(textAlign, paragraphStyleProperties);
                     var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
                     paragraphRegionProperties.push(value);
-                    paragraphStyleProperties.splice(idTxtAl,1);
+                    paragraphStyleProperties.splice(idTxtAl, 1);
                 }
 
                 // Vertical Align needs to be set at the paragraph level (innerSpan).
                 var verticalAlign = 'vertical-align';
-                if(arrayContains(verticalAlign, paragraphRegionProperties)){
+                if (arrayContains(verticalAlign, paragraphRegionProperties)) {
                     var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
                     var idVerAl = indexOfProperty(value, paragraphRegionProperties);
                     paragraphStyleProperties.push(value);
-                    paragraphRegionProperties.splice(idVerAl,1);
+                    paragraphRegionProperties.splice(idVerAl, 1);
                 }
 
-                if(arrayContains("padding", paragraphStyleProperties)) {
+                if (arrayContains("padding", paragraphStyleProperties)) {
 
                 }
 
@@ -510,7 +515,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 var outerSpan = document.createElement('span');
                 outerSpan.className = 'outerSpan';
                 // TODO: find the correct value for default line-height.
-                outerSpan.style.cssText = outerSpanVH? outerSpanVH: "18vh";
+                outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
 
                 // Create an inner Span containing the cue and its children if there are.
                 var innerSpan = document.createElement('span');
@@ -551,12 +556,12 @@ MediaPlayer.utils.TTMLParser = function() {
 
                     // For each element, we add it properly in the cue.
                     cue.p.forEach(function(caption) {
-                        /*** Create a br element if there is one in the cue. ***/
+                        // Create a br element if there is one in the cue.
                         if (caption.hasOwnProperty('br')) {
                             innerSpan.appendChild(document.createElement('br'));
                         }
 
-                        /*** Create the inline span element if there is one in the cue. ***/
+                        // Create the inline span element if there is one in the cue.
                         else if (caption.hasOwnProperty('span')) {
                             // If span comprises several elements (text lines and br elements for example).
                             caption['span'] = [].concat(caption['span']);
@@ -566,7 +571,9 @@ MediaPlayer.utils.TTMLParser = function() {
                             // Extract the style of the span.
                             if (caption.hasOwnProperty('span@style')) {
                                 var styleBlock = getStyleFromID(caption['span@style']);
-                                if(arrayContains('padding', paragraphStyleProperties) && caption['span'].length == 1) {
+                                // If line padding has to be applied to the span.
+                                // We must apply it to the inline span and not to inner span.
+                                if (arrayContains('padding', paragraphStyleProperties) && caption['span'].length == 1) {
                                     styleBlock.push(propertyFromArray('padding', paragraphStyleProperties));
                                 }
                                 inlineSpan.style.cssText = styleBlock.join(" ");
@@ -575,8 +582,12 @@ MediaPlayer.utils.TTMLParser = function() {
                             // If the span has <br/> elements, add them as child nodes.
                             if (caption['span'].length > 1) {
                                 caption['span'].forEach(function(el) {
+                                    // If the element is a string
                                     if (typeof el == 'string' || el instanceof String) {
-                                        if(arrayContains('padding', paragraphStyleProperties)){
+                                        // If line padding has to be applied to the inline span.
+                                        // We must apply it to each line in a span.
+                                        // For that we have to create a new span containing the style info.
+                                        if (arrayContains('padding', paragraphStyleProperties)) {
                                             var linePaddingSpan = document.createElement('span');
                                             var style = propertyFromArray('padding', paragraphStyleProperties);
                                             linePaddingSpan.style.cssText = style;
@@ -586,8 +597,9 @@ MediaPlayer.utils.TTMLParser = function() {
                                             var textNode = document.createTextNode(el);
                                             inlineSpan.appendChild(textNode);
                                         }
+                                      // If the element is a 'br' tag
                                     } else if (el.hasOwnProperty('br')) {
-                                        // Create a br element if it is one.
+                                        // Create a br element.
                                         inlineSpan.appendChild(document.createElement('br'));
                                     }
                                 });
@@ -598,7 +610,7 @@ MediaPlayer.utils.TTMLParser = function() {
                                 innerSpan.appendChild(inlineSpan);
                             }
                         }
-                        /*** Add the text that is not in any inline element ***/
+                        // Add the text that is not in any inline element
                         else {
                             // Affect the text to the inner span.
                             var textNode = document.createTextNode(caption);
@@ -606,10 +618,12 @@ MediaPlayer.utils.TTMLParser = function() {
                         }
                     });
 
-                    if(paragraphStyleProperties){
+                    // Finally we set the style to the cue.
+                    if (paragraphStyleProperties) {
                         innerSpan.style.cssText = paragraphStyleProperties.join(" ");
                     }
 
+                    // We then place the cue inside the outer span that controls the vertical alignment.
                     outerSpan.appendChild(innerSpan);
 
                     captionArray.push({
