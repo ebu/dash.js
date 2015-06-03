@@ -34,7 +34,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         video, // video from the VideoModel
         activeCue, // Active cue playing
         captionRegion = document.getElementById('captionRegion'), // container of the captionText, represent the region
-        captionText = document.getElementById('innerSpan'), // container with all the text
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
     /***** Method which assign to the HTML the styling and positioning in the right containers for every cue. *****/
@@ -42,18 +41,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     function addRenderingToCaption(cue) {
         var divRegionProperties = "",
             paragraphRegionProperties = "";
-
-        /***** Add each CSS property to a CSS text block and set it up in the captionText Container
-         *We set the style only for Body and Div: in inline text, it is computed and added inside TTMLParser directly to
-         *the span elements that are created for every line.
-         * *****/
-
-        // Extract the properties and affect them to the captionText container.
-        if (cue.bodyStyle.length > 0) {
-            captionText.style.cssText = cue.bodyStyle.join("\n");
-        } else if (cue.divStyle.length > 0) {
-            captionText.style.cssText = cue.divStyle.join("\n");
-        }
 
         /***** Transform the region properties and affect to a CSS block.
          * We set the region only for Paragraph and Div: body can't have a region.

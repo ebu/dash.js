@@ -150,26 +150,43 @@ MediaPlayer.utils.TTMLParser = function() {
                         // Use padding-left/right for line-padding.
                         var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
                         var valuePx = value * cellUnit[0] + "px;";
-                        properties.push("padding-left:" + valuePx + ';');
-                        properties.push("padding-right:" + valuePx + ';');
+                        properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
                     } else if (key === "font-family") {
                         var font;
                         switch (property){
-                            case 'default': font = 'font-family: monospace, sans-serif;';
-                            case 'monospace': font = 'font-family: monospace;';
-                            case 'sanserif': font = 'font-family: sans-serif;';
-                            case 'serif': font = 'font-family: serif;';
-                            case 'monospaceSansSerif': font = 'font-family: monospace, sans-serif;';
-                            case 'monospaceSerif': font = 'font-family: monospace, serif;';
-                            case 'proportionalSansSerif': font = 'font-family: Arial;';
-                            case 'proportionalSerif': font = 'font-family: Times New Roman;';
-                            default: font = 'font-family: '+ property + ';';
+                            case "monospace":
+                                font = 'font-family: monospace;' ;
+                                break;
+                            case "sansSerif":
+                                font = 'font-family: sans-serif;';
+                                break;
+                            case "serif":
+                                font = 'font-family: serif;';
+                                break;
+                            case "monospaceSansSerif":
+                                font = 'font-family: monospace, sans-serif;';
+                                break;
+                            case "monospaceSerif":
+                                font = 'font-family: monospace, serif;';
+                                break;
+                            case "proportionalSansSerif":
+                                font = 'font-family: Arial;';
+                                break;
+                            case "proportionalSerif":
+                                font = 'font-family: Times New Roman;';
+                                break;
+                            case "default":
+                                font = 'font-family: monospace, sans-serif;';
+                                break;
+                            default:
+                                font = 'font-family: '+ property + ';';
+                                break;
                         }
                         properties.push(font);
                     } else if (key === 'wrap-option'){
                         var wrapOption = {
                             wrap: "white-space: normal;",
-                            nowrap: "white-space: nowrap;"
+                            noWrap: "white-space: nowrap;"
                         };
                         properties.push(wrapOption[property]);
                     } else if(key === "unicode-bidi") {
@@ -296,6 +313,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(result);
                 }
             }
+            if (showBackground === undefined){
+              showBackground = false;
+            }
             return properties;
         },
 
@@ -349,15 +369,12 @@ MediaPlayer.utils.TTMLParser = function() {
                 pEndTime,
                 pStyleID,
                 pRegionID,
-                bodyStyleProperties = [],
-                divStyleProperties = [],
                 divRegionProperties = [],
                 paragraphStyleProperties = [],
                 paragraphRegionProperties = [],
                 nsttp,
                 videoHeight,
-                videoWidth,
-                textData;
+                videoWidth;
 
             // **** Check the document Structure ***
             // Parse the TTML in a JSON object.
@@ -402,16 +419,10 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // If body has a style.
             var bodyStyleID = ttml.tt['body@style'];
-            if (bodyStyleID) {
-                bodyStyleProperties = getStyleFromID(bodyStyleID);
-            }
 
-            // TODO: Adapt for several div.
             // If div has a style.
             var divStyleID = ttml.tt.body['div@style'];
-            if (divStyleID) {
-                divStyleProperties = getStyleFromID(divStyleID);
-            }
+
             // If div has a region.
             var divRegionID = ttml.tt.body['div@region'];
             if (divRegionID) {
@@ -444,12 +455,23 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (pRegionID) {
                     paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
                 }
+                if (divRegionID) {
+                    paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID));
+                }
 
                 // Find the right style for our cue.
                 if (pStyleID) {
                     paragraphStyleProperties = getStyleFromID(pStyleID);
                 }
+                if (divStyleID ) {
+                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID));
+                }
+                if (bodyStyleID ) {
+                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(bodyStyleID));
+                }
 
+                // Line-height of outerSpan needs to be set so that inner content
+                // can be vertically aligned to something.
                 var height = 'height';
                 if(arrayContains(height, paragraphRegionProperties)){
                     var value = propertyFromArray(height, paragraphRegionProperties);
@@ -461,7 +483,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     outerSpanVH = "line-height: " + value + "vh;";
                 }
 
-                // Text Align needs to be set at the region level.
+                // Text Align needs to be set at the region level (outerSpan).
                 var textAlign = 'text-align';
                 if(arrayContains(textAlign, paragraphStyleProperties)){
                     var value = propertyFromArray(textAlign, paragraphStyleProperties);
@@ -470,12 +492,17 @@ MediaPlayer.utils.TTMLParser = function() {
                     paragraphStyleProperties.splice(idTxtAl,1);
                 }
 
+                // Vertical Align needs to be set at the paragraph level (innerSpan).
                 var verticalAlign = 'vertical-align';
                 if(arrayContains(verticalAlign, paragraphRegionProperties)){
                     var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
                     var idVerAl = indexOfProperty(value, paragraphRegionProperties);
                     paragraphStyleProperties.push(value);
                     paragraphRegionProperties.splice(idVerAl,1);
+                }
+
+                if(arrayContains("padding", paragraphStyleProperties)) {
+
                 }
 
                 // Create an outer span element: needed so that inner content
@@ -489,6 +516,13 @@ MediaPlayer.utils.TTMLParser = function() {
                 var innerSpan = document.createElement('span');
                 innerSpan.className = 'innerSpan';
 
+                /*** Create the cue element
+                 * 1) The cues are SMPTE images
+                 * 2) The cues are text only:
+                 *      i) The cue contains a 'br' element
+                 *      ii) The cue contains a span element
+                 *      iii) The cue contains text
+                 * ***/
                 // If cues are SMPTE images.
                 if (cue["smpte:backgroundImage"] !== undefined) {
                     var images = ttml.tt.head.metadata.image_asArray;
@@ -500,8 +534,6 @@ MediaPlayer.utils.TTMLParser = function() {
                                 id: images[j]["p@xml:id"],
                                 data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
                                 type: "image",
-                                bodyStyle: bodyStyleProperties,
-                                divStyle: divStyleProperties,
                                 divRegion: divRegionProperties,
                                 paragraphRegion: paragraphRegionProperties,
                                 showBackground: showBackground
@@ -534,22 +566,34 @@ MediaPlayer.utils.TTMLParser = function() {
                             // Extract the style of the span.
                             if (caption.hasOwnProperty('span@style')) {
                                 var styleBlock = getStyleFromID(caption['span@style']);
+                                if(arrayContains('padding', paragraphStyleProperties) && caption['span'].length == 1) {
+                                    styleBlock.push(propertyFromArray('padding', paragraphStyleProperties));
+                                }
+                                inlineSpan.style.cssText = styleBlock.join(" ");
                             }
 
                             // If the span has <br/> elements, add them as child nodes.
                             if (caption['span'].length > 1) {
                                 caption['span'].forEach(function(el) {
                                     if (typeof el == 'string' || el instanceof String) {
-                                        var textNode = document.createTextNode(el);
-                                        inlineSpan.appendChild(textNode);
+                                        if(arrayContains('padding', paragraphStyleProperties)){
+                                            var linePaddingSpan = document.createElement('span');
+                                            var style = propertyFromArray('padding', paragraphStyleProperties);
+                                            linePaddingSpan.style.cssText = style;
+                                            linePaddingSpan.innerHTML = el;
+                                            inlineSpan.appendChild(linePaddingSpan);
+                                        } else {
+                                            var textNode = document.createTextNode(el);
+                                            inlineSpan.appendChild(textNode);
+                                        }
                                     } else if (el.hasOwnProperty('br')) {
                                         // Create a br element if it is one.
                                         inlineSpan.appendChild(document.createElement('br'));
                                     }
                                 });
+                                innerSpan.appendChild(inlineSpan);
                             } else {
                                 // Affect the style and text to the inline span.
-                                inlineSpan.style.cssText = styleBlock.join(" ");
                                 inlineSpan.innerHTML = caption['span'];
                                 innerSpan.appendChild(inlineSpan);
                             }
@@ -559,21 +603,20 @@ MediaPlayer.utils.TTMLParser = function() {
                             // Affect the text to the inner span.
                             var textNode = document.createTextNode(caption);
                             innerSpan.appendChild(textNode);
-                            innerSpan.style.cssText = paragraphStyleProperties.join(" ");
                         }
                     });
 
-                    outerSpan.appendChild(innerSpan);
+                    if(paragraphStyleProperties){
+                        innerSpan.style.cssText = paragraphStyleProperties.join(" ");
+                    }
 
-                    textData = outerSpan;
+                    outerSpan.appendChild(innerSpan);
 
                     captionArray.push({
                         start: pStartTime,
                         end: pEndTime,
-                        data: textData,
+                        data: outerSpan,
                         type: "text",
-                        bodyStyle: bodyStyleProperties,
-                        divStyle: divStyleProperties,
                         divRegion: divRegionProperties,
                         paragraphRegion: paragraphRegionProperties,
                         showBackground: showBackground
