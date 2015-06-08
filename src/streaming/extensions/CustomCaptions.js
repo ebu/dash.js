@@ -37,11 +37,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
 
     /***** Method which assign to the HTML the positioning for every cue. *****/
-    function addPostioningToCaption(cue) {
+    function addPositioningToCaption(cue) {
 
         // Affect the defined regions to the captionRegion container.
         if (cue.divRegion.length == 0) {
-            if (cue.paragraphRegion == 0) {
+            if (cue.paragraphRegion.length == 0) {
                 // If no region is defined, we set a default region
                 captionRegion.style.cssText = defaultRegion;
             } else {
@@ -123,7 +123,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         captionRegion.appendChild(activeCue.data);
 
                         // Apply the styling and positioning to our text.
-                        addPostioningToCaption(activeCue);
+                        addPositioningToCaption(activeCue);
                     }
                 }
             });
