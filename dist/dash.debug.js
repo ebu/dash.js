@@ -5750,6 +5750,7 @@ MediaPlayer.utils.TTMLParser = function() {
             var property = cueRegion[key];
             key = key.replace("region@tts:", "");
             key = key.replace("region@xml:", "");
+            key = key.replace("region@id:", "");
             key = key.replace("region@:", "");
             key = camelCaseToDash(key);
             if (key === "region" || key === "id") {
@@ -5758,11 +5759,11 @@ MediaPlayer.utils.TTMLParser = function() {
             if (key === "extent") {
                 var coords = property.split(/\s/);
                 properties.push("width: " + coords[0] + ";");
-                properties.push("height :" + coords[1] + ";");
+                properties.push("height: " + coords[1] + ";");
             } else if (key === "origin") {
                 var coords = property.split(/\s/);
                 properties.push("left: " + coords[0] + ";");
-                properties.push("top :" + coords[1] + ";");
+                properties.push("top: " + coords[1] + ";");
             } else if (key === "display-align") {
                 var displayAlign = {
                     before: "vertical-align: top;",
@@ -5827,7 +5828,7 @@ MediaPlayer.utils.TTMLParser = function() {
         });
         return res;
     }, internalParse = function(data) {
-        var captionArray = [], errorMsg, cues, pStartTime, pEndTime, pStyleID, pRegionID, divRegionProperties = [], paragraphStyleProperties = [], paragraphRegionProperties = [], nsttp, videoHeight, videoWidth;
+        var captionArray = [], errorMsg, cues, pStartTime, pEndTime, pStyleID, pRegionID, paragraphStyleProperties, paragraphRegionProperties, nsttp, videoHeight, videoWidth;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlLayout = ttml.tt.head.layout;
         ttmlStylings = ttml.tt.head.styling;
@@ -5854,12 +5855,11 @@ MediaPlayer.utils.TTMLParser = function() {
         var bodyStyleID = ttml.tt["body@style"];
         var divStyleID = ttml.tt.body["div@style"];
         var divRegionID = ttml.tt.body["div@region"];
-        if (divRegionID) {
-            divRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
-        }
         cues.forEach(function(cue) {
             pStartTime = parseTimings(cue["p@begin"]);
             pEndTime = parseTimings(cue["p@end"]);
+            paragraphStyleProperties = [];
+            paragraphRegionProperties = [];
             pStyleID = cue["p@style"];
             pRegionID = cue["p@region"];
             if (isNaN(pStartTime) || isNaN(pEndTime)) {
@@ -5871,7 +5871,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
             }
             if (divRegionID) {
-                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID));
+                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, divRegionID));
             }
             if (pStyleID) {
                 paragraphStyleProperties = getStyleFromID(pStyleID);
@@ -5904,84 +5904,64 @@ MediaPlayer.utils.TTMLParser = function() {
                 paragraphStyleProperties.push(value);
                 paragraphRegionProperties.splice(idVerAl, 1);
             }
-            if (arrayContains("padding", paragraphStyleProperties)) {}
             var outerSpan = document.createElement("span");
             outerSpan.className = "outerSpan";
             outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
             var innerSpan = document.createElement("span");
             innerSpan.className = "innerSpan";
-            if (cue["smpte:backgroundImage"] !== undefined) {
-                var images = ttml.tt.head.metadata.image_asArray;
-                for (var j = 0; j < images.length; j += 1) {
-                    if ("#" + images[j]["p@xml:id"] == cue["smpte:backgroundImage"]) {
-                        captionArray.push({
-                            start: pStartTime,
-                            end: pEndTime,
-                            id: images[j]["p@xml:id"],
-                            data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
-                            type: "image",
-                            divRegion: divRegionProperties,
-                            paragraphRegion: paragraphRegionProperties,
-                            showBackground: showBackground
-                        });
-                    }
-                }
-            } else {
-                cue.p = [].concat(cue.p);
-                cue.p.forEach(function(caption) {
-                    if (caption.hasOwnProperty("br")) {
-                        innerSpan.appendChild(document.createElement("br"));
-                    } else if (caption.hasOwnProperty("span")) {
-                        caption["span"] = [].concat(caption["span"]);
-                        var inlineSpan = document.createElement("span");
-                        if (caption.hasOwnProperty("span@style")) {
-                            var styleBlock = getStyleFromID(caption["span@style"]);
-                            if (arrayContains("padding", paragraphStyleProperties) && caption["span"].length == 1) {
-                                styleBlock.push(propertyFromArray("padding", paragraphStyleProperties));
-                            }
-                            inlineSpan.style.cssText = styleBlock.join(" ");
+            cue.p = [].concat(cue.p);
+            cue.p.forEach(function(caption) {
+                if (caption.hasOwnProperty("br")) {
+                    innerSpan.appendChild(document.createElement("br"));
+                } else if (caption.hasOwnProperty("span")) {
+                    caption["span"] = [].concat(caption["span"]);
+                    var inlineSpan = document.createElement("span");
+                    if (caption.hasOwnProperty("span@style")) {
+                        var styleBlock = getStyleFromID(caption["span@style"]);
+                        if (arrayContains("padding", paragraphStyleProperties) && caption["span"].length == 1) {
+                            styleBlock.push(propertyFromArray("padding", paragraphStyleProperties));
                         }
-                        if (caption["span"].length > 1) {
-                            caption["span"].forEach(function(el) {
-                                if (typeof el == "string" || el instanceof String) {
-                                    if (arrayContains("padding", paragraphStyleProperties)) {
-                                        var linePaddingSpan = document.createElement("span");
-                                        var style = propertyFromArray("padding", paragraphStyleProperties);
-                                        linePaddingSpan.style.cssText = style;
-                                        linePaddingSpan.innerHTML = el;
-                                        inlineSpan.appendChild(linePaddingSpan);
-                                    } else {
-                                        var textNode = document.createTextNode(el);
-                                        inlineSpan.appendChild(textNode);
-                                    }
-                                } else if (el.hasOwnProperty("br")) {
-                                    inlineSpan.appendChild(document.createElement("br"));
+                        inlineSpan.style.cssText = styleBlock.join(" ");
+                    }
+                    if (caption["span"].length > 1) {
+                        caption["span"].forEach(function(el) {
+                            if (typeof el == "string" || el instanceof String) {
+                                if (arrayContains("padding", paragraphStyleProperties)) {
+                                    var linePaddingSpan = document.createElement("span");
+                                    var style = propertyFromArray("padding", paragraphStyleProperties);
+                                    linePaddingSpan.style.cssText = style;
+                                    linePaddingSpan.innerHTML = el;
+                                    inlineSpan.appendChild(linePaddingSpan);
+                                } else {
+                                    var textNode = document.createTextNode(el);
+                                    inlineSpan.appendChild(textNode);
                                 }
-                            });
-                            innerSpan.appendChild(inlineSpan);
-                        } else {
-                            inlineSpan.innerHTML = caption["span"];
-                            innerSpan.appendChild(inlineSpan);
-                        }
+                            } else if (el.hasOwnProperty("br")) {
+                                inlineSpan.appendChild(document.createElement("br"));
+                            }
+                        });
+                        innerSpan.appendChild(inlineSpan);
                     } else {
-                        var textNode = document.createTextNode(caption);
-                        innerSpan.appendChild(textNode);
+                        inlineSpan.innerHTML = caption["span"];
+                        innerSpan.appendChild(inlineSpan);
                     }
-                });
-                if (paragraphStyleProperties) {
-                    innerSpan.style.cssText = paragraphStyleProperties.join(" ");
+                } else {
+                    var textNode = document.createTextNode(caption);
+                    innerSpan.appendChild(textNode);
                 }
-                outerSpan.appendChild(innerSpan);
-                captionArray.push({
-                    start: pStartTime,
-                    end: pEndTime,
-                    data: outerSpan,
-                    type: "text",
-                    divRegion: divRegionProperties,
-                    paragraphRegion: paragraphRegionProperties,
-                    showBackground: showBackground
-                });
+            });
+            if (paragraphStyleProperties) {
+                innerSpan.style.cssText = paragraphStyleProperties.join(" ");
             }
+            outerSpan.appendChild(innerSpan);
+            captionArray.push({
+                start: pStartTime,
+                end: pEndTime,
+                data: outerSpan,
+                type: "text",
+                paragraphRegion: paragraphRegionProperties,
+                showBackground: showBackground
+            });
         });
         return captionArray;
     };
@@ -8175,14 +8155,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
     var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
     function addPositioningToCaption(cue) {
-        if (cue.divRegion.length == 0) {
-            if (cue.paragraphRegion.length == 0) {
-                captionRegion.style.cssText = defaultRegion;
-            } else {
-                captionRegion.style.cssText = cue.paragraphRegion.join(" ");
-            }
+        if (cue.paragraphRegion.length == 0) {
+            captionRegion.style.cssText = defaultRegion;
         } else {
-            captionRegion.style.cssText = cue.divRegion.join(" ");
+            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
         }
     }
     return {

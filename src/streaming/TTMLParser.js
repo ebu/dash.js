@@ -219,7 +219,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 //Clean the properties from the parsing.
                 key = key.replace("region@tts:", "");
                 key = key.replace("region@xml:", "");
+                key = key.replace("region@id:", "");
                 key = key.replace("region@:", "");
+
                 // Clean the properties' names.
                 key = camelCaseToDash(key);
                 // Not needed to add these.
@@ -236,11 +238,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (key === "extent") {
                     var coords = property.split(/\s/);
                     properties.push("width: " + coords[0] + ';');
-                    properties.push("height :" + coords[1] + ';');
+                    properties.push("height: " + coords[1] + ';');
                 } else if (key === "origin") {
                     var coords = property.split(/\s/);
                     properties.push("left: " + coords[0] + ';');
-                    properties.push("top :" + coords[1] + ';');
+                    properties.push("top: " + coords[1] + ';');
                 } else if (key === "display-align") {
                     var displayAlign = {
                         before: "vertical-align: top;",
@@ -374,9 +376,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 pEndTime,
                 pStyleID,
                 pRegionID,
-                divRegionProperties = [],
-                paragraphStyleProperties = [],
-                paragraphRegionProperties = [],
+                paragraphStyleProperties,
+                paragraphRegionProperties,
                 nsttp,
                 videoHeight,
                 videoWidth;
@@ -430,9 +431,6 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // If div has a region.
             var divRegionID = ttml.tt.body['div@region'];
-            if (divRegionID) {
-                divRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
-            }
 
             // TODO: Parse timings on span elements.
             // Parsing of every cue.
@@ -440,6 +438,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 // Obtain the start and end time of the cue.
                 pStartTime = parseTimings(cue['p@begin']);
                 pEndTime = parseTimings(cue['p@end']);
+                paragraphStyleProperties = [];
+                paragraphRegionProperties = [];
 
                 // TODO: check for span, if yes, check for timings information
 
@@ -460,8 +460,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (pRegionID) {
                     paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
                 }
+
                 if (divRegionID) {
-                    paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID));
+                    paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, divRegionID));
                 }
 
                 // Find the right style for our cue.
@@ -506,10 +507,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     paragraphRegionProperties.splice(idVerAl, 1);
                 }
 
-                if (arrayContains("padding", paragraphStyleProperties)) {
-
-                }
-
                 // Create an outer span element: needed so that inner content
                 // can be vertically aligned to something.
                 var outerSpan = document.createElement('span');
@@ -522,120 +519,96 @@ MediaPlayer.utils.TTMLParser = function() {
                 innerSpan.className = 'innerSpan';
 
                 /*** Create the cue element
-                 * 1) The cues are SMPTE images
-                 * 2) The cues are text only:
+                 * 1 The cues are text only:
                  *      i) The cue contains a 'br' element
                  *      ii) The cue contains a span element
                  *      iii) The cue contains text
                  * ***/
-                // If cues are SMPTE images.
-                if (cue["smpte:backgroundImage"] !== undefined) {
-                    var images = ttml.tt.head.metadata.image_asArray;
-                    for (var j = 0; j < images.length; j += 1) {
-                        if (("#" + images[j]["p@xml:id"]) == cue["smpte:backgroundImage"]) {
-                            captionArray.push({
-                                start: pStartTime,
-                                end: pEndTime,
-                                id: images[j]["p@xml:id"],
-                                data: "data:image/" + images[j].imagetype.toLowerCase() + ";base64, " + images[j].__text,
-                                type: "image",
-                                divRegion: divRegionProperties,
-                                paragraphRegion: paragraphRegionProperties,
-                                showBackground: showBackground
-                            });
-                        }
-                    }
-                }
-                /*** Parse every cue in the ttml document and create elements accordingly.
-                 * If cues are not SMPTE images:
-                 * We need to treat every inline element inside the cue (span or br)
-                 ***/
-                else {
+
                     // If the cue has only one element, it needs to be put in an array.
-                    cue.p = [].concat(cue.p);
+                cue.p = [].concat(cue.p);
 
-                    // For each element, we add it properly in the cue.
-                    cue.p.forEach(function(caption) {
-                        // Create a br element if there is one in the cue.
-                        if (caption.hasOwnProperty('br')) {
-                            innerSpan.appendChild(document.createElement('br'));
-                        }
-
-                        // Create the inline span element if there is one in the cue.
-                        else if (caption.hasOwnProperty('span')) {
-                            // If span comprises several elements (text lines and br elements for example).
-                            caption['span'] = [].concat(caption['span']);
-                            // Create the inline span.
-                            var inlineSpan = document.createElement('span');
-
-                            // Extract the style of the span.
-                            if (caption.hasOwnProperty('span@style')) {
-                                var styleBlock = getStyleFromID(caption['span@style']);
-                                // If line padding has to be applied to the span.
-                                // We must apply it to the inline span and not to inner span.
-                                if (arrayContains('padding', paragraphStyleProperties) && caption['span'].length == 1) {
-                                    styleBlock.push(propertyFromArray('padding', paragraphStyleProperties));
-                                }
-                                inlineSpan.style.cssText = styleBlock.join(" ");
-                            }
-
-                            // If the span has <br/> elements, add them as child nodes.
-                            if (caption['span'].length > 1) {
-                                caption['span'].forEach(function(el) {
-                                    // If the element is a string
-                                    if (typeof el == 'string' || el instanceof String) {
-                                        // If line padding has to be applied to the inline span.
-                                        // We must apply it to each line in a span.
-                                        // For that we have to create a new span containing the style info.
-                                        if (arrayContains('padding', paragraphStyleProperties)) {
-                                            var linePaddingSpan = document.createElement('span');
-                                            var style = propertyFromArray('padding', paragraphStyleProperties);
-                                            linePaddingSpan.style.cssText = style;
-                                            linePaddingSpan.innerHTML = el;
-                                            inlineSpan.appendChild(linePaddingSpan);
-                                        } else {
-                                            var textNode = document.createTextNode(el);
-                                            inlineSpan.appendChild(textNode);
-                                        }
-                                      // If the element is a 'br' tag
-                                    } else if (el.hasOwnProperty('br')) {
-                                        // Create a br element.
-                                        inlineSpan.appendChild(document.createElement('br'));
-                                    }
-                                });
-                                innerSpan.appendChild(inlineSpan);
-                            } else {
-                                // Affect the style and text to the inline span.
-                                inlineSpan.innerHTML = caption['span'];
-                                innerSpan.appendChild(inlineSpan);
-                            }
-                        }
-                        // Add the text that is not in any inline element
-                        else {
-                            // Affect the text to the inner span.
-                            var textNode = document.createTextNode(caption);
-                            innerSpan.appendChild(textNode);
-                        }
-                    });
-
-                    // Finally we set the style to the cue.
-                    if (paragraphStyleProperties) {
-                        innerSpan.style.cssText = paragraphStyleProperties.join(" ");
+                // For each element, we add it properly in the cue.
+                cue.p.forEach(function(caption) {
+                    // Create a br element if there is one in the cue.
+                    if (caption.hasOwnProperty('br')) {
+                        innerSpan.appendChild(document.createElement('br'));
                     }
 
-                    // We then place the cue inside the outer span that controls the vertical alignment.
-                    outerSpan.appendChild(innerSpan);
+                    // Create the inline span element if there is one in the cue.
+                    else if (caption.hasOwnProperty('span')) {
+                        // If span comprises several elements (text lines and br elements for example).
+                        caption['span'] = [].concat(caption['span']);
+                        // Create the inline span.
+                        var inlineSpan = document.createElement('span');
 
-                    captionArray.push({
-                        start: pStartTime,
-                        end: pEndTime,
-                        data: outerSpan,
-                        type: "text",
-                        divRegion: divRegionProperties,
-                        paragraphRegion: paragraphRegionProperties,
-                        showBackground: showBackground
-                    });
+                        // Extract the style of the span.
+                        if (caption.hasOwnProperty('span@style')) {
+                            var styleBlock = getStyleFromID(caption['span@style']);
+                            // If line padding has to be applied to the span.
+                            // We must apply it to the inline span and not to inner span.
+                            if (arrayContains('padding', paragraphStyleProperties) && caption['span'].length == 1) {
+                                styleBlock.push(propertyFromArray('padding', paragraphStyleProperties));
+                            }
+                            inlineSpan.style.cssText = styleBlock.join(" ");
+                        }
+
+                        // If the span has <br/> elements, add them as child nodes.
+                        if (caption['span'].length > 1) {
+                            caption['span'].forEach(function(el) {
+                                // If the element is a string
+                                if (typeof el == 'string' || el instanceof String) {
+                                    // If line padding has to be applied to the inline span.
+                                    // We must apply it to each line in a span.
+                                    // For that we have to create a new span containing the style info.
+                                    if (arrayContains('padding', paragraphStyleProperties)) {
+                                        var linePaddingSpan = document.createElement('span');
+                                        var style = propertyFromArray('padding', paragraphStyleProperties);
+                                        linePaddingSpan.style.cssText = style;
+                                        linePaddingSpan.innerHTML = el;
+                                        inlineSpan.appendChild(linePaddingSpan);
+                                    } else {
+                                        var textNode = document.createTextNode(el);
+                                        inlineSpan.appendChild(textNode);
+                                    }
+                                    // If the element is a 'br' tag
+                                } else if (el.hasOwnProperty('br')) {
+                                    // Create a br element.
+                                    inlineSpan.appendChild(document.createElement('br'));
+                                }
+                            });
+                            innerSpan.appendChild(inlineSpan);
+                        } else {
+                            // Affect the style and text to the inline span.
+                            inlineSpan.innerHTML = caption['span'];
+                            innerSpan.appendChild(inlineSpan);
+                        }
+                    }
+                    // Add the text that is not in any inline element
+                    else {
+                        // Affect the text to the inner span.
+                        var textNode = document.createTextNode(caption);
+                        innerSpan.appendChild(textNode);
+                    }
+                });
+
+                // Finally we set the style to the cue.
+                if (paragraphStyleProperties) {
+                    innerSpan.style.cssText = paragraphStyleProperties.join(" ");
                 }
+
+                // We then place the cue inside the outer span that controls the vertical alignment.
+                outerSpan.appendChild(innerSpan);
+
+                captionArray.push({
+                    start: pStartTime,
+                    end: pEndTime,
+                    data: outerSpan,
+                    type: "text",
+                    paragraphRegion: paragraphRegionProperties,
+                    showBackground: showBackground
+                });
+
             });
 
             return captionArray;

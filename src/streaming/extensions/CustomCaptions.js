@@ -38,18 +38,14 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
     /***** Method which assign to the HTML the positioning for every cue. *****/
     function addPositioningToCaption(cue) {
-
         // Affect the defined regions to the captionRegion container.
-        if (cue.divRegion.length == 0) {
-            if (cue.paragraphRegion.length == 0) {
-                // If no region is defined, we set a default region
-                captionRegion.style.cssText = defaultRegion;
-            } else {
-                captionRegion.style.cssText = cue.paragraphRegion.join(" ");
-            }
+        if (cue.paragraphRegion.length == 0) {
+            // If no region is defined, we set a default region
+            captionRegion.style.cssText = defaultRegion;
         } else {
-            captionRegion.style.cssText = cue.divRegion.join(" ");
+            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
         }
+
     }
 
     return {
