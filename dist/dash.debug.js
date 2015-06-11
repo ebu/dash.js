@@ -5682,6 +5682,10 @@ MediaPlayer.utils.TTMLParser = function() {
                     var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("c")));
                     var valuePx = value * cellUnit[0] + "px;";
                     properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
+                } else if (key === "font-size" || key === "line-height") {
+                    var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
+                    var valuePx = value / 100 * cellUnit[1] + "px;";
+                    properties.push(key + ":" + valuePx);
                 } else if (key === "font-family") {
                     var font;
                     switch (property) {
@@ -5751,7 +5755,7 @@ MediaPlayer.utils.TTMLParser = function() {
             key = key.replace("region@tts:", "");
             key = key.replace("region@xml:", "");
             key = key.replace("region@id:", "");
-            key = key.replace("region@:", "");
+            key = key.replace("region@", "");
             key = camelCaseToDash(key);
             if (key === "region" || key === "id") {
                 continue;
@@ -5837,8 +5841,8 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
-        videoWidth = document.getElementById("videoPlayer").offsetWidth;
-        videoHeight = document.getElementById("videoPlayer").offsetHeight;
+        videoWidth = 1280;
+        videoHeight = 720;
         cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         ttmlLayout = [].concat(ttmlLayout);
         ttmlStylings = [].concat(ttmlStylings);
@@ -5890,6 +5894,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 value = value / 100 * videoHeightVH;
                 outerSpanVH = "line-height: " + value + "vh;";
             }
+            var outerSpan = document.createElement("span");
+            outerSpan.className = "outerSpan";
+            outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
             var textAlign = "text-align";
             if (arrayContains(textAlign, paragraphStyleProperties)) {
                 var value = propertyFromArray(textAlign, paragraphStyleProperties);
@@ -5904,9 +5911,18 @@ MediaPlayer.utils.TTMLParser = function() {
                 paragraphStyleProperties.push(value);
                 paragraphRegionProperties.splice(idVerAl, 1);
             }
-            var outerSpan = document.createElement("span");
-            outerSpan.className = "outerSpan";
-            outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
+            var multiRowAlign = "multi-row-align";
+            if (arrayContains(multiRowAlign, paragraphStyleProperties)) {
+                var value = propertyFromArray(multiRowAlign, paragraphStyleProperties);
+                if (value.indexOf("start") > -1) {
+                    value = "text-align: start";
+                } else if (value.indexOf("end") > -1) {
+                    value = "text-align: end";
+                } else if (value.indexOf("center") > -1) {
+                    value = "text-align: center";
+                }
+                outerSpan.style.cssText += value;
+            }
             var innerSpan = document.createElement("span");
             innerSpan.className = "innerSpan";
             cue.p = [].concat(cue.p);
@@ -5951,7 +5967,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
             });
             if (paragraphStyleProperties) {
-                innerSpan.style.cssText = paragraphStyleProperties.join(" ");
+                innerSpan.style.cssText = paragraphStyleProperties.join(" ") + "width: 100%;";
             }
             outerSpan.appendChild(innerSpan);
             captionArray.push({

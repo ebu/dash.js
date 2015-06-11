@@ -152,6 +152,10 @@ MediaPlayer.utils.TTMLParser = function() {
                         var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
                         var valuePx = value * cellUnit[0] + "px;";
                         properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
+                    } else if(key === 'font-size' || key === 'line-height'){
+                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('%')));
+                        var valuePx = value/100 * cellUnit[1] + "px;";
+                        properties.push(key + ':' + valuePx);
                     } else if (key === "font-family") {
                         var font;
                         switch (property) {
@@ -220,7 +224,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 key = key.replace("region@tts:", "");
                 key = key.replace("region@xml:", "");
                 key = key.replace("region@id:", "");
-                key = key.replace("region@:", "");
+                key = key.replace("region@", "");
 
                 // Clean the properties' names.
                 key = camelCaseToDash(key);
@@ -395,8 +399,9 @@ MediaPlayer.utils.TTMLParser = function() {
 
             cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
 
-            videoWidth = document.getElementById('videoPlayer').offsetWidth;
-            videoHeight = document.getElementById('videoPlayer').offsetHeight;
+            // TODO: not nice! Need to get resolution properly.
+            videoWidth = 1280;
+            videoHeight = 720;
 
             cellUnit = [videoWidth / cellResolution[0], videoHeight / cellResolution[1]];
 
@@ -489,7 +494,14 @@ MediaPlayer.utils.TTMLParser = function() {
                     outerSpanVH = "line-height: " + value + "vh;";
                 }
 
-                // Text Align needs to be set at the region level (outerSpan).
+                // Create an outer span element: needed so that inner content
+                // can be vertically aligned to something.
+                var outerSpan = document.createElement('span');
+                outerSpan.className = 'outerSpan';
+                // TODO: find the correct value for default line-height.
+                outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
+
+                // Text Align needs to be set at the region level (captionRegion).
                 var textAlign = 'text-align';
                 if (arrayContains(textAlign, paragraphStyleProperties)) {
                     var value = propertyFromArray(textAlign, paragraphStyleProperties);
@@ -507,12 +519,19 @@ MediaPlayer.utils.TTMLParser = function() {
                     paragraphRegionProperties.splice(idVerAl, 1);
                 }
 
-                // Create an outer span element: needed so that inner content
-                // can be vertically aligned to something.
-                var outerSpan = document.createElement('span');
-                outerSpan.className = 'outerSpan';
-                // TODO: find the correct value for default line-height.
-                outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
+                // Multi Row Align needs to be set at the outer level (outerSpan).
+                var multiRowAlign = 'multi-row-align';
+                if (arrayContains(multiRowAlign, paragraphStyleProperties)) {
+                    var value = propertyFromArray(multiRowAlign, paragraphStyleProperties);
+                    if (value.indexOf('start') > -1){
+                        value = 'text-align: start';
+                    } else if(value.indexOf('end') > -1) {
+                        value = 'text-align: end';
+                    } else if(value.indexOf('center') > -1) {
+                        value = 'text-align: center';
+                    }
+                    outerSpan.style.cssText += value;
+                }
 
                 // Create an inner Span containing the cue and its children if there are.
                 var innerSpan = document.createElement('span');
@@ -594,7 +613,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // Finally we set the style to the cue.
                 if (paragraphStyleProperties) {
-                    innerSpan.style.cssText = paragraphStyleProperties.join(" ");
+                    innerSpan.style.cssText = paragraphStyleProperties.join(" ") + 'width: 100%;';
                 }
 
                 // We then place the cue inside the outer span that controls the vertical alignment.
