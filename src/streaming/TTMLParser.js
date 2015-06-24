@@ -188,6 +188,39 @@ MediaPlayer.utils.TTMLParser = function() {
                                 break;
                         }
                         properties.push(font);
+                    } else if (key === 'text-align') {
+                        if(arrayContains('text-align', properties)){
+                            var textAlign = {
+                                right: "justify-content: flex-end;",
+                                start: "justify-content: flex-start;",
+                                center: "justify-content: center;",
+                                end: "justify-content: flex-end;",
+                                left: "justify-content: flex-start;"
+                            };
+                            properties.push(textAlign[property]);
+                        } else {
+                            var textAlign = {
+                                right: ["justify-content: flex-end;", "text-align: right;"],
+                                start: ["justify-content: flex-start;", "text-align: start;"],
+                                center: ["justify-content: center;", "text-align: center;"],
+                                end: ["justify-content: flex-end;", "text-align: end;"],
+                                left: ["justify-content: flex-start;", "text-align: left;"]
+                            };
+
+                            properties.push(textAlign[property][0]);
+                            properties.push(textAlign[property][1]);
+                        }
+                    } else if (key === 'multi-row-align') {
+                        if(arrayContains('text-align', properties)) {
+                            properties.splice(indexOfProperty(propertyFromArray('text-align', properties), properties), 1);
+                        }
+                        var multiRowAlign = {
+                            start: "text-align: start;",
+                            center: "text-align: center;",
+                            end: "text-align: end;"
+                        };
+                        properties.push(multiRowAlign[property]);
+
                     } else if (key === 'wrap-option') {
                         var wrapOption = {
                             wrap: "white-space: normal;",
@@ -249,9 +282,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push("top: " + coords[1] + ';');
                 } else if (key === "display-align") {
                     var displayAlign = {
-                        before: "vertical-align: top;",
-                        center: "vertical-align: middle;",
-                        after: "vertical-align: bottom;"
+                        before: "align-items: flex-start;",
+                        center: "align-items: center;",
+                        after: "align-items: flex-end;"
                     };
                     properties.push(displayAlign[property]);
                 } else if (key === 'writing-mode') {
@@ -443,8 +476,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 // Obtain the start and end time of the cue.
                 pStartTime = parseTimings(cue['p@begin']);
                 pEndTime = parseTimings(cue['p@end']);
-                paragraphStyleProperties = [];
-                paragraphRegionProperties = [];
+                paragraphStyleProperties = []; // to be put in "paragraph"
+                paragraphRegionProperties = []; // to be put in "captionRegion"
 
                 // TODO: check for span, if yes, check for timings information
 
@@ -461,7 +494,6 @@ MediaPlayer.utils.TTMLParser = function() {
                 /*** If p specify a style and / or a region. ***/
 
                 // Find the right region for our cue.
-                var outerSpanVH = '';
                 if (pRegionID) {
                     paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
                 }
@@ -481,61 +513,14 @@ MediaPlayer.utils.TTMLParser = function() {
                     paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(bodyStyleID));
                 }
 
-                // Line-height of outerSpan needs to be set so that inner content
-                // can be vertically aligned to something.
-                var height = 'height';
-                if (arrayContains(height, paragraphRegionProperties)) {
-                    var value = propertyFromArray(height, paragraphRegionProperties);
-                    // TODO: Change so it is dynamic and elegant!
-                    // videoHeight in 16:9 display, in vh unit.
-                    var videoHeightVH = 90;
-                    value = Number(value.match(/(\d+)/)[0]);
-                    value = value / 100 * videoHeightVH;
-                    outerSpanVH = "line-height: " + value + "vh;";
-                }
-
                 // Create an outer span element: needed so that inner content
                 // can be vertically aligned to something.
-                var outerSpan = document.createElement('span');
-                outerSpan.className = 'outerSpan';
-                // TODO: find the correct value for default line-height.
-                outerSpan.style.cssText = outerSpanVH ? outerSpanVH : "18vh";
-
-                // Text Align needs to be set at the region level (captionRegion).
-                var textAlign = 'text-align';
-                if (arrayContains(textAlign, paragraphStyleProperties)) {
-                    var value = propertyFromArray(textAlign, paragraphStyleProperties);
-                    var idTxtAl = indexOfProperty(value, paragraphStyleProperties);
-                    paragraphRegionProperties.push(value);
-                    paragraphStyleProperties.splice(idTxtAl, 1);
-                }
-
-                // Vertical Align needs to be set at the paragraph level (innerSpan).
-                var verticalAlign = 'vertical-align';
-                if (arrayContains(verticalAlign, paragraphRegionProperties)) {
-                    var value = propertyFromArray(verticalAlign, paragraphRegionProperties);
-                    var idVerAl = indexOfProperty(value, paragraphRegionProperties);
-                    paragraphStyleProperties.push(value);
-                    paragraphRegionProperties.splice(idVerAl, 1);
-                }
-
-                // Multi Row Align needs to be set at the outer level (outerSpan).
-                var multiRowAlign = 'multi-row-align';
-                if (arrayContains(multiRowAlign, paragraphStyleProperties)) {
-                    var value = propertyFromArray(multiRowAlign, paragraphStyleProperties);
-                    if (value.indexOf('start') > -1){
-                        value = 'text-align: start';
-                    } else if(value.indexOf('end') > -1) {
-                        value = 'text-align: end';
-                    } else if(value.indexOf('center') > -1) {
-                        value = 'text-align: center';
-                    }
-                    outerSpan.style.cssText += value;
-                }
+                var paragraph = document.createElement('div');
+                paragraph.className = 'paragraph';
 
                 // Create an inner Span containing the cue and its children if there are.
-                var innerSpan = document.createElement('span');
-                innerSpan.className = 'innerSpan';
+                var innerSpan = document.createElement('div');
+                innerSpan.className = 'innerContainer';
 
                 /*** Create the cue element
                  * 1 The cues are text only:
@@ -613,16 +598,16 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // Finally we set the style to the cue.
                 if (paragraphStyleProperties) {
-                    innerSpan.style.cssText = paragraphStyleProperties.join(" ") + 'width: 100%;';
+                    paragraph.style.cssText = paragraphStyleProperties.join(" ");
                 }
 
                 // We then place the cue inside the outer span that controls the vertical alignment.
-                outerSpan.appendChild(innerSpan);
+                paragraph.appendChild(innerSpan);
 
                 captionArray.push({
                     start: pStartTime,
                     end: pEndTime,
-                    data: outerSpan,
+                    data: paragraph,
                     type: "text",
                     paragraphRegion: paragraphRegionProperties,
                     showBackground: showBackground

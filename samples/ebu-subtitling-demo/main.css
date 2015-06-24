@@ -2,7 +2,7 @@
     width:160vh; /* 16:9 */
     height:90vh; /* 16:9 */
     position: absolute;
-    display: block;
+    display: flex;
     overflow: hidden;
     margin: 0;
     font-size: 6vh;
@@ -18,12 +18,15 @@
     position: absolute;
     z-index: 2147483647;
     margin: 0;
+    display: flex;
     }
 
-.innerSpan{
-    display: inline-block;
+.paragraph{
+    display: flex;
+    width: 100%;
     line-height: initial;
 }
+
 .controls-user-active{
     visibility: visible;
 }
