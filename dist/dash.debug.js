@@ -5651,6 +5651,15 @@ MediaPlayer.utils.TTMLParser = function() {
         return r[0];
     }, camelCaseToDash = function(key) {
         return key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
+    }, convertRGBA = function(rgba) {
+        var c = rgba.slice(1);
+        c = c.match(/.{2}/g);
+        var a, rgb = [];
+        a = parseFloat(parseInt(parseInt(c[3], 16) / 255 * 1e3) / 1e3);
+        c.slice(0, 3).forEach(function(i) {
+            rgb.push(parseInt(i, 16));
+        });
+        return "rgba(" + rgb.join(",") + "," + a + ");";
     }, getStyle = function(ttmlStylings, cueStyleID) {
         for (var j = 0; j < ttmlStylings.length; j++) {
             var currStyle = ttmlStylings[j];
@@ -5683,9 +5692,13 @@ MediaPlayer.utils.TTMLParser = function() {
                     var valuePx = value * cellUnit[0] + "px;";
                     properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
                 } else if (key === "font-size" || key === "line-height") {
-                    var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
-                    var valuePx = value / 100 * cellUnit[1] + "px;";
-                    properties.push(key + ":" + valuePx);
+                    if (property !== "normal") {
+                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
+                        var valuePx = value / 100 * cellUnit[1] + "px;";
+                        properties.push(key + ":" + valuePx);
+                    } else {
+                        properties.push(key + ":" + property + ";");
+                    }
                 } else if (key === "font-family") {
                     var font;
                     switch (property) {
@@ -5754,9 +5767,17 @@ MediaPlayer.utils.TTMLParser = function() {
                     var multiRowAlign = {
                         start: "text-align: start;",
                         center: "text-align: center;",
-                        end: "text-align: end;"
+                        end: "text-align: end;",
+                        auto: ""
                     };
                     properties.push(multiRowAlign[property]);
+                } else if (key === "background-color") {
+                    if (property.indexOf("#") > -1 && property.length - 1 === 8) {
+                        var rgbaValue = convertRGBA(property);
+                        properties.push("background-color: " + rgbaValue);
+                    } else {
+                        properties.push(key + ":" + property + ";");
+                    }
                 } else if (key === "wrap-option") {
                     var wrapOption = {
                         wrap: "white-space: normal;",
@@ -5830,8 +5851,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push(result);
             }
         }
-        if (showBackground === undefined) {
-            showBackground = false;
+        if (!objectContains("showBackground", cueRegion)) {
+            showBackground = true;
         }
         return properties;
     }, getStyleFromID = function(id) {
@@ -5852,6 +5873,15 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         });
         return res;
+    }, objectContains = function(text, object) {
+        var res = false;
+        for (var key in object) {
+            if (key.indexOf(text) > -1) {
+                res = true;
+                break;
+            }
+        }
+        return res;
     }, indexOfProperty = function(text, array) {
         return array.indexOf(text);
     }, propertyFromArray = function(text, array) {
@@ -5863,7 +5893,7 @@ MediaPlayer.utils.TTMLParser = function() {
         });
         return res;
     }, internalParse = function(data) {
-        var captionArray = [], errorMsg, cues, pStartTime, pEndTime, pStyleID, pRegionID, paragraphStyleProperties, paragraphRegionProperties, nsttp, videoHeight, videoWidth;
+        var captionArray = [], errorMsg, cues, pStartTime, pEndTime, spanStartTime, spanEndTime, pStyleID, pRegionID, paragraphStyleProperties, paragraphRegionProperties, nsttp, videoHeight, videoWidth;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlLayout = ttml.tt.head.layout;
         ttmlStylings = ttml.tt.head.styling;
@@ -5871,7 +5901,7 @@ MediaPlayer.utils.TTMLParser = function() {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
         }
-        cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || [ 32, 15 ];
         videoWidth = 1280;
         videoHeight = 720;
         cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
@@ -5891,8 +5921,13 @@ MediaPlayer.utils.TTMLParser = function() {
         var divStyleID = ttml.tt.body["div@style"];
         var divRegionID = ttml.tt.body["div@region"];
         cues.forEach(function(cue) {
-            pStartTime = parseTimings(cue["p@begin"]);
-            pEndTime = parseTimings(cue["p@end"]);
+            if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
+                pStartTime = parseTimings(cue["p@begin"]);
+                pEndTime = parseTimings(cue["p@end"]);
+            } else {
+                errorMsg = "TTML document has incorrect timing value";
+                throw errorMsg;
+            }
             paragraphStyleProperties = [];
             paragraphRegionProperties = [];
             pStyleID = cue["p@style"];
@@ -5901,30 +5936,86 @@ MediaPlayer.utils.TTMLParser = function() {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            if (pRegionID) {
-                paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
-            }
             if (divRegionID) {
-                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, divRegionID));
+                paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
             }
-            if (pStyleID) {
-                paragraphStyleProperties = getStyleFromID(pStyleID);
+            if (pRegionID) {
+                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID)) || getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
             }
-            if (divStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID));
+            console.warn(paragraphRegionProperties);
+            if (!arrayContains("align-items", paragraphRegionProperties)) {
+                paragraphRegionProperties.push("align-items: flex-start;");
+            }
+            if (!arrayContains("overflow", paragraphRegionProperties)) {
+                paragraphRegionProperties.push("overflow: hidden;");
+            }
+            if (!arrayContains("writingMode", paragraphRegionProperties)) {
+                paragraphRegionProperties.push("-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;");
             }
             if (bodyStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(bodyStyleID));
+                paragraphStyleProperties = getStyleFromID(bodyStyleID);
+            }
+            if (divStyleID) {
+                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID)) || getStyleFromID(divStyleID);
+            }
+            if (pStyleID) {
+                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(pStyleID)) || getStyleFromID(pStyleID);
+            }
+            if (!arrayContains("background-color", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("background-color: rgba(0,0,0,0);");
+            }
+            if (!arrayContains("color", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("color: rgba(255,255,255,1);");
+            }
+            if (!arrayContains("direction", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("direction: ltr;");
+            }
+            if (!arrayContains("font-family", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("font-family: monospace, sans-serif;");
+            }
+            if (!arrayContains("font-size", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("font-size:" + cellUnit[1] + "px;");
+            }
+            if (!arrayContains("font-style", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("font-style: normal;");
+            }
+            if (!arrayContains("line-height", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("line-height: normal;");
+            }
+            if (!arrayContains("font-weight", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("font-weight: normal;");
+            }
+            if (!arrayContains("text-align", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("text-align: start; justify-content: flex-start;");
+            }
+            if (!arrayContains("text-decoration", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("text-decoration: none;");
+            }
+            if (!arrayContains("unicode-bidi", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("unicode-bidi: normal;");
+            }
+            if (!arrayContains("white-space", paragraphStyleProperties)) {
+                paragraphStyleProperties.push("white-space: normal;");
             }
             var paragraph = document.createElement("div");
             paragraph.className = "paragraph";
-            var innerSpan = document.createElement("div");
-            innerSpan.className = "innerContainer";
+            var innerContainer = document.createElement("div");
+            innerContainer.className = "innerContainer";
+            if (arrayContains("unicode-bidi", paragraphStyleProperties) || arrayContains("direction", paragraphStyleProperties)) {
+                innerContainer.style.cssText += propertyFromArray("unicode-bidi", paragraphStyleProperties);
+                innerContainer.style.cssText += propertyFromArray("direction", paragraphStyleProperties);
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("unicode-bidi", paragraphStyleProperties), paragraphStyleProperties), 1);
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("direction", paragraphStyleProperties), paragraphStyleProperties), 1);
+            }
             cue.p = [].concat(cue.p);
             cue.p.forEach(function(caption) {
                 if (caption.hasOwnProperty("br")) {
-                    innerSpan.appendChild(document.createElement("br"));
+                    innerContainer.appendChild(document.createElement("br"));
                 } else if (caption.hasOwnProperty("span")) {
+                    if (caption.hasOwnProperty("span@begin")) {
+                        spanStartTime = parseTimings(caption["span@begin"]);
+                        spanEndTime = parseTimings(caption["span@end"]);
+                    }
                     caption["span"] = [].concat(caption["span"]);
                     var inlineSpan = document.createElement("span");
                     if (caption.hasOwnProperty("span@style")) {
@@ -5944,30 +6035,41 @@ MediaPlayer.utils.TTMLParser = function() {
                                     linePaddingSpan.innerHTML = el;
                                     inlineSpan.appendChild(linePaddingSpan);
                                 } else {
-                                    var textNode = document.createTextNode(el);
+                                    var textNode = document.createElement("span");
+                                    textNode.innerHTML = el;
                                     inlineSpan.appendChild(textNode);
                                 }
                             } else if (el.hasOwnProperty("br")) {
                                 inlineSpan.appendChild(document.createElement("br"));
                             }
                         });
-                        innerSpan.appendChild(inlineSpan);
+                        innerContainer.appendChild(inlineSpan);
                     } else {
                         inlineSpan.innerHTML = caption["span"];
-                        innerSpan.appendChild(inlineSpan);
+                        innerContainer.appendChild(inlineSpan);
                     }
                 } else {
-                    var textNode = document.createTextNode(caption);
-                    innerSpan.appendChild(textNode);
+                    var textNode = document.createElement("span");
+                    textNode.innerHTML = caption;
+                    if (arrayContains("padding", paragraphStyleProperties)) {
+                        var style = propertyFromArray("padding", paragraphStyleProperties);
+                        textNode.style.cssText = style;
+                    }
+                    innerContainer.appendChild(textNode);
                 }
             });
+            if (arrayContains("padding", paragraphStyleProperties)) {
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("padding", paragraphStyleProperties), paragraphStyleProperties), 1);
+            }
             if (paragraphStyleProperties) {
                 paragraph.style.cssText = paragraphStyleProperties.join(" ");
             }
-            paragraph.appendChild(innerSpan);
+            paragraph.appendChild(innerContainer);
+            console.warn(pStartTime);
+            console.warn(spanStartTime);
             captionArray.push({
-                start: pStartTime,
-                end: pEndTime,
+                start: spanStartTime || pStartTime,
+                end: spanEndTime || pEndTime,
                 data: paragraph,
                 type: "text",
                 paragraphRegion: paragraphRegionProperties,

@@ -18,7 +18,7 @@
     <video id="videoPlayer" class="video">
     </video>
     <!-- CAPTIONS -->
-    <p id="captionRegion" class="captionRegion"></p>
+    <div id="captionRegion" class="captionRegion"></div>
     <!-- CONTROLS -->
     <div id="mycontrols" class="controls-user-active">
         <button id="playpause" class="icon-play"></button>
@@ -38,7 +38,7 @@
 <!-- DASH.JS PLAYER SET UP -->
 <script>
     (function(){
-        var url = "http://localhost:8080/samples/ebu-subtitling-demo/sources/demo/manifest.mpd";
+        var url = "http://localhost:8080/samples/ebu-subtitling-demo/sources/subtitles-test-material/manifest-direction-bidi.mpd";
         var context = new Dash.di.DashContext();
         var player = new MediaPlayer(context);
         player.startup();

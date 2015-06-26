@@ -5,7 +5,6 @@
     display: flex;
     overflow: hidden;
     margin: 0;
-    font-size: 6vh;
 }
 .video {
     position: relative;
@@ -24,7 +23,6 @@
 .paragraph{
     display: flex;
     width: 100%;
-    line-height: initial;
 }
 
 .controls-user-active{

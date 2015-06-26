@@ -103,6 +103,20 @@ MediaPlayer.utils.TTMLParser = function() {
             return key.replace(/([a-z])([A-Z])/g, '$1-$2').toLowerCase();
         },
 
+        convertRGBA = function(rgba){
+            var c = rgba.slice(1);
+            c = c.match(/.{2}/g);
+
+            var a, rgb=[];
+
+            a = parseFloat(parseInt((parseInt(c[3], 16)/255)*1000)/1000);
+
+            c.slice(0,3).forEach(function(i){
+                rgb.push(parseInt(i, 16));});
+
+            return 'rgba(' + rgb.join(',') +',' + a + ');';
+        },
+
         // Get the style set by comparing the style IDs available.
         getStyle = function(ttmlStylings, cueStyleID) {
             // For every styles available.
@@ -153,9 +167,13 @@ MediaPlayer.utils.TTMLParser = function() {
                         var valuePx = value * cellUnit[0] + "px;";
                         properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
                     } else if(key === 'font-size' || key === 'line-height'){
-                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('%')));
-                        var valuePx = value/100 * cellUnit[1] + "px;";
-                        properties.push(key + ':' + valuePx);
+                        if(property !== 'normal'){
+                            var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('%')));
+                            var valuePx = value/100 * cellUnit[1] + "px;";
+                            properties.push(key + ':' + valuePx);
+                        } else {
+                            properties.push(key + ":" + property + ";");
+                        }
                     } else if (key === "font-family") {
                         var font;
                         switch (property) {
@@ -217,10 +235,18 @@ MediaPlayer.utils.TTMLParser = function() {
                         var multiRowAlign = {
                             start: "text-align: start;",
                             center: "text-align: center;",
-                            end: "text-align: end;"
+                            end: "text-align: end;",
+                            auto: ""
                         };
                         properties.push(multiRowAlign[property]);
 
+                    } else if (key === 'background-color') {
+                        if(property.indexOf('#') > -1 && (property.length - 1) === 8){
+                            var rgbaValue = convertRGBA(property);
+                            properties.push('background-color: ' + rgbaValue);
+                        } else {
+                            properties.push(key + ":" + property + ";");
+                        }
                     } else if (key === 'wrap-option') {
                         var wrapOption = {
                             wrap: "white-space: normal;",
@@ -239,6 +265,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
                 }
             }
+
             return properties;
         },
 
@@ -354,8 +381,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(result);
                 }
             }
-            if (showBackground === undefined) {
-                showBackground = false;
+
+            if (!objectContains('showBackground', cueRegion)) {
+                showBackground = true;
             }
             return properties;
         },
@@ -389,6 +417,19 @@ MediaPlayer.utils.TTMLParser = function() {
             return res;
         },
 
+        // Return whether or not an array contains a certain text
+        objectContains = function(text, object) {
+            var res = false;
+
+            for (var key in object) {
+                if (key.indexOf(text) > -1) {
+                    res = true;
+                    break;
+                }
+            }
+            return res;
+        },
+
         // Return the index of text in the array (must be exact term)
         indexOfProperty = function(text, array) {
             return array.indexOf(text);
@@ -411,6 +452,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 cues,
                 pStartTime,
                 pEndTime,
+                spanStartTime,
+                spanEndTime,
                 pStyleID,
                 pRegionID,
                 paragraphStyleProperties,
@@ -430,7 +473,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 throw errorMsg;
             }
 
-            cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+            cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || [32, 15];
 
             // TODO: not nice! Need to get resolution properly.
             videoWidth = 1280;
@@ -472,14 +515,19 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // TODO: Parse timings on span elements.
             // Parsing of every cue.
+
+
             cues.forEach(function(cue) {
                 // Obtain the start and end time of the cue.
-                pStartTime = parseTimings(cue['p@begin']);
-                pEndTime = parseTimings(cue['p@end']);
+                if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
+                    pStartTime = parseTimings(cue['p@begin']);
+                    pEndTime   = parseTimings(cue['p@end']);
+                } else{
+                    errorMsg = "TTML document has incorrect timing value";
+                    throw errorMsg;
+                }
                 paragraphStyleProperties = []; // to be put in "paragraph"
                 paragraphRegionProperties = []; // to be put in "captionRegion"
-
-                // TODO: check for span, if yes, check for timings information
 
                 // Obtain the style and region assigned to the cue if there is one.
                 pStyleID = cue['p@style'];
@@ -494,23 +542,81 @@ MediaPlayer.utils.TTMLParser = function() {
                 /*** If p specify a style and / or a region. ***/
 
                 // Find the right region for our cue.
-                if (pRegionID) {
-                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
+                if (divRegionID) {
+                    paragraphRegionProperties = getRegionFromID(ttmlLayout, ttmlStylings, divRegionID);
                 }
 
-                if (divRegionID) {
-                    paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, divRegionID));
+                if (pRegionID) {
+                    paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID))
+                        || getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
+                }
+
+                console.warn(paragraphRegionProperties);
+                // Add initial values to what's not set:
+                if(!arrayContains('align-items', paragraphRegionProperties)){
+                    paragraphRegionProperties.push('align-items: flex-start;');
+                }
+                if(!arrayContains('overflow', paragraphRegionProperties)){
+                    paragraphRegionProperties.push('overflow: hidden;');
+                }
+
+                if(!arrayContains('writingMode', paragraphRegionProperties)){
+                    paragraphRegionProperties.push('-ms-writing-mode: lr-tb;\
+                                   -webkit-writing-mode: horizontal-tb;\
+                                   -moz-writing-mode: horizontal-tb;\
+                                   -ms-writing-mode: horizontal-tb;\
+                                   writing-mode: horizontal-tb;');
                 }
 
                 // Find the right style for our cue.
-                if (pStyleID) {
-                    paragraphStyleProperties = getStyleFromID(pStyleID);
+                if (bodyStyleID) {
+                    paragraphStyleProperties = getStyleFromID(bodyStyleID);
                 }
                 if (divStyleID) {
-                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID));
+                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(divStyleID))
+                        || getStyleFromID(divStyleID);
                 }
-                if (bodyStyleID) {
-                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(bodyStyleID));
+                if (pStyleID) {
+                    paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromID(pStyleID))
+                        || getStyleFromID(pStyleID);
+                }
+
+                // Add initial values to what's not set:
+                if(!arrayContains('background-color', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('background-color: rgba(0,0,0,0);');
+                }
+                if(!arrayContains('color', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('color: rgba(255,255,255,1);');
+                }
+                if(!arrayContains('direction',paragraphStyleProperties)){
+                    paragraphStyleProperties.push('direction: ltr;');
+                }
+                if(!arrayContains('font-family', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('font-family: monospace, sans-serif;');
+                }
+                if(!arrayContains('font-size', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('font-size:' +  cellUnit[1] + 'px;');
+                }
+                if(!arrayContains('font-style', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('font-style: normal;');
+                }
+                if (!arrayContains('line-height', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('line-height: normal;');
+                }
+                if (!arrayContains('font-weight', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('font-weight: normal;')
+                }
+                if (!arrayContains('text-align', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('text-align: start; justify-content: flex-start;');
+                }
+                if (!arrayContains('text-decoration', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('text-decoration: none;');
+                }
+                if (!arrayContains('unicode-bidi', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('unicode-bidi: normal;');
+                }
+                if (!arrayContains('white-space', paragraphStyleProperties)){
+                    paragraphStyleProperties.push('white-space: normal;');
                 }
 
                 // Create an outer span element: needed so that inner content
@@ -519,8 +625,16 @@ MediaPlayer.utils.TTMLParser = function() {
                 paragraph.className = 'paragraph';
 
                 // Create an inner Span containing the cue and its children if there are.
-                var innerSpan = document.createElement('div');
-                innerSpan.className = 'innerContainer';
+                var innerContainer = document.createElement('div');
+                innerContainer.className = 'innerContainer';
+
+                if(arrayContains('unicode-bidi', paragraphStyleProperties) || arrayContains('direction', paragraphStyleProperties)){
+                    innerContainer.style.cssText += propertyFromArray('unicode-bidi',paragraphStyleProperties);
+                    innerContainer.style.cssText += propertyFromArray('direction',paragraphStyleProperties);
+
+                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray('unicode-bidi',paragraphStyleProperties), paragraphStyleProperties), 1);
+                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray('direction',paragraphStyleProperties), paragraphStyleProperties), 1);
+                }
 
                 /*** Create the cue element
                  * 1 The cues are text only:
@@ -536,11 +650,15 @@ MediaPlayer.utils.TTMLParser = function() {
                 cue.p.forEach(function(caption) {
                     // Create a br element if there is one in the cue.
                     if (caption.hasOwnProperty('br')) {
-                        innerSpan.appendChild(document.createElement('br'));
+                        innerContainer.appendChild(document.createElement('br'));
                     }
 
                     // Create the inline span element if there is one in the cue.
                     else if (caption.hasOwnProperty('span')) {
+                        if (caption.hasOwnProperty('span@begin')) {
+                            spanStartTime = parseTimings(caption['span@begin']);
+                            spanEndTime = parseTimings(caption['span@end']);
+                        }
                         // If span comprises several elements (text lines and br elements for example).
                         caption['span'] = [].concat(caption['span']);
                         // Create the inline span.
@@ -572,7 +690,8 @@ MediaPlayer.utils.TTMLParser = function() {
                                         linePaddingSpan.innerHTML = el;
                                         inlineSpan.appendChild(linePaddingSpan);
                                     } else {
-                                        var textNode = document.createTextNode(el);
+                                        var textNode = document.createElement('span');
+                                        textNode.innerHTML = el;
                                         inlineSpan.appendChild(textNode);
                                     }
                                     // If the element is a 'br' tag
@@ -581,32 +700,45 @@ MediaPlayer.utils.TTMLParser = function() {
                                     inlineSpan.appendChild(document.createElement('br'));
                                 }
                             });
-                            innerSpan.appendChild(inlineSpan);
+                            innerContainer.appendChild(inlineSpan);
                         } else {
                             // Affect the style and text to the inline span.
                             inlineSpan.innerHTML = caption['span'];
-                            innerSpan.appendChild(inlineSpan);
+                            innerContainer.appendChild(inlineSpan);
                         }
                     }
                     // Add the text that is not in any inline element
                     else {
                         // Affect the text to the inner span.
-                        var textNode = document.createTextNode(caption);
-                        innerSpan.appendChild(textNode);
+                        var textNode = document.createElement('span');
+                        textNode.innerHTML = caption;
+                        if (arrayContains('padding', paragraphStyleProperties)) {
+                            var style = propertyFromArray('padding', paragraphStyleProperties);
+                            textNode.style.cssText = style;
+                        }
+                        innerContainer.appendChild(textNode);
+
                     }
                 });
 
-                // Finally we set the style to the cue.
+                if (arrayContains('padding', paragraphStyleProperties)) {
+                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray(('padding'), paragraphStyleProperties), paragraphStyleProperties), 1);
+                }
+
+                    // Finally we set the style to the cue.
                 if (paragraphStyleProperties) {
                     paragraph.style.cssText = paragraphStyleProperties.join(" ");
                 }
 
                 // We then place the cue inside the outer span that controls the vertical alignment.
-                paragraph.appendChild(innerSpan);
+                paragraph.appendChild(innerContainer);
+
+                console.warn(pStartTime);
+                console.warn(spanStartTime);
 
                 captionArray.push({
-                    start: pStartTime,
-                    end: pEndTime,
+                    start: spanStartTime || pStartTime,
+                    end: spanEndTime || pEndTime,
                     data: paragraph,
                     type: "text",
                     paragraphRegion: paragraphRegionProperties,
