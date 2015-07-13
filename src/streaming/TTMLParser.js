@@ -247,6 +247,13 @@ MediaPlayer.utils.TTMLParser = function() {
                         } else {
                             properties.push(key + ":" + property + ";");
                         }
+                    } else if (key === 'color') {
+                        if(property.indexOf('#') > -1 && (property.length - 1) === 8){
+                            var rgbaValue = convertRGBA(property);
+                            properties.push('color: ' + rgbaValue);
+                        } else {
+                            properties.push(key + ":" + property + ";");
+                        }
                     } else if (key === 'wrap-option') {
                         var wrapOption = {
                             wrap: "white-space: normal;",
@@ -551,7 +558,6 @@ MediaPlayer.utils.TTMLParser = function() {
                         || getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
                 }
 
-                console.warn(paragraphRegionProperties);
                 // Add initial values to what's not set:
                 if(!arrayContains('align-items', paragraphRegionProperties)){
                     paragraphRegionProperties.push('align-items: flex-start;');
@@ -732,9 +738,6 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // We then place the cue inside the outer span that controls the vertical alignment.
                 paragraph.appendChild(innerContainer);
-
-                console.warn(pStartTime);
-                console.warn(spanStartTime);
 
                 captionArray.push({
                     start: spanStartTime || pStartTime,
