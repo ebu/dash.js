@@ -43,6 +43,7 @@ module.exports = function(grunt) {
             "../src/lib/Math.js",
             "../src/lib/long.js",
             "../src/lib/base64.js",
+			"../src/lib/iso_boxer.min.js",
             "../src/streaming/MediaPlayer.js",
             "../src/streaming/Context.js",
             "../src/dash/Dash.js",
@@ -66,6 +67,7 @@ module.exports = function(grunt) {
             "../src/lib/Math.js",
             "../src/lib/long.js",
             "../src/lib/base64.js",
+			"../src/lib/iso_boxer.min.js",
             "../src/streaming/MediaPlayer.js",
             "../src/streaming/Context.js",
             "../src/dash/Dash.js",
@@ -112,7 +114,8 @@ module.exports = function(grunt) {
             ".grunt/src/lib/Math.js",
             ".grunt/src/lib/long.js",
             ".grunt/src/lib/dijon.js",	
-            ".grunt/src/lib/base64.js"
+            ".grunt/src/lib/base64.js",
+			".grunt/src/lib/iso_boxer.min.js"
           ],
           template: require('grunt-template-jasmine-istanbul'),
           templateOptions: {

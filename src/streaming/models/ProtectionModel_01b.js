@@ -230,6 +230,17 @@ MediaPlayer.models.ProtectionModel_01b = function () {
             }
         },
 
+        getAllInitData: function() {
+            var i, retVal = [];
+            for (i = 0; i < pendingSessions.length; i++) {
+                retVal.push(pendingSessions[i].initData);
+            }
+            for (i = 0; i < sessions.length; i++) {
+                retVal.push(sessions[i].initData);
+            }
+            return retVal;
+        },
+
         requestKeySystemAccess: function(ksConfigurations) {
             var ve = videoElement;
             if (!ve) { // Must have a video element to do this capability tests
@@ -320,19 +331,6 @@ MediaPlayer.models.ProtectionModel_01b = function () {
                 throw new Error("Can not create sessions until you have selected a key system");
             }
 
-            // Check for duplicate initData.
-            var i;
-            for (i = 0; i < sessions.length; i++) {
-                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
-                    return;
-                }
-            }
-            for (i = 0; i < pendingSessions.length; i++) {
-                if (this.protectionExt.initDataEquals(initData, pendingSessions[i].initData)) {
-                    return;
-                }
-            }
-
             // Determine if creating a new session is allowed
             if (moreSessionsAllowed || sessions.length === 0) {
 
@@ -348,7 +346,7 @@ MediaPlayer.models.ProtectionModel_01b = function () {
                 pendingSessions.push(newSession);
 
                 // Send our request to the CDM
-                videoElement[api.generateKeyRequest](this.keySystem.systemString, initData);
+                videoElement[api.generateKeyRequest](this.keySystem.systemString, new Uint8Array(initData));
 
                 return newSession;
 
