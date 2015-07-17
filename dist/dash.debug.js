@@ -8306,8 +8306,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
             while (captionRegion.firstChild) {
                 captionRegion.removeChild(captionRegion.firstChild);
-            }
-            if (!activeCue.showBackground) {
                 captionRegion.style.cssText = "";
             }
             playlist.forEach(function(cue) {

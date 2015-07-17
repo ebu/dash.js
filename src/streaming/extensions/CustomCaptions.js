@@ -78,16 +78,17 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             // Make sure the region is emptied before we add anything.
             while (captionRegion.firstChild) {
                 captionRegion.removeChild(captionRegion.firstChild);
-            }
-
-            // Define if the region should be kept or not
-            // if showBackground = "always":
-            // he background color of a region is always rendered when performing presentation processing on a visual medium
-            // if showBackground ="whenActive":
-            // the background color of a region is rendered only when some content is flowed into the region
-            if (!activeCue.showBackground) {
                 captionRegion.style.cssText = "";
             }
+
+            //// Define if the region should be kept or not
+            //// if showBackground = "always":
+            //// he background color of a region is always rendered when performing presentation processing on a visual medium
+            //// if showBackground ="whenActive":
+            //// the background color of a region is rendered only when some content is flowed into the region
+            //if (!activeCue.showBackground) {
+            //    captionRegion.style.cssText = "";
+            //}
 
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
