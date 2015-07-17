@@ -538,10 +538,14 @@ MediaPlayer.utils.TTMLParser = function() {
 
 
             cues.forEach(function(cue) {
+                // If the cue has only one element, it needs to be put in an array.
                 // Obtain the start and end time of the cue.
                 if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
                     pStartTime = parseTimings(cue['p@begin']);
                     pEndTime   = parseTimings(cue['p@end']);
+                } else if(cue.p.hasOwnProperty('span@begin') && cue.p.hasOwnProperty('span@end')) {
+                    spanStartTime = parseTimings(cue.p['span@begin']);
+                    spanEndTime   = parseTimings(cue.p['span@end']);
                 } else{
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
@@ -554,7 +558,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 pRegionID = cue['p@region'];
 
                 // Error if timing is not specified.
-                if (isNaN(pStartTime) || isNaN(pEndTime)) {
+                if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
@@ -674,10 +678,6 @@ MediaPlayer.utils.TTMLParser = function() {
 
                     // Create the inline span element if there is one in the cue.
                     else if (caption.hasOwnProperty('span')) {
-                        if (caption.hasOwnProperty('span@begin')) {
-                            spanStartTime = parseTimings(caption['span@begin']);
-                            spanEndTime = parseTimings(caption['span@end']);
-                        }
                         // If span comprises several elements (text lines and br elements for example).
                         caption['span'] = [].concat(caption['span']);
                         // Create the inline span.
@@ -704,8 +704,7 @@ MediaPlayer.utils.TTMLParser = function() {
                                     // For that we have to create a new span containing the style info.
                                     if (arrayContains('padding', paragraphStyleProperties)) {
                                         var linePaddingSpan = document.createElement('span');
-                                        var style = propertyFromArray('padding', paragraphStyleProperties);
-                                        linePaddingSpan.style.cssText = style;
+                                        linePaddingSpan.style.cssText = propertyFromArray('padding', paragraphStyleProperties);
                                         linePaddingSpan.innerHTML = el;
                                         inlineSpan.appendChild(linePaddingSpan);
                                     } else {
@@ -732,8 +731,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         var textNode = document.createElement('span');
                         textNode.innerHTML = caption;
                         if (arrayContains('padding', paragraphStyleProperties)) {
-                            var style = propertyFromArray('padding', paragraphStyleProperties);
-                            textNode.style.cssText = style;
+
+                            textNode.style.cssText = propertyFromArray('padding', paragraphStyleProperties);
                         }
                         innerContainer.appendChild(textNode);
 

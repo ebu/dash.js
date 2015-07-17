@@ -45,7 +45,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         },
 
         listen: function() {
-            // Check every ms which cue should be played.
+            // Check every 200ms which cue should be played.
             video.listen('timeupdate', this.onCaption);
 
         },
@@ -77,8 +77,8 @@ MediaPlayer.dependencies.CustomCaptions = function() {
 
             // Make sure the region is emptied before we add anything.
             while (captionRegion.firstChild) {
-                captionRegion.removeChild(captionRegion.firstChild);
                 captionRegion.style.cssText = "";
+                captionRegion.removeChild(captionRegion.firstChild);
             }
 
             //// Define if the region should be kept or not
@@ -89,7 +89,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             //if (!activeCue.showBackground) {
             //    captionRegion.style.cssText = "";
             //}
-
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
