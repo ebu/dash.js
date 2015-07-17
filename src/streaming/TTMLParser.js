@@ -144,6 +144,10 @@ MediaPlayer.utils.TTMLParser = function() {
         // Compute the style properties to return an array with the cleaned properties.
         computeStyle = function(cueStyle) {
             var properties = [];
+            var value;
+            var valueInPx;
+            var rgbaValue;
+            var textAlign;
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     var property = cueStyle[key];
@@ -163,14 +167,14 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Check for line-padding and font-family properties.
                     if (key === 'line-padding') {
                         // Use padding-left/right for line-padding.
-                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
-                        var valuePx = value * cellUnit[0] + "px;";
-                        properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
+                        value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('c')));
+                        valueInPx = value * cellUnit[0] + "px;";
+                        properties.push("padding-left:" + valueInPx + " padding-right:" + valueInPx);
                     } else if(key === 'font-size' || key === 'line-height'){
                         if(property !== 'normal'){
-                            var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('%')));
-                            var valuePx = value/100 * cellUnit[1] + "px;";
-                            properties.push(key + ':' + valuePx);
+                            value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf('%')));
+                            valueInPx = value/100 * cellUnit[1] + "px;";
+                            properties.push(key + ':' + valueInPx);
                         } else {
                             properties.push(key + ":" + property + ";");
                         }
@@ -208,7 +212,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         properties.push(font);
                     } else if (key === 'text-align') {
                         if(arrayContains('text-align', properties)){
-                            var textAlign = {
+                            textAlign = {
                                 right: "justify-content: flex-end;",
                                 start: "justify-content: flex-start;",
                                 center: "justify-content: center;",
@@ -217,7 +221,7 @@ MediaPlayer.utils.TTMLParser = function() {
                             };
                             properties.push(textAlign[property]);
                         } else {
-                            var textAlign = {
+                            textAlign = {
                                 right: ["justify-content: flex-end;", "text-align: right;"],
                                 start: ["justify-content: flex-start;", "text-align: start;"],
                                 center: ["justify-content: center;", "text-align: center;"],
@@ -230,7 +234,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         }
                     } else if (key === 'multi-row-align') {
                         if(arrayContains('text-align', properties)) {
-                            properties.splice(indexOfProperty(propertyFromArray('text-align', properties), properties), 1);
+                            deletePropertyFromArray('text-align', properties);
                         }
                         var multiRowAlign = {
                             start: "text-align: start;",
@@ -242,14 +246,14 @@ MediaPlayer.utils.TTMLParser = function() {
 
                     } else if (key === 'background-color') {
                         if(property.indexOf('#') > -1 && (property.length - 1) === 8){
-                            var rgbaValue = convertRGBA(property);
+                            rgbaValue = convertRGBA(property);
                             properties.push('background-color: ' + rgbaValue);
                         } else {
                             properties.push(key + ":" + property + ";");
                         }
                     } else if (key === 'color') {
                         if(property.indexOf('#') > -1 && (property.length - 1) === 8){
-                            var rgbaValue = convertRGBA(property);
+                            rgbaValue = convertRGBA(property);
                             properties.push('color: ' + rgbaValue);
                         } else {
                             properties.push(key + ":" + property + ";");
@@ -427,14 +431,19 @@ MediaPlayer.utils.TTMLParser = function() {
         // Return whether or not an array contains a certain text
         objectContains = function(text, object) {
             var res = false;
-
             for (var key in object) {
-                if (key.indexOf(text) > -1) {
-                    res = true;
-                    break;
+                if(object.hasOwnProperty(key)) {
+                    if (key.indexOf(text) > -1) {
+                        res = true;
+                        break;
+                    }
                 }
             }
             return res;
+        },
+
+        deletePropertyFromArray = function(property, array) {
+            array.splice(indexOfProperty(propertyFromArray(property,array), array), 1);
         },
 
         // Return the index of text in the array (must be exact term)
@@ -482,9 +491,8 @@ MediaPlayer.utils.TTMLParser = function() {
 
             cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || [32, 15];
 
-            // TODO: not nice! Need to get resolution properly.
-            videoWidth = 1280;
-            videoHeight = 720;
+            videoWidth = document.getElementById('videoPlayer').clientWidth;
+            videoHeight = document.getElementById('videoPlayer').clientHeight;
 
             cellUnit = [videoWidth / cellResolution[0], videoHeight / cellResolution[1]];
 
@@ -520,8 +528,13 @@ MediaPlayer.utils.TTMLParser = function() {
             // If div has a region.
             var divRegionID = ttml.tt.body['div@region'];
 
-            // TODO: Parse timings on span elements.
-            // Parsing of every cue.
+            /*** Parsing of every cue.
+             *
+             * cues: List of the cues found in the ttml parsing.
+             *       We iterate on this list.
+             * cue: Every cue is parsed individually and creates an HTML element with its style and children.
+             *
+             * ***/
 
 
             cues.forEach(function(cue) {
@@ -638,12 +651,12 @@ MediaPlayer.utils.TTMLParser = function() {
                     innerContainer.style.cssText += propertyFromArray('unicode-bidi',paragraphStyleProperties);
                     innerContainer.style.cssText += propertyFromArray('direction',paragraphStyleProperties);
 
-                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray('unicode-bidi',paragraphStyleProperties), paragraphStyleProperties), 1);
-                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray('direction',paragraphStyleProperties), paragraphStyleProperties), 1);
+                    deletePropertyFromArray('unicode-bidi', paragraphStyleProperties);
+                    deletePropertyFromArray('direction', paragraphStyleProperties);
                 }
 
                 /*** Create the cue element
-                 * 1 The cues are text only:
+                 * I. The cues are text only:
                  *      i) The cue contains a 'br' element
                  *      ii) The cue contains a span element
                  *      iii) The cue contains text
@@ -728,7 +741,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 });
 
                 if (arrayContains('padding', paragraphStyleProperties)) {
-                    paragraphStyleProperties.splice(indexOfProperty(propertyFromArray(('padding'), paragraphStyleProperties), paragraphStyleProperties), 1);
+                    deletePropertyFromArray('padding', paragraphStyleProperties);
                 }
 
                     // Finally we set the style to the cue.
