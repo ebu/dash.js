@@ -33,20 +33,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     var playlist, // Playlist containing all cues received
         video, // video from the VideoModel
         activeCue, // Active cue playing
-        captionRegion = document.getElementById('captionRegion'), // container of the captionText, represent the region
-        defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
-
-    /***** Method which assign to the HTML the positioning for every cue. *****/
-    function addPositioningToCaption(cue) {
-        // Affect the defined regions to the captionRegion container.
-        if (cue.paragraphRegion.length == 0) {
-            // If no region is defined, we set a default region
-            captionRegion.style.cssText = defaultRegion;
-        } else {
-            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
-        }
-
-    }
+        captionRegion = document.getElementById('captionRegion'); // container of the captionText, represent the region
 
     return {
 
@@ -118,8 +105,8 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     if (activeCue.data) {
                         captionRegion.appendChild(activeCue.data);
 
-                        // Apply the styling and positioning to our text.
-                        addPositioningToCaption(activeCue);
+                        // Apply the positioning to our text.
+                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
                     }
                 }
             });

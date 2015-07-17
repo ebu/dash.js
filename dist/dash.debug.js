@@ -8270,14 +8270,7 @@ MediaPlayer.dependencies.TextController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
-    function addPositioningToCaption(cue) {
-        if (cue.paragraphRegion.length == 0) {
-            captionRegion.style.cssText = defaultRegion;
-        } else {
-            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
-        }
-    }
+    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion");
     return {
         initialize: function(videoModel) {
             video = videoModel;
@@ -8318,7 +8311,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                     if (activeCue.data) {
                         captionRegion.appendChild(activeCue.data);
-                        addPositioningToCaption(activeCue);
+                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
                     }
                 }
             });
