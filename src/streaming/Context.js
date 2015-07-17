@@ -59,12 +59,15 @@ MediaPlayer.di.Context = function () {
             this.system.mapSingleton('DOMStorage', MediaPlayer.utils.DOMStorage);
             this.system.mapClass('customTimeRanges', MediaPlayer.utils.CustomTimeRanges);
             this.system.mapClass('customControls', MediaPlayer.utils.CustomControls);
+            this.system.mapSingleton('virtualBuffer', MediaPlayer.utils.VirtualBuffer);
+            this.system.mapClass('isoFile', MediaPlayer.utils.IsoFile);
 
             this.system.mapSingleton('textTrackExtensions', MediaPlayer.utils.TextTrackExtensions);
             this.system.mapSingleton('vttParser', MediaPlayer.utils.VTTParser);
             this.system.mapSingleton('ttmlParser', MediaPlayer.utils.TTMLParser);
+            this.system.mapSingleton('boxParser', MediaPlayer.utils.BoxParser)
 
-            this.system.mapClass('videoModel', MediaPlayer.models.VideoModel);
+            this.system.mapSingleton('videoModel', MediaPlayer.models.VideoModel);
             this.system.mapSingleton('manifestModel', MediaPlayer.models.ManifestModel);
             this.system.mapSingleton('metricsModel', MediaPlayer.models.MetricsModel);
             this.system.mapSingleton('uriQueryFragModel', MediaPlayer.models.URIQueryAndFragmentModel);
@@ -72,6 +75,11 @@ MediaPlayer.di.Context = function () {
             this.system.mapSingleton('ksPlayReady', MediaPlayer.dependencies.protection.KeySystem_PlayReady);
             this.system.mapSingleton('ksWidevine', MediaPlayer.dependencies.protection.KeySystem_Widevine);
             this.system.mapSingleton('ksClearKey', MediaPlayer.dependencies.protection.KeySystem_ClearKey);
+
+            this.system.mapSingleton('serverPlayReady', MediaPlayer.dependencies.protection.servers.PlayReady);
+            this.system.mapSingleton('serverWidevine', MediaPlayer.dependencies.protection.servers.Widevine);
+            this.system.mapSingleton('serverClearKey', MediaPlayer.dependencies.protection.servers.ClearKey);
+            this.system.mapSingleton('serverDRMToday', MediaPlayer.dependencies.protection.servers.DRMToday);
 
             this.system.mapSingleton('requestModifierExt', MediaPlayer.dependencies.RequestModifierExtensions);
             this.system.mapSingleton('textSourceBuffer', MediaPlayer.dependencies.TextSourceBuffer);
@@ -83,7 +91,7 @@ MediaPlayer.di.Context = function () {
             this.system.mapSingleton('videoExt', MediaPlayer.dependencies.VideoModelExtensions);
             this.system.mapSingleton('protectionExt', MediaPlayer.dependencies.ProtectionExtensions);
             this.system.mapClass('protectionController', MediaPlayer.dependencies.ProtectionController);
-            this.system.mapClass('playbackController', MediaPlayer.dependencies.PlaybackController);
+            this.system.mapSingleton('playbackController', MediaPlayer.dependencies.PlaybackController);
 
             mapProtectionModel.call(this); // Determines EME API support and version
 
@@ -100,17 +108,20 @@ MediaPlayer.di.Context = function () {
             this.system.mapClass('pendingRequestsRule', MediaPlayer.rules.PendingRequestsRule);
             this.system.mapClass('playbackTimeRule', MediaPlayer.rules.PlaybackTimeRule);
             this.system.mapClass('sameTimeRequestRule', MediaPlayer.rules.SameTimeRequestRule);
+            this.system.mapClass('abandonRequestRule', MediaPlayer.rules.AbandonRequestsRule);
             this.system.mapSingleton('scheduleRulesCollection', MediaPlayer.rules.ScheduleRulesCollection);
 
             this.system.mapClass('liveEdgeBinarySearchRule', MediaPlayer.rules.LiveEdgeBinarySearchRule);
             this.system.mapClass('liveEdgeWithTimeSynchronizationRule', MediaPlayer.rules.LiveEdgeWithTimeSynchronizationRule);
             this.system.mapSingleton('synchronizationRulesCollection', MediaPlayer.rules.SynchronizationRulesCollection);
 
+            this.system.mapClass('xlinkController', MediaPlayer.dependencies.XlinkController);
+            this.system.mapClass('xlinkLoader', MediaPlayer.dependencies.XlinkLoader);
             this.system.mapClass('streamProcessor', MediaPlayer.dependencies.StreamProcessor);
             this.system.mapClass('eventController', MediaPlayer.dependencies.EventController);
             this.system.mapClass('textController', MediaPlayer.dependencies.TextController);
             this.system.mapClass('bufferController', MediaPlayer.dependencies.BufferController);
-            this.system.mapSingleton('manifestLoader', MediaPlayer.dependencies.ManifestLoader);
+            this.system.mapClass('manifestLoader', MediaPlayer.dependencies.ManifestLoader);
             this.system.mapSingleton('manifestUpdater', MediaPlayer.dependencies.ManifestUpdater);
             this.system.mapClass('fragmentController', MediaPlayer.dependencies.FragmentController);
             this.system.mapClass('fragmentLoader', MediaPlayer.dependencies.FragmentLoader);

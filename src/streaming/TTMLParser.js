@@ -82,6 +82,7 @@ MediaPlayer.utils.TTMLParser = function() {
             if (hasTt && hasHead && hasLayout && hasStyling && hasBody) {
                 passed = true;
             }
+
             return passed;
         },
 

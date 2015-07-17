@@ -51,8 +51,10 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
                     switch (event.type) {
 
                         case api.needkey:
-                            self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_NEED_KEY,
-                                new MediaPlayer.vo.protection.NeedKey(event.initData, "cenc"));
+                            if (event.initData) {
+                                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_NEED_KEY,
+                                        new MediaPlayer.vo.protection.NeedKey(event.initData, "cenc"));
+                            }
                             break;
                     }
                 }
@@ -64,15 +66,17 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
         // readyState, so we need this logic to ensure we don't set the keys
         // too early
         setMediaKeys = function() {
-            // IE11 does not allow setting of media keys until
+            var boundDoSetKeys = null;
             var doSetKeys = function() {
+                videoElement.removeEventListener("loadedmetadata", boundDoSetKeys);
                 videoElement[api.setMediaKeys](mediaKeys);
                 this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_VIDEO_ELEMENT_SELECTED);
             };
             if (videoElement.readyState >= 1) {
                 doSetKeys.call(this);
             } else {
-                videoElement.addEventListener("loadedmetadata", doSetKeys.bind(this));
+                boundDoSetKeys = doSetKeys.bind(this);
+                videoElement.addEventListener("loadedmetadata", boundDoSetKeys);
             }
 
         },
@@ -142,12 +146,27 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
         },
 
         teardown: function() {
-            if (videoElement) {
-                videoElement.removeEventListener(api.needkey, eventHandler);
+            try {
+                for (var i = 0; i < sessions.length; i++) {
+                    this.closeKeySession(sessions[i]);
+                }
+                if (videoElement) {
+                    videoElement.removeEventListener(api.needkey, eventHandler);
+                    videoElement.setMediaKeys(null);
+                }
+                this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_TEARDOWN_COMPLETE);
+            } catch (error) {
+                this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_TEARDOWN_COMPLETE,
+                        null, "Error tearing down key sessions and MediaKeys! -- " + error.message);
             }
+        },
+
+        getAllInitData: function() {
+            var retVal = [];
             for (var i = 0; i < sessions.length; i++) {
-                this.closeKeySession(sessions[i]);
+                retVal.push(sessions[i].initData);
             }
+            return retVal;
         },
 
         requestKeySystemAccess: function(ksConfigurations) {
@@ -229,7 +248,7 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
 
         setMediaElement: function(mediaElement) {
             if (videoElement) {
-                videoElement.removeEventListener(api.needkey, eventHandler().bind(this));
+                videoElement.removeEventListener(api.needkey, eventHandler);
             }
             videoElement = mediaElement;
             videoElement.addEventListener(api.needkey, eventHandler);
@@ -242,13 +261,6 @@ MediaPlayer.models.ProtectionModel_3Feb2014 = function () {
 
             if (!this.keySystem || !mediaKeys || !keySystemAccess) {
                 throw new Error("Can not create sessions until you have selected a key system");
-            }
-
-            // Check for duplicate initData.
-            for (var i = 0; i < sessions.length; i++) {
-                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
-                    return;
-                }
             }
 
             // Use the first video capability for the contentType.
