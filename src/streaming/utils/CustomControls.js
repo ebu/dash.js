@@ -46,11 +46,13 @@ MediaPlayer.utils.CustomControls = function () {
                 vval             = volume.value,
                 progressbar      = document.getElementById('progressbar'),
                 bufferbar        = document.getElementById('bufferbar'),
-                captionButton          = document.getElementById('caption'),
-                captionRegion      = document.getElementById('captionRegion');
+                caption          = document.getElementById('caption'),
+                captionArea      = document.getElementById('captionRegion');
 
-            playbutton.classList.add('icon-pause');
-            playbutton.classList.remove('icon-play');
+            if (video.autoplay) {
+                playbutton.classList.add('icon-pause');
+                playbutton.classList.remove('icon-play');
+            }
 
             setTimeout(function(){
                 controls.classList.add('controls-user-inactive');
@@ -99,13 +101,13 @@ MediaPlayer.utils.CustomControls = function () {
 
             playbutton.addEventListener('click', playpause, false);
             video.addEventListener('click', playpause, false);
-            captionRegion.addEventListener('click', playpause, false);
+            captionArea.addEventListener('click', playpause, false);
 
-            captionButton.addEventListener('click', function() {
-                if(captionRegion.style.display === 'none'){
-                    captionRegion.style.display = 'table';
+            caption.addEventListener('click', function() {
+                if(captionArea.style.display === 'none'){
+                    captionArea.style.display = 'table';
                 } else{
-                    captionRegion.style.display = 'none';
+                    captionArea.style.display = 'none';
                     var elems = document.getElementsByTagName('*'), i;
                     for (i in elems) {
                         if((' ' + elems[i].className + ' ').indexOf(' ' + "text" + ' ') > -1) {

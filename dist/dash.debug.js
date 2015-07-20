@@ -5676,10 +5676,6 @@ MediaPlayer.utils.TTMLParser = function() {
         }
     }, computeStyle = function(cueStyle) {
         var properties = [];
-        var value;
-        var valueInPx;
-        var rgbaValue;
-        var textAlign;
         for (var key in cueStyle) {
             if (cueStyle.hasOwnProperty(key)) {
                 var property = cueStyle[key];
@@ -5692,14 +5688,14 @@ MediaPlayer.utils.TTMLParser = function() {
                     continue;
                 }
                 if (key === "line-padding") {
-                    value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("c")));
-                    valueInPx = value * cellUnit[0] + "px;";
-                    properties.push("padding-left:" + valueInPx + " padding-right:" + valueInPx);
+                    var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("c")));
+                    var valuePx = value * cellUnit[0] + "px;";
+                    properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
                 } else if (key === "font-size" || key === "line-height") {
                     if (property !== "normal") {
-                        value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
-                        valueInPx = value / 100 * cellUnit[1] + "px;";
-                        properties.push(key + ":" + valueInPx);
+                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
+                        var valuePx = value / 100 * cellUnit[1] + "px;";
+                        properties.push(key + ":" + valuePx);
                     } else {
                         properties.push(key + ":" + property + ";");
                     }
@@ -5745,7 +5741,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(font);
                 } else if (key === "text-align") {
                     if (arrayContains("text-align", properties)) {
-                        textAlign = {
+                        var textAlign = {
                             right: "justify-content: flex-end;",
                             start: "justify-content: flex-start;",
                             center: "justify-content: center;",
@@ -5754,7 +5750,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         };
                         properties.push(textAlign[property]);
                     } else {
-                        textAlign = {
+                        var textAlign = {
                             right: [ "justify-content: flex-end;", "text-align: right;" ],
                             start: [ "justify-content: flex-start;", "text-align: start;" ],
                             center: [ "justify-content: center;", "text-align: center;" ],
@@ -5766,7 +5762,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
                 } else if (key === "multi-row-align") {
                     if (arrayContains("text-align", properties)) {
-                        deletePropertyFromArray("text-align", properties);
+                        properties.splice(indexOfProperty(propertyFromArray("text-align", properties), properties), 1);
                     }
                     var multiRowAlign = {
                         start: "text-align: start;",
@@ -5777,15 +5773,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(multiRowAlign[property]);
                 } else if (key === "background-color") {
                     if (property.indexOf("#") > -1 && property.length - 1 === 8) {
-                        rgbaValue = convertRGBA(property);
+                        var rgbaValue = convertRGBA(property);
                         properties.push("background-color: " + rgbaValue);
-                    } else {
-                        properties.push(key + ":" + property + ";");
-                    }
-                } else if (key === "color") {
-                    if (property.indexOf("#") > -1 && property.length - 1 === 8) {
-                        rgbaValue = convertRGBA(property);
-                        properties.push("color: " + rgbaValue);
                     } else {
                         properties.push(key + ":" + property + ";");
                     }
@@ -5887,16 +5876,12 @@ MediaPlayer.utils.TTMLParser = function() {
     }, objectContains = function(text, object) {
         var res = false;
         for (var key in object) {
-            if (object.hasOwnProperty(key)) {
-                if (key.indexOf(text) > -1) {
-                    res = true;
-                    break;
-                }
+            if (key.indexOf(text) > -1) {
+                res = true;
+                break;
             }
         }
         return res;
-    }, deletePropertyFromArray = function(property, array) {
-        array.splice(indexOfProperty(propertyFromArray(property, array), array), 1);
     }, indexOfProperty = function(text, array) {
         return array.indexOf(text);
     }, propertyFromArray = function(text, array) {
@@ -5917,8 +5902,8 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || [ 32, 15 ];
-        videoWidth = document.getElementById("videoPlayer").clientWidth;
-        videoHeight = document.getElementById("videoPlayer").clientHeight;
+        videoWidth = 1280;
+        videoHeight = 720;
         cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         ttmlLayout = [].concat(ttmlLayout);
         ttmlStylings = [].concat(ttmlStylings);
@@ -5939,9 +5924,6 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
                 pStartTime = parseTimings(cue["p@begin"]);
                 pEndTime = parseTimings(cue["p@end"]);
-            } else if (cue.p.hasOwnProperty("span@begin") && cue.p.hasOwnProperty("span@end")) {
-                spanStartTime = parseTimings(cue.p["span@begin"]);
-                spanEndTime = parseTimings(cue.p["span@end"]);
             } else {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
@@ -5950,7 +5932,7 @@ MediaPlayer.utils.TTMLParser = function() {
             paragraphRegionProperties = [];
             pStyleID = cue["p@style"];
             pRegionID = cue["p@region"];
-            if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
+            if (isNaN(pStartTime) || isNaN(pEndTime)) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
@@ -5960,6 +5942,7 @@ MediaPlayer.utils.TTMLParser = function() {
             if (pRegionID) {
                 paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID)) || getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
             }
+            console.warn(paragraphRegionProperties);
             if (!arrayContains("align-items", paragraphRegionProperties)) {
                 paragraphRegionProperties.push("align-items: flex-start;");
             }
@@ -6021,14 +6004,18 @@ MediaPlayer.utils.TTMLParser = function() {
             if (arrayContains("unicode-bidi", paragraphStyleProperties) || arrayContains("direction", paragraphStyleProperties)) {
                 innerContainer.style.cssText += propertyFromArray("unicode-bidi", paragraphStyleProperties);
                 innerContainer.style.cssText += propertyFromArray("direction", paragraphStyleProperties);
-                deletePropertyFromArray("unicode-bidi", paragraphStyleProperties);
-                deletePropertyFromArray("direction", paragraphStyleProperties);
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("unicode-bidi", paragraphStyleProperties), paragraphStyleProperties), 1);
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("direction", paragraphStyleProperties), paragraphStyleProperties), 1);
             }
             cue.p = [].concat(cue.p);
             cue.p.forEach(function(caption) {
                 if (caption.hasOwnProperty("br")) {
                     innerContainer.appendChild(document.createElement("br"));
                 } else if (caption.hasOwnProperty("span")) {
+                    if (caption.hasOwnProperty("span@begin")) {
+                        spanStartTime = parseTimings(caption["span@begin"]);
+                        spanEndTime = parseTimings(caption["span@end"]);
+                    }
                     caption["span"] = [].concat(caption["span"]);
                     var inlineSpan = document.createElement("span");
                     if (caption.hasOwnProperty("span@style")) {
@@ -6043,7 +6030,8 @@ MediaPlayer.utils.TTMLParser = function() {
                             if (typeof el == "string" || el instanceof String) {
                                 if (arrayContains("padding", paragraphStyleProperties)) {
                                     var linePaddingSpan = document.createElement("span");
-                                    linePaddingSpan.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
+                                    var style = propertyFromArray("padding", paragraphStyleProperties);
+                                    linePaddingSpan.style.cssText = style;
                                     linePaddingSpan.innerHTML = el;
                                     inlineSpan.appendChild(linePaddingSpan);
                                 } else {
@@ -6064,18 +6052,21 @@ MediaPlayer.utils.TTMLParser = function() {
                     var textNode = document.createElement("span");
                     textNode.innerHTML = caption;
                     if (arrayContains("padding", paragraphStyleProperties)) {
-                        textNode.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
+                        var style = propertyFromArray("padding", paragraphStyleProperties);
+                        textNode.style.cssText = style;
                     }
                     innerContainer.appendChild(textNode);
                 }
             });
             if (arrayContains("padding", paragraphStyleProperties)) {
-                deletePropertyFromArray("padding", paragraphStyleProperties);
+                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("padding", paragraphStyleProperties), paragraphStyleProperties), 1);
             }
             if (paragraphStyleProperties) {
                 paragraph.style.cssText = paragraphStyleProperties.join(" ");
             }
             paragraph.appendChild(innerContainer);
+            console.warn(pStartTime);
+            console.warn(spanStartTime);
             captionArray.push({
                 start: spanStartTime || pStartTime,
                 end: spanEndTime || pEndTime,
@@ -8275,7 +8266,14 @@ MediaPlayer.dependencies.TextController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion");
+    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
+    function addPositioningToCaption(cue) {
+        if (cue.paragraphRegion.length == 0) {
+            captionRegion.style.cssText = defaultRegion;
+        } else {
+            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
+        }
+    }
     return {
         initialize: function(videoModel) {
             video = videoModel;
@@ -8302,8 +8300,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             while (captionRegion.firstChild) {
-                captionRegion.style.cssText = "";
                 captionRegion.removeChild(captionRegion.firstChild);
+            }
+            if (!activeCue.showBackground) {
+                captionRegion.style.cssText = "";
             }
             playlist.forEach(function(cue) {
                 if (time >= cue.start && time <= cue.end) {
@@ -8314,7 +8314,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                     if (activeCue.data) {
                         captionRegion.appendChild(activeCue.data);
-                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
+                        addPositioningToCaption(activeCue);
                     }
                 }
             });
@@ -10276,80 +10276,6 @@ MediaPlayer.dependencies.protection.KeySystem_Access.prototype = {
     constructor: MediaPlayer.dependencies.protection.KeySystem_Access
 };
 
-MediaPlayer.dependencies.protection.KeySystem_ClearKey = function() {
-    "use strict";
-    var keySystemStr = "org.w3.clearkey", keySystemUUID = "1077efec-c0b2-4d02-ace3-3c1e52e2fb4b", protData, requestClearKeyLicense = function(message, requestData) {
-        var self = this, i, laURL = protData && protData.laURL && protData.laURL !== "" ? protData.laURL : null;
-        var jsonMsg = JSON.parse(String.fromCharCode.apply(null, new Uint8Array(message)));
-        if (laURL) {
-            laURL += "/?";
-            for (i = 0; i < jsonMsg.kids.length; i++) {
-                laURL += jsonMsg.kids[i] + "&";
-            }
-            laURL = laURL.substring(0, laURL.length - 1);
-            var xhr = new XMLHttpRequest();
-            xhr.onload = function() {
-                if (xhr.status == 200) {
-                    if (!xhr.response.hasOwnProperty("keys")) {
-                        self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error("DRM: ClearKey Remote update, Illegal response JSON"));
-                    }
-                    for (i = 0; i < xhr.response.keys.length; i++) {
-                        var keypair = xhr.response.keys[i], keyid = keypair.kid.replace(/=/g, "");
-                        key = keypair.k.replace(/=/g, "");
-                        keyPairs.push(new MediaPlayer.vo.protection.KeyPair(keyid, key));
-                    }
-                    var event = new MediaPlayer.vo.protection.LicenseRequestComplete(new MediaPlayer.vo.protection.ClearKeyKeySet(keyPairs), requestData);
-                    self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, event);
-                } else {
-                    self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error('DRM: ClearKey Remote update, XHR aborted. status is "' + xhr.statusText + '" (' + xhr.status + "), readyState is " + xhr.readyState));
-                }
-            };
-            xhr.onabort = function() {
-                self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error('DRM: ClearKey update, XHR aborted. status is "' + xhr.statusText + '" (' + xhr.status + "), readyState is " + xhr.readyState));
-            };
-            xhr.onerror = function() {
-                self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error('DRM: ClearKey update, XHR error. status is "' + xhr.statusText + '" (' + xhr.status + "), readyState is " + xhr.readyState));
-            };
-            xhr.open("GET", laURL);
-            xhr.responseType = "json";
-            xhr.send();
-        } else if (protData.clearkeys) {
-            var keyPairs = [];
-            for (i = 0; i < jsonMsg.kids.length; i++) {
-                var keyID = jsonMsg.kids[i], key = protData.clearkeys.hasOwnProperty(keyID) ? protData.clearkeys[keyID] : null;
-                if (!key) {
-                    this.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error("DRM: ClearKey keyID (" + keyID + ") is not known!"));
-                }
-                keyPairs.push(new MediaPlayer.vo.protection.KeyPair(keyID, key));
-            }
-            var event = new MediaPlayer.vo.protection.LicenseRequestComplete(new MediaPlayer.vo.protection.ClearKeyKeySet(keyPairs), requestData);
-            this.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, event);
-        } else {
-            self.notify(MediaPlayer.dependencies.protection.KeySystem.eventList.ENAME_LICENSE_REQUEST_COMPLETE, null, new Error("DRM: ClearKey has no way (URL or protection data) to retrieve keys"));
-        }
-    };
-    return {
-        system: undefined,
-        schemeIdURI: "urn:uuid:" + keySystemUUID,
-        systemString: keySystemStr,
-        uuid: keySystemUUID,
-        notify: undefined,
-        subscribe: undefined,
-        unsubscribe: undefined,
-        init: function(protectionData) {
-            protData = protectionData;
-        },
-        doLicenseRequest: function(message, laURL, requestData) {
-            requestClearKeyLicense.call(this, message, requestData);
-        },
-        getInitData: MediaPlayer.dependencies.protection.CommonEncryption.parseInitDataFromContentProtection
-    };
-};
-
-MediaPlayer.dependencies.protection.KeySystem_ClearKey.prototype = {
-    constructor: MediaPlayer.dependencies.protection.KeySystem_ClearKey
-};
-
 MediaPlayer.dependencies.protection.KeySystem_PlayReady = function() {
     "use strict";
     var keySystemStr = "com.microsoft.playready", keySystemUUID = "9a04f079-9840-4286-ab92-e65be0885f95", protData, requestLicense = function(message, laURL, requestData) {
@@ -11410,9 +11336,11 @@ MediaPlayer.utils.CustomControls = function() {
     "use strict";
     return {
         createControls: function(videoModel) {
-            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), captionButton = document.getElementById("caption"), captionRegion = document.getElementById("captionRegion");
-            playbutton.classList.add("icon-pause");
-            playbutton.classList.remove("icon-play");
+            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), caption = document.getElementById("caption"), captionArea = document.getElementById("captionRegion");
+            if (video.autoplay) {
+                playbutton.classList.add("icon-pause");
+                playbutton.classList.remove("icon-play");
+            }
             setTimeout(function() {
                 controls.classList.add("controls-user-inactive");
                 controls.classList.remove("controls-user-active");
@@ -11453,12 +11381,12 @@ MediaPlayer.utils.CustomControls = function() {
             }
             playbutton.addEventListener("click", playpause, false);
             video.addEventListener("click", playpause, false);
-            captionRegion.addEventListener("click", playpause, false);
-            captionButton.addEventListener("click", function() {
-                if (captionRegion.style.display === "none") {
-                    captionRegion.style.display = "table";
+            captionArea.addEventListener("click", playpause, false);
+            caption.addEventListener("click", function() {
+                if (captionArea.style.display === "none") {
+                    captionArea.style.display = "table";
                 } else {
-                    captionRegion.style.display = "none";
+                    captionArea.style.display = "none";
                     var elems = document.getElementsByTagName("*"), i;
                     for (i in elems) {
                         if ((" " + elems[i].className + " ").indexOf(" " + "text" + " ") > -1) {
