@@ -55,12 +55,13 @@ Dash.dependencies.DashManifestExtensions.prototype = {
             return type == "fragmentedText";
         }
 
+
         if (col) {
-            if (col.length > 1) {
-                return (type == "muxed");
-            } else if (col[0] && col[0].contentType === type) {
-                result = true;
-                found = true;
+            for (i = 0, len = col.length; i < len; i += 1) {
+                if (col[i].contentType === type) {
+                    result = true;
+                    found = true;
+                }
             }
         }
 
@@ -110,10 +111,6 @@ Dash.dependencies.DashManifestExtensions.prototype = {
         "use strict";
 
         return this.getIsTypeOf(adaptation, "text");
-    },
-
-    getIsMuxed: function(adaptation) {
-        return this.getIsTypeOf(adaptation, "muxed");
     },
 
     getIsTextTrack: function(type) {
@@ -370,9 +367,7 @@ Dash.dependencies.DashManifestExtensions.prototype = {
             if (r.hasOwnProperty('bandwidth')){
                 representation.bandwidth = r.bandwidth;
             }
-            if (r.hasOwnProperty('maxPlayoutRate')){
-                representation.maxPlayoutRate = r.maxPlayoutRate;
-            }
+
             if (r.hasOwnProperty("SegmentBase")) {
                 segmentInfo = r.SegmentBase;
                 representation.segmentInfoType = "SegmentBase";
@@ -461,10 +456,8 @@ Dash.dependencies.DashManifestExtensions.prototype = {
 
             adaptationSet.index = i;
             adaptationSet.period = period;
-
-            if (this.getIsMuxed(a)) {
-                adaptationSet.type = "muxed";
-            } else if(this.getIsAudio(a)){
+            
+            if(this.getIsAudio(a)){
                 adaptationSet.type="audio";
             }else if (this.getIsVideo(a)){
                 adaptationSet.type="video";
@@ -552,11 +545,12 @@ Dash.dependencies.DashManifestExtensions.prototype = {
             return periods;
         }
 
+        mpd.checkTime = self.getCheckTime(manifest, periods[0]);
         // The last Period extends until the end of the Media Presentation.
         // The difference between the PeriodStart time of the last Period
         // and the mpd duration
         if (vo1 !== null && isNaN(vo1.duration)) {
-            vo1.duration = self.getEndTimeForLastPeriod(manifest, vo1) - vo1.start;
+            vo1.duration = self.getEndTimeForLastPeriod(mpd) - vo1.start;
         }
 
         return periods;
@@ -619,18 +613,17 @@ Dash.dependencies.DashManifestExtensions.prototype = {
         return checkTime;
     },
 
-    getEndTimeForLastPeriod: function(manifest, period) {
-        var periodEnd,
-            checkTime = this.getCheckTime(manifest, period);
+    getEndTimeForLastPeriod: function(mpd) {
+        var periodEnd;
 
         // if the MPD@mediaPresentationDuration attribute is present, then PeriodEndTime is defined as the end time of the Media Presentation.
         // if the MPD@mediaPresentationDuration attribute is not present, then PeriodEndTime is defined as FetchTime + MPD@minimumUpdatePeriod
 
-        if (manifest.mediaPresentationDuration) {
-            periodEnd = manifest.mediaPresentationDuration;
-        } else if (!isNaN(checkTime)) {
+        if (mpd.manifest.mediaPresentationDuration) {
+            periodEnd = mpd.manifest.mediaPresentationDuration;
+        } else if (!isNaN(mpd.checkTime)) {
             // in this case the Period End Time should match CheckTime
-            periodEnd = checkTime;
+            periodEnd = mpd.checkTime;
         } else {
             throw new Error("Must have @mediaPresentationDuration or @minimumUpdatePeriod on MPD or an explicit @duration on the last period.");
         }

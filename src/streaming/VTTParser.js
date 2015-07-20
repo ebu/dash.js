@@ -64,25 +64,20 @@ MediaPlayer.utils.VTTParser = function () {
         },
 
         getCaptionStyles = function (arr) {
+
             var styleObject = {};
             arr.forEach(function (element) {
-                if (element.split(/:/).length > 1){
-                    var val = element.split(/:/)[1];
-                    if (val && val.search(/%/) != -1){
-                        val = parseInt(val.replace(/%/, ""));
-                    }
-                    if (element.match(/align/) || element.match(/A/)){
-                        styleObject.align = val;
-                    }
-                    if (element.match(/line/) || element.match(/L/) ){
-                        styleObject.line = val;
-                    }
-                    if (element.match(/position/) || element.match(/P/) ){
-                        styleObject.position = val;
-                    }
-                    if (element.match(/size/) || element.match(/S/)){
-                        styleObject.size = val;
-                    }
+                if (element.match(/align/) || element.match(/A/)){
+                    styleObject.align = element.split(/:/)[1];
+                }
+                if (element.match(/line/) || element.match(/L/) ){
+                    styleObject.line = element.split(/:/)[1].replace(/%/, "");
+                }
+                if (element.match(/position/) || element.match(/P/) ){
+                    styleObject.position = element.split(/:/)[1].replace(/%/, "");
+                }
+                if (element.match(/size/) || element.match(/S/)){
+                    styleObject.size = element.split(/:/)[1].replace(/%/, "");
                 }
             });
 
@@ -95,8 +90,7 @@ MediaPlayer.utils.VTTParser = function () {
         getSublines = function(data, idx){
             var lineCount,
                 i = idx,
-                subline = "",
-                lineData = "";
+                subline = "";
 
             while(data[i] !== "" && i < data.length) {
                 i++;
@@ -105,39 +99,29 @@ MediaPlayer.utils.VTTParser = function () {
             lineCount = i - idx;
             if (lineCount > 1){
                 for(var j = 0; j < lineCount; j++){
-                    lineData = data[(idx + j)];
-                    if(!lineData.match(regExToken)){
-                        subline += lineData;
-                        if (j !== lineCount-1) {
-                            subline += "\n";
-                        }
-                    }
-                    else {
-                        // caption text should not have '-->' in it
-                        subline = "";
-                        break;
+                    subline += data[(idx + j)];
+                    if (j !== lineCount-1) {
+                        subline += "\n";
                     }
                 }
             } else {
-                lineData = data[idx];
-                if(!lineData.match(regExToken))
-                    subline = lineData;
+                subline = data[idx];
             }
+
             return decodeURI(subline);
         };
 
+
+
     return {
-    
-        log: undefined,
+
         parse: function (data)
         {
             var captionArray = [],
-                len,
-                lastStartTime;
+                len;
 
             data = data.split( regExNewLine );
             len = data.length;
-            lastStartTime = -1;
 
             for (var i = 0 ; i < len; i++)
             {
@@ -150,28 +134,15 @@ MediaPlayer.utils.VTTParser = function () {
                         var attributes = parseItemAttributes(item),
                             cuePoints = attributes.cuePoints,
                             styles = attributes.styles,
-                            text = getSublines(data, i+1),
-                            startTime = convertCuePointTimes(cuePoints[0].replace(regExWhiteSpace, '')),
-                            endTime = convertCuePointTimes(cuePoints[1].replace(regExWhiteSpace, ''));
+                            text = getSublines(data, i+1);
 
-                        if((!isNaN(startTime) && !isNaN(endTime)) && startTime >= lastStartTime && endTime > startTime) {
-                            if (text !== ""){
-                                lastStartTime = startTime;
-                                //TODO Make VO external so other parsers can use.
-                                captionArray.push({
-                                    start:startTime,
-                                    end:endTime,
-                                    data:text,
-                                    styles:styles
-                                });
-                            }
-                            else {
-                                this.log("Skipping cue due to empty/malformed cue text");
-                            }
-                        }
-                        else {
-                            this.log("Skipping cue due to incorrect cue timing");
-                        }
+                        //TODO Make VO external so other parsers can use.
+                        captionArray.push({
+                            start:convertCuePointTimes(cuePoints[0].replace(regExWhiteSpace, '')),
+                            end:convertCuePointTimes(cuePoints[1].replace(regExWhiteSpace, '')),
+                            data:text,
+                            styles:styles
+                        });
                     }
                 }
             }

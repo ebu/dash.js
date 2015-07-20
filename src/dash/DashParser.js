@@ -345,7 +345,7 @@ Dash.dependencies.DashParser = function () {
             return result;
         },
 
-        internalParse = function (data, baseUrl, xlinkController) {
+        internalParse = function (data, baseUrl) {
             //this.log("Doing parse.");
 
             var manifest,
@@ -381,9 +381,6 @@ Dash.dependencies.DashParser = function () {
                 //this.log("Flatten manifest properties.");
                 iron.run(manifest);
                 ironed = new Date();
-
-                xlinkController.setMatchers(matchers);
-                xlinkController.setIron(iron);
 
                 this.log("Parsing complete: ( xml2json: " + (json.getTime() - start.getTime()) + "ms, objectiron: " + (ironed.getTime() - json.getTime()) + "ms, total: " + ((ironed.getTime() - start.getTime()) / 1000) + "s)");
             } catch (err) {

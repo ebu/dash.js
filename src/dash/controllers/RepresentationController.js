@@ -66,6 +66,7 @@ Dash.dependencies.RepresentationController = function () {
             if (type !== "video" && type !== "audio" && type !== "fragmentedText") {
                 updating = false;
                 self.notify(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, {data: data, currentRepresentation: currentRepresentation});
+                addRepresentationSwitch.call(self);
                 return;
             }
 
@@ -99,17 +100,12 @@ Dash.dependencies.RepresentationController = function () {
 
         isAllRepresentationsUpdated = function() {
             for (var i = 0, ln = availableRepresentations.length; i < ln; i += 1) {
-                var segmentInfoType = availableRepresentations[i].segmentInfoType;
-                if (availableRepresentations[i].segmentAvailabilityRange === null || availableRepresentations[i].initialization === null ||
-                        ((segmentInfoType === "SegmentBase" || segmentInfoType === "BaseURL") && !availableRepresentations[i].segments)
-                ) {
-                    return false;
-                }
+                if (availableRepresentations[i].segmentAvailabilityRange === null || availableRepresentations[i].initialization === null) return false;
             }
 
             return true;
         },
-    
+
         updateRepresentations = function(adaptation) {
             var self = this,
                 reps,
@@ -153,13 +149,11 @@ Dash.dependencies.RepresentationController = function () {
 
             var self = this,
                 r = e.data.representation,
-                streamMetrics = self.metricsModel.getMetricsFor("stream"),
-                metrics = self.metricsModel.getMetricsFor(this.getCurrentRepresentation().adaptation.type),
-                manifestUpdateInfo = self.metricsExt.getCurrentManifestUpdate(streamMetrics),
+                metrics = self.metricsModel.getMetricsFor("stream"),
+                manifestUpdateInfo = self.metricsExt.getCurrentManifestUpdate(metrics),
                 repInfo,
                 err,
-                alreadyAdded = false,
-                repSwitch;
+                alreadyAdded = false;
 
             if (e.error && e.error.code === Dash.dependencies.DashHandler.SEGMENTS_UNAVAILABLE_ERROR_CODE) {
                 addDVRMetric.call(this);
@@ -170,33 +164,25 @@ Dash.dependencies.RepresentationController = function () {
                 return;
             }
 
-            if (manifestUpdateInfo) {
-                for (var i = 0; i < manifestUpdateInfo.trackInfo.length; i += 1) {
-                    repInfo = manifestUpdateInfo.trackInfo[i];
-                    if (repInfo.index === r.index && repInfo.mediaType === self.streamProcessor.getType()) {
-                        alreadyAdded = true;
-                        break;
-                    }
+            for (var i = 0; i < manifestUpdateInfo.trackInfo.length; i += 1) {
+                repInfo = manifestUpdateInfo.trackInfo[i];
+                if (repInfo.index === r.index && repInfo.mediaType === self.streamProcessor.getType()) {
+                    alreadyAdded = true;
+                    break;
                 }
+            }
 
-                if (!alreadyAdded) {
-                    self.metricsModel.addManifestUpdateTrackInfo(manifestUpdateInfo, r.id, r.index, r.adaptation.period.index,
-                            self.streamProcessor.getType(),r.presentationTimeOffset, r.startNumber, r.segmentInfoType);
-                }
+            if (!alreadyAdded) {
+                self.metricsModel.addManifestUpdateTrackInfo(manifestUpdateInfo, r.id, r.index, r.adaptation.period.index,
+                    self.streamProcessor.getType(),r.presentationTimeOffset, r.startNumber, r.segmentInfoType);
             }
 
             if (isAllRepresentationsUpdated()) {
                 updating = false;
                 self.abrController.setPlaybackQuality(self.streamProcessor.getType(), self.streamProcessor.getStreamInfo(), getQualityForRepresentation.call(this, currentRepresentation));
                 self.metricsModel.updateManifestUpdateInfo(manifestUpdateInfo, {latency: currentRepresentation.segmentAvailabilityRange.end - self.streamProcessor.playbackController.getTime()});
-
-                repSwitch = self.metricsExt.getCurrentRepresentationSwitch(metrics);
-
-                if (!repSwitch) {
-                    addRepresentationSwitch.call(self);
-                }
-
                 this.notify(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, {data: data, currentRepresentation: currentRepresentation});
+                addRepresentationSwitch.call(self);
             }
         },
 
@@ -212,15 +198,8 @@ Dash.dependencies.RepresentationController = function () {
 
             // we need to update checkTime after we have found the live edge because its initial value
             // does not take into account clientServerTimeShift
-            var manifest = this.manifestModel.getValue(),
-                period = currentRepresentation.adaptation.period,
-                streamInfo = this.streamController.getActiveStreamInfo();
-
-            if (streamInfo.isLast) {
-                period.mpd.checkTime = this.manifestExt.getCheckTime(manifest, period);
-                period.duration = this.manifestExt.getEndTimeForLastPeriod(this.manifestModel.getValue(), period) - period.start;
-                streamInfo.duration = period.duration;
-            }
+            var manifest = this.manifestModel.getValue();
+            currentRepresentation.adaptation.period.mpd.checkTime = this.manifestExt.getCheckTime(manifest, currentRepresentation.adaptation.period);
         },
 
         onBufferLevelUpdated = function(/*e*/) {
@@ -251,7 +230,6 @@ Dash.dependencies.RepresentationController = function () {
         metricsModel: undefined,
         metricsExt: undefined,
         abrController: undefined,
-        streamController: undefined,
         timelineConverter: undefined,
         notify: undefined,
         subscribe: undefined,

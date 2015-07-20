@@ -32,9 +32,9 @@ MediaPlayer.dependencies.EventController = function(){
     "use strict";
 
 
-    var inlineEvents = {}, // Holds all Inline Events not triggered yet
-        inbandEvents = {}, // Holds all Inband Events not triggered yet
-        activeEvents = {}, // Holds all Events currently running
+    var inlineEvents = [], // Holds all Inline Events not triggered yet
+        inbandEvents = [], // Holds all Inband Events not triggered yet
+        activeEvents = [], // Holds all Events currently running
         eventInterval = null, // variable holding the setInterval
         refreshDelay = 100, // refreshTime for the setInterval
         presentationTimeThreshold = refreshDelay / 1000,
@@ -70,16 +70,12 @@ MediaPlayer.dependencies.EventController = function(){
          */
         addInlineEvents = function(values) {
             var self = this;
-            inlineEvents = {};
+            inlineEvents = [];
 
-            if(values) {
-                for(var i = 0; i < values.length; i++) {
-                    var event = values[i];
-                    inlineEvents[event.id] = event;
-                    self.log("Add inline event with id " + event.id);
-                }
+            if(values && values.length > 0){
+                inlineEvents = values;
             }
-            self.log("Added " + values.length + " inline events");
+            self.log("Added "+values.length+ " inline events");
         },
 
         /**
@@ -88,15 +84,10 @@ MediaPlayer.dependencies.EventController = function(){
          */
         addInbandEvents = function(values) {
             var self = this;
-            for(var i = 0; i < values.length; i++) {
+            for(var i=0;i<values.length;i++) {
                 var event = values[i];
-                if (!(event.id in inbandEvents)) {
-                    inbandEvents[event.id] = event;
-                    self.log("Add inband event with id " + event.id);
-                } else {
-                    self.log("Repeated event with id " + event.id);
-                }
-
+                inbandEvents[event.id] = event;
+                self.log("Add inband event with id "+event.id);
             }
         },
 
@@ -116,18 +107,16 @@ MediaPlayer.dependencies.EventController = function(){
 
             /* == Trigger events that are ready == */
             if(events) {
-                var eventIds = Object.keys(events);
-                for (var i = 0; i < eventIds.length; i++) {
-                    var eventId = eventIds[i];
-                    var curr = events[eventId];
+                for (var j = 0; j < events.length; j++) {
+                    var curr = events[j];
 
                     if (curr !== undefined) {
                         presentationTime = curr.presentationTime / curr.eventStream.timescale;
                         if (presentationTime === 0 || (presentationTime <= currentVideoTime && presentationTime + presentationTimeThreshold > currentVideoTime)) {
-                            self.log("Start Event " + eventId + " at " + currentVideoTime);
-                            if (curr.duration > 0) activeEvents[eventId] = curr;
+                            self.log("Start Event at " + currentVideoTime);
+                            if (curr.duration > 0) activeEvents.push(curr);
                             if (curr.eventStream.schemeIdUri == MPD_RELOAD_SCHEME && curr.eventStream.value == MPD_RELOAD_VALUE) refreshManifest.call(this);
-                            delete events[eventId];
+                            events.splice(j, 1);
                         }
                     }
                 }
@@ -142,15 +131,13 @@ MediaPlayer.dependencies.EventController = function(){
 
             if(activeEvents) {
                 var currentVideoTime = this.videoModel.getCurrentTime();
-                var eventIds = Object.keys(activeEvents);
 
-                for (var i = 0; i < eventIds.length; i++) {
-                    var eventId = eventIds[i];
-                    var curr = activeEvents[eventId];
+                for (var i = 0; i < activeEvents.length; i++) {
+                    var curr = activeEvents[i];
                     if (curr !== null && (curr.duration + curr.presentationTime) / curr.eventStream.timescale < currentVideoTime) {
-                        self.log("Remove Event " + eventId + " at time " + currentVideoTime);
+                        self.log("Remove Event at time " + currentVideoTime);
                         curr = null;
-                        delete activeEvents[eventId];
+                        activeEvents.splice(i, 1);
                     }
                 }
             }
@@ -158,27 +145,36 @@ MediaPlayer.dependencies.EventController = function(){
         },
 
         refreshManifest = function () {
-            var manifest = this.manifestModel.getValue(),
+            var self = this,
+                manifest = self.manifestModel.getValue(),
                 url = manifest.url;
 
             if (manifest.hasOwnProperty("Location")) {
                 url = manifest.Location;
             }
-            this.log("Refresh manifest @ " + url);
-            this.manifestUpdater.getManifestLoader().load(url);
+            self.log("Refresh manifest @ " + url);
+            self.manifestLoader.load(url);
         };
 
     return {
         manifestModel: undefined,
-        manifestUpdater: undefined,
+        manifestLoader:undefined,
         log: undefined,
         system: undefined,
-        videoModel: undefined,
         addInlineEvents : addInlineEvents,
         addInbandEvents : addInbandEvents,
         reset : reset,
         clear : clear,
-        start: start
+        start: start,
+        getVideoModel: function() {
+            return this.videoModel;
+        },
+        setVideoModel:function(value) {
+            this.videoModel = value;
+        },
+        initialize:function(videoModel) {
+            this.setVideoModel(videoModel);
+        }
     };
 
 };

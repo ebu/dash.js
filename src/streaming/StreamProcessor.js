@@ -32,10 +32,10 @@ MediaPlayer.dependencies.StreamProcessor = function () {
     "use strict";
 
     var isDynamic,
-        stream = null,
-        mediaInfo = null,
-        type = null,
-        eventController = null,
+        stream,
+        mediaInfo,
+        type,
+        eventController,
 
         createBufferControllerForType = function(type) {
             var self = this,
@@ -46,17 +46,14 @@ MediaPlayer.dependencies.StreamProcessor = function () {
 
     return {
         system : undefined,
-        videoModel: undefined,
         indexHandler: undefined,
         liveEdgeFinder: undefined,
         timelineConverter: undefined,
         abrController: undefined,
-        playbackController: undefined,
         baseURLExt: undefined,
         adapter: undefined,
-        manifestModel: undefined,
 
-        initialize: function (typeValue, fragmentController, mediaSource, streamValue, eventControllerValue) {
+        initialize: function (typeValue, buffer, videoModel, fragmentController, playbackController, mediaSource, streamValue, eventControllerValue) {
 
             var self = this,
                 trackController = self.system.getObject("trackController"),
@@ -65,7 +62,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 abrController = self.abrController,
                 indexHandler = self.indexHandler,
                 baseUrlExt = self.baseURLExt,
-                playbackController = self.playbackController,
                 fragmentModel,
                 fragmentLoader = this.system.getObject("fragmentLoader"),
                 bufferController = createBufferControllerForType.call(self, typeValue);
@@ -76,8 +72,10 @@ MediaPlayer.dependencies.StreamProcessor = function () {
 
             isDynamic = stream.getStreamInfo().manifestInfo.isDynamic;
             self.bufferController = bufferController;
+            self.playbackController = playbackController;
             self.scheduleController = scheduleController;
             self.trackController = trackController;
+            self.videoModel = videoModel;
             self.fragmentController = fragmentController;
             self.fragmentLoader = fragmentLoader;
 
@@ -96,9 +94,13 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_STARTED, scheduleController);
 
                 trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, scheduleController);
+                trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, stream);
                 stream.subscribe(MediaPlayer.dependencies.Stream.eventList.ENAME_STREAM_UPDATED, scheduleController);
 
-                trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, playbackController);
+                if (!playbackController.streamProcessor) {
+                    playbackController.streamProcessor = self;
+                    trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, playbackController);
+                }
 
                 fragmentController.subscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_MEDIA_FRAGMENT_LOADED, bufferController);
                 fragmentController.subscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_MEDIA_FRAGMENT_LOADING_START, scheduleController);
@@ -106,7 +108,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 fragmentController.subscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_STREAM_COMPLETED, bufferController);
                 fragmentController.subscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_STREAM_COMPLETED, scheduleController.scheduleRulesCollection.bufferLevelRule);
 
-                bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_STATE_CHANGED, playbackController);
+                bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_STATE_CHANGED, videoModel);
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_CLEARED, scheduleController);
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BYTES_APPENDED, scheduleController);
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_UPDATED, scheduleController);
@@ -127,7 +129,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, scheduleController);
                 playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_STARTED, scheduleController);
                 playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, scheduleController.scheduleRulesCollection.playbackTimeRule);
-                playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, abrController.abrRulesCollection.insufficientBufferRule);
 
                 if (isDynamic) {
                     playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_WALLCLOCK_TIME_UPDATED, trackController);
@@ -142,11 +143,8 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 bufferController.subscribe(MediaPlayer.dependencies.TextController.eventList.ENAME_CLOSED_CAPTIONING_REQUESTED, scheduleController);
             }
 
-            trackController.subscribe(Dash.dependencies.RepresentationController.eventList.ENAME_DATA_UPDATE_COMPLETED, stream);
-
             indexHandler.initialize(this);
-            indexHandler.setCurrentTime(playbackController.getStreamStartTime(this.getStreamInfo()));
-            bufferController.initialize(type, mediaSource, self);
+            bufferController.initialize(type, buffer, mediaSource, self);
             scheduleController.initialize(type, this);
             abrController.initialize(type, this);
 
@@ -157,7 +155,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             fragmentModel.subscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED, fragmentController);
             fragmentModel.subscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_COMPLETED, scheduleController);
             fragmentLoader.subscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_COMPLETED, fragmentModel);
-            fragmentLoader.subscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_PROGRESS, abrController);
 
             if (type === "video" || type === "audio" || type === "fragmentedText") {
                 bufferController.subscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_OUTRUN, fragmentModel);
@@ -176,10 +173,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             return type;
         },
 
-        getABRController:function() {
-            return this.abrController;
-        },
-
         getFragmentLoader: function () {
             return this.fragmentLoader;
         },
@@ -187,17 +180,17 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         getFragmentModel: function() {
             return this.scheduleController.getFragmentModel();
         },
-
+        getPlaybackController:function() {
+            return this.playbackController;
+        },
         getStreamInfo: function() {
             return stream.getStreamInfo();
         },
 
-        updateMediaInfo: function(manifest, newMediaInfo) {
-            if (newMediaInfo !== mediaInfo && (!newMediaInfo || !mediaInfo || (newMediaInfo.type === mediaInfo.type))) {
-                mediaInfo = newMediaInfo;
-            }
+        setMediaInfo: function(value) {
+            if (value === mediaInfo || (value && mediaInfo && (value.id !== mediaInfo.id))) return;
 
-            this.adapter.updateData(manifest, this);
+            mediaInfo = value;
         },
 
         getMediaInfo: function() {
@@ -221,23 +214,15 @@ MediaPlayer.dependencies.StreamProcessor = function () {
         },
 
         getCurrentTrack: function() {
-            return this.adapter.getCurrentTrackInfo(this.manifestModel.getValue(), this.trackController);
+            return this.adapter.getCurrentTrackInfo(this.trackController);
         },
 
         getTrackForQuality: function(quality) {
-            return this.adapter.getTrackInfoForQuality(this.manifestModel.getValue(), this.trackController, quality);
+            return this.adapter.getTrackInfoForQuality(this.trackController, quality);
         },
 
         isBufferingCompleted: function() {
             return this.bufferController.isBufferingCompleted();
-        },
-
-        /**
-         * @returns SourceBuffer object
-         * @memberof StreamProcessor#
-         */
-        createBuffer: function() {
-            return (this.bufferController.getBuffer() || this.bufferController.createBuffer(mediaInfo));
         },
 
         isDynamic: function(){
@@ -256,7 +241,8 @@ MediaPlayer.dependencies.StreamProcessor = function () {
                 indexHandler = this.indexHandler,
                 baseUrlExt = this.baseURLExt,
                 fragmentModel = this.getFragmentModel(),
-                fragmentLoader = this.fragmentLoader;
+                fragmentLoader = this.fragmentLoader,
+                videoModel = self.videoModel;
 
             abrController.unsubscribe(MediaPlayer.dependencies.AbrController.eventList.ENAME_QUALITY_CHANGED, bufferController);
             abrController.unsubscribe(MediaPlayer.dependencies.AbrController.eventList.ENAME_QUALITY_CHANGED, trackController);
@@ -281,7 +267,7 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             fragmentController.unsubscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_STREAM_COMPLETED, bufferController);
             fragmentController.unsubscribe(MediaPlayer.dependencies.FragmentController.eventList.ENAME_STREAM_COMPLETED, scheduleController.scheduleRulesCollection.bufferLevelRule);
 
-            bufferController.unsubscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_STATE_CHANGED, playbackController);
+            bufferController.unsubscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_STATE_CHANGED, videoModel);
             bufferController.unsubscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_CLEARED, scheduleController);
             bufferController.unsubscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BYTES_APPENDED, scheduleController);
             bufferController.unsubscribe(MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_UPDATED, scheduleController);
@@ -305,7 +291,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_WALLCLOCK_TIME_UPDATED, bufferController);
             playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_WALLCLOCK_TIME_UPDATED, scheduleController);
             playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, scheduleController.scheduleRulesCollection.playbackTimeRule);
-            playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, abrController.abrRulesCollection.insufficientBufferRule);
 
             baseUrlExt.unsubscribe(Dash.dependencies.BaseURLExtensions.eventList.ENAME_INITIALIZATION_LOADED, indexHandler);
             baseUrlExt.unsubscribe(Dash.dependencies.BaseURLExtensions.eventList.ENAME_SEGMENTS_LOADED, indexHandler);
@@ -319,8 +304,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             fragmentModel.unsubscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_STREAM_COMPLETED, fragmentController);
             fragmentModel.unsubscribe(MediaPlayer.dependencies.FragmentModel.eventList.ENAME_FRAGMENT_LOADING_COMPLETED, scheduleController);
             fragmentLoader.unsubscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_COMPLETED, fragmentModel);
-            fragmentLoader.unsubscribe(MediaPlayer.dependencies.FragmentLoader.eventList.ENAME_LOADING_PROGRESS, abrController);
-
             fragmentModel.reset();
 
             indexHandler.reset();
@@ -331,11 +314,6 @@ MediaPlayer.dependencies.StreamProcessor = function () {
             this.trackController = null;
             this.videoModel = null;
             this.fragmentController = null;
-            isDynamic = undefined;
-            stream = null;
-            mediaInfo = null;
-            type = null;
-            eventController = null;
         }
 
     };

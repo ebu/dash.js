@@ -62,36 +62,28 @@ MediaPlayer = function (context) {
  * 6) Transform fragments.
  * 7) Push fragmemt bytes into SourceBuffer.
  */
-    var VERSION = "1.5.0",
-        DEFAULT_TIME_SERVER = "http://time.akamai.com/?iso",
-        DEFAULT_TIME_SOURCE_SCHEME = "urn:mpeg:dash:utc:http-xsdate:2014",
-        numOfParallelRequestAllowed = 0,
+    var VERSION = "1.4.0",
         system,
+        manifestLoader,
         abrController,
         element,
         source,
-        protectionController = null,
         protectionData = null,
         streamController,
         rulesController,
-        playbackController,
+        manifestUpdater,
         metricsExt,
         metricsModel,
         videoModel,
         DOMStorage,
         initialized = false,
-        resetting = false,
         playing = false,
         autoPlay = true,
         scheduleWhilePaused = false,
         bufferMax = MediaPlayer.dependencies.BufferController.BUFFER_SIZE_REQUIRED,
-        useManifestDateHeaderTimeSource = true,
-        UTCTimingSources = [],
-        liveDelayFragmentCount = 4,
-        usePresentationDelay = false,
 
         isReady = function () {
-            return (!!element && !!source && !resetting);
+            return (!!element && !!source);
         },
 
         play = function () {
@@ -111,25 +103,18 @@ MediaPlayer = function (context) {
             playing = true;
             this.debug.log("Playback initiated!");
             streamController = system.getObject("streamController");
-            playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, streamController);
-            playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_TIME_UPDATED, streamController);
-            playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_CAN_PLAY, streamController);
-            playbackController.subscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_ERROR, streamController);
-            playbackController.setLiveDelayAttributes(liveDelayFragmentCount, usePresentationDelay);
-
-            streamController.initialize(autoPlay, protectionController, protectionData);
+            streamController.subscribe(MediaPlayer.dependencies.StreamController.eventList.ENAME_STREAMS_COMPOSED, manifestUpdater);
+            manifestLoader.subscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, streamController);
+            manifestLoader.subscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, manifestUpdater);
+            streamController.initialize();
+            streamController.setVideoModel(videoModel);
+            streamController.setAutoPlay(autoPlay);
+            streamController.setProtectionData(protectionData);
             DOMStorage.checkInitialBitrate();
-            if (typeof source === "string") {
-                streamController.load(source);
-            } else {
-                streamController.loadWithManifest(source);
-            }
-            streamController.setUTCTimingSources(UTCTimingSources, useManifestDateHeaderTimeSource);
+            streamController.load(source);
             system.mapValue("scheduleWhilePaused", scheduleWhilePaused);
             system.mapOutlet("scheduleWhilePaused", "stream");
             system.mapOutlet("scheduleWhilePaused", "scheduleController");
-            system.mapValue("numOfParallelRequestAllowed", numOfParallelRequestAllowed);
-            system.mapOutlet("numOfParallelRequestAllowed", "scheduleController");
             system.mapValue("bufferMax", bufferMax);
             system.mapOutlet("bufferMax", "bufferController");
 
@@ -234,40 +219,19 @@ MediaPlayer = function (context) {
             }
         },
 
-        resetAndPlay = function() {
+        doReset = function() {
             if (playing && streamController) {
-                if (!resetting) {
-                    resetting = true;
-                    playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING, streamController);
-                    playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_TIME_UPDATED, streamController);
-                    playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_CAN_PLAY, streamController);
-                    playbackController.unsubscribe(MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_ERROR, streamController);
-
-                    var teardownComplete = {},
-                            self = this;
-                    teardownComplete[MediaPlayer.dependencies.StreamController.eventList.ENAME_TEARDOWN_COMPLETE] = function () {
-
-                        // Finish rest of shutdown process
-                        abrController.reset();
-                        rulesController.reset();
-                        playbackController.reset();
-                        streamController = null;
-                        playing = false;
-
-                        resetting = false;
-                        if (isReady.call(self)) {
-                            doAutoPlay.call(self);
-                        }
-                    };
-                    streamController.subscribe(MediaPlayer.dependencies.StreamController.eventList.ENAME_TEARDOWN_COMPLETE, teardownComplete, undefined, true);
-                    streamController.reset();
-                }
-            } else {
-                if (isReady.call(this)) {
-                    doAutoPlay.call(this);
-                }
+                streamController.unsubscribe(MediaPlayer.dependencies.StreamController.eventList.ENAME_STREAMS_COMPOSED, manifestUpdater);
+                manifestLoader.unsubscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, streamController);
+                manifestLoader.unsubscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, manifestUpdater);
+                streamController.reset();
+                abrController.reset();
+                rulesController.reset();
+                streamController = null;
+                playing = false;
             }
         };
+
 
 
     // Overload dijon getObject function
@@ -300,12 +264,12 @@ MediaPlayer = function (context) {
 
         setup: function() {
             metricsExt = system.getObject("metricsExt");
+            manifestLoader = system.getObject("manifestLoader");
+            manifestUpdater = system.getObject("manifestUpdater");
             abrController = system.getObject("abrController");
             rulesController = system.getObject("rulesController");
             metricsModel = system.getObject("metricsModel");
             DOMStorage = system.getObject("DOMStorage");
-            playbackController = system.getObject("playbackController");
-            this.restoreDefaultUTCTimingSources();
         },
 
         /**
@@ -318,7 +282,6 @@ MediaPlayer = function (context) {
          *
          */
         addEventListener: function (type, listener, useCapture) {
-            type = type.toLowerCase();
             this.eventBus.addEventListener(type, listener, useCapture);
         },
 
@@ -329,7 +292,6 @@ MediaPlayer = function (context) {
          * @memberof MediaPlayer#
          */
         removeEventListener: function (type, listener, useCapture) {
-            type = type.toLowerCase();
             this.eventBus.removeEventListener(type, listener, useCapture);
         },
 
@@ -352,7 +314,7 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * Use this method to access the dash.js logging class.
+         * Use this method to access the dash.js debugger.
          *
          * @returns {@link MediaPlayer.utils.Debug Debug.js (Singleton)}
          * @memberof MediaPlayer#
@@ -366,34 +328,10 @@ MediaPlayer = function (context) {
          * @memberof MediaPlayer#
          */
         getVideoModel: function () {
-            return videoModel;
-        },
+            var streamInfo = streamController ? streamController.getActiveStreamInfo() : null,
+                stream = streamInfo ? streamController.getStreamById(streamInfo.id) : null;
 
-
-
-        /**
-         * <p>Changing this value will lower or increase live stream latency.  The detected segment duration will be multiplied by this value
-         * to define a time in seconds to delay a live stream from the live edge.</p>
-         * <p>Lowering this value will lower latency but may decrease the player's ability to build a stable buffer.</p>
-         *
-         * @param value {int} Represents how many segment durations to delay the live stream.
-         * @default 4
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#useSuggestedPresentationDelay useSuggestedPresentationDelay()}
-         */
-        setLiveDelayFragmentCount: function(value) {
-            liveDelayFragmentCount = value;
-        },
-
-        /**
-         * <p>Set to true if you would like to override the default live delay and honor the SuggestedPresentationDelay attribute in by the manifest.</p>
-         * @param value {boolean}
-         * @default false
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#setLiveDelayFragmentCount setLiveDelayFragmentCount()}
-         */
-        useSuggestedPresentationDelay: function(value) {
-            usePresentationDelay = value;
+            return (stream ? stream.getVideoModel() : videoModel);
         },
 
         /**
@@ -414,22 +352,6 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * Setting this value to something greater than 0 will result in that many parallel requests (per media type). Having concurrent request
-         * may help with latency but will alter client bandwidth detection. This may slow the responsiveness of the
-         * ABR heuristics.  It will also deactivate the AbandonRequestsRule, which at this time, only works accurately when parallel request are turned off.
-         *
-         * We do not suggest setting this value greater than 4.
-         *
-         * @value {int} Number of parallel request allowed at one time.
-         * @default 0
-         * @memberof MediaPlayer#
-         *
-         */
-        setNumOfParallelRequestAllowed: function (value){
-            numOfParallelRequestAllowed = value;
-        },
-
-        /**
          * When switching multi-bitrate content (auto or manual mode) this property specifies the maximum bitrate allowed.
          * If you set this property to a value lower than that currently playing, the switching engine will switch down to
          * satisfy this requirement. If you set it to a value that is lower than the lowest bitrate, it will still play
@@ -440,8 +362,8 @@ MediaPlayer = function (context) {
          *
          * This feature is typically used to reserve higher bitrates for playback only when the player is in large or full-screen format.
          *
-         * @param type {String} 'video' or 'audio' are the type options.
-         * @param value {int} Value in kbps representing the maximum bitrate allowed.
+         * @param type String 'video' or 'audio' are the type options.
+         * @param value int value in kbps representing the maximum bitrate allowed.
          * @memberof MediaPlayer#
          */
         setMaxAllowedBitrateFor:function(type, value) {
@@ -449,7 +371,7 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * @param type {string} 'video' or 'audio' are the type options.
+         * @param type String 'video' or 'audio' are the type options.
          * @memberof MediaPlayer#
          * @see {@link MediaPlayer#setMaxAllowedBitrateFor setMaxAllowedBitrateFor()}
          */
@@ -458,13 +380,8 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * <p>Set to false to prevent stream from auto-playing when the view is attached.</p>
-         *
-         * @param value {boolean}
-         * @default true
+         * @param value
          * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#attachView attachView()}
-         *
          */
         setAutoPlay: function (value) {
             autoPlay = value;
@@ -576,19 +493,15 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * @returns {boolean} Current state of adaptive bitrate switching
+         * @returns {object}
          * @memberof MediaPlayer#
-         *
          */
         getAutoSwitchQuality : function () {
             return abrController.getAutoSwitchBitrate();
         },
 
         /**
-         * Set to false to switch off adaptive bitrate switching.
-         *
-         * @param value {boolean}
-         * @default {boolean} true
+         * @param value
          * @memberof MediaPlayer#
          */
         setAutoSwitchQuality : function (value) {
@@ -596,26 +509,6 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * <p>Allows you to override the default Scheduling Rules with a custom collection.</p>
-         *
-         * <pre>
-         * You need to use a custom context by extend DashContext.js and passing to MediaPlayer upon instantiation.
-         *
-         * //CustomRuleCollection code example.
-         *
-         *  MediaPlayer.rules.CustomRuleCollection = function () {
-         *      "use strict";
-         *  }
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = new MediaPlayer.rules.ABRRulesCollection();
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.constructor = MediaPlayer.rules.ABRRulesCollection;
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.QUALITY_SWITCH_RULES = [new MediaPlayer.rules.CustomRuleCollection()];
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = {
-         *      constructor: MediaPlayer.rules.CustomRuleCollection
-         *  };
-         * </pre>
-         *
          * @param newRulesCollection
          * @memberof MediaPlayer#
          */
@@ -624,26 +517,6 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * <p>Allows you to add a custom Scheduling rule to the existing stack of default rules.</p>
-         *
-         * <pre>
-         * You need to use a custom context by extend DashContext.js and passing to MediaPlayer upon instantiation.
-         *
-         * //CustomRuleCollection code example.
-         *
-         *  MediaPlayer.rules.CustomRuleCollection = function () {
-         *      "use strict";
-         *  }
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = new MediaPlayer.rules.ABRRulesCollection();
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.constructor = MediaPlayer.rules.ABRRulesCollection;
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.QUALITY_SWITCH_RULES = [new MediaPlayer.rules.CustomRuleCollection()];
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = {
-         *      constructor: MediaPlayer.rules.CustomRuleCollection
-         *  };
-         * </pre>
-         *
          * @param newRulesCollection
          * @memberof MediaPlayer#
          */
@@ -652,26 +525,6 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * <p>Allows you to override the default ABR Rules with a custom collection.</p>
-         *
-         * <pre>
-         * You need to use a custom context by extend DashContext.js and passing to MediaPlayer upon instantiation.
-         *
-         * //CustomRuleCollection code example.
-         *
-         *  MediaPlayer.rules.CustomRuleCollection = function () {
-         *      "use strict";
-         *  }
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = new MediaPlayer.rules.ABRRulesCollection();
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.constructor = MediaPlayer.rules.ABRRulesCollection;
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.QUALITY_SWITCH_RULES = [new MediaPlayer.rules.CustomRuleCollection()];
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = {
-         *      constructor: MediaPlayer.rules.CustomRuleCollection
-         *  };
-         * </pre>
-         *
          * @param newRulesCollection
          * @memberof MediaPlayer#
          */
@@ -680,26 +533,6 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * <p>Allows you to add a custom ABR rule to the existing stack of default rules.</p>
-         *
-         * <pre>
-         * You need to use a custom context by extend DashContext.js and passing to MediaPlayer upon instantiation.
-         *
-         * //CustomRuleCollection code example.
-         *
-         *  MediaPlayer.rules.CustomRuleCollection = function () {
-         *      "use strict";
-         *  }
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = new MediaPlayer.rules.ABRRulesCollection();
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.constructor = MediaPlayer.rules.ABRRulesCollection;
-         *  MediaPlayer.rules.CustomRuleCollection.prototype.QUALITY_SWITCH_RULES = [new MediaPlayer.rules.CustomRuleCollection()];
-         *
-         *  MediaPlayer.rules.CustomRuleCollection.prototype = {
-         *      constructor: MediaPlayer.rules.CustomRuleCollection
-         *  };
-         * </pre>
-         *
          * @param newRulesCollection
          * @memberof MediaPlayer#
          */
@@ -708,144 +541,10 @@ MediaPlayer = function (context) {
         },
 
         /**
-         * Create a ProtectionController and associated ProtectionModel for use with
-         * a single piece of content.
-         *
-         * @return {MediaPlayer.dependencies.ProtectionController} protection controller
-         */
-        createProtection: function() {
-            return system.getObject("protectionController");
-        },
-
-        /**
-         * Allows application to retrieve a manifest
-         *
-         * @param {string} url the manifest url
-         * @param {function} callback function that accepts two parameters.  The first is
-         * a successfully parsed manifest or null, the second is a string that contains error
-         * information in the case that the first parameter is null
-         */
-        retrieveManifest: function(url, callback) {
-            (function(manifestUrl) {
-                var manifestLoader = system.getObject("manifestLoader"),
-                    uriQueryFragModel = system.getObject("uriQueryFragModel"),
-                    cbObj = {};
-                cbObj[MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED] = function(e) {
-                    if (!e.error) {
-                        callback(e.data.manifest);
-                    } else {
-                        callback(null, e.error);
-                    }
-                    manifestLoader.unsubscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, this);
-                };
-
-                manifestLoader.subscribe(MediaPlayer.dependencies.ManifestLoader.eventList.ENAME_MANIFEST_LOADED, cbObj);
-                manifestLoader.load(uriQueryFragModel.parseURI(manifestUrl));
-            })(url);
-        },
-
-        /**
-         * <p>Allows you to set a scheme and server source for UTC live edge detection for dynamic streams.
-         * If UTCTiming is defined in the manifest, it will take precedence over any time source manually added.</p>
-         * <p>If you have exposed the Date header, use the method {@link MediaPlayer#clearDefaultUTCTimingSources clearDefaultUTCTimingSources()}.
-         * This will allow the date header on the manifest to be used instead of a time server</p>
-         * @param {string} schemeIdUri -
-         * <ul>
-         * <li>urn:mpeg:dash:utc:http-head:2014</li>
-         * <li>urn:mpeg:dash:utc:http-xsdate:2014</li>
-         * <li>urn:mpeg:dash:utc:http-iso:2014</li>
-         * <li>urn:mpeg:dash:utc:direct:2014</li>
-         * </ul>
-         * <p>Some specs referencing early ISO23009-1 drafts incorrectly use
-         * 2012 in the URI, rather than 2014. support these for now.</p>
-         * <ul>
-         * <li>urn:mpeg:dash:utc:http-head:2012</li>
-         * <li>urn:mpeg:dash:utc:http-xsdate:2012</li>
-         * <li>urn:mpeg:dash:utc:http-iso:2012</li>
-         * <li>urn:mpeg:dash:utc:direct:2012</li>
-         * </ul>
-         * @param {string} value - Path to a time source.
-         * @default
-         * <ul>
-         *     <li>schemeIdUri:urn:mpeg:dash:utc:http-xsdate:2014</li>
-         *     <li>value:http://time.akamai.com</li>
-         * </ul>
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#removeUTCTimingSource removeUTCTimingSource()}
-         */
-        addUTCTimingSource: function (schemeIdUri, value){
-            this.removeUTCTimingSource(schemeIdUri, value);//check if it already exists and remove if so.
-            var vo = new Dash.vo.UTCTiming();
-            vo.schemeIdUri = schemeIdUri;
-            vo.value = value;
-            UTCTimingSources.push(vo);
-        },
-
-
-        /**
-         * <p>Allows you to remove a UTC time source. Both schemeIdUri and value need to match the Dash.vo.UTCTiming properties in order for the
-         * entry to be removed from the array</p>
-         * @param {string} schemeIdUri - see {@link MediaPlayer#addUTCTimingSource addUTCTimingSource()}
-         * @param {string} value - see {@link MediaPlayer#addUTCTimingSource addUTCTimingSource()}
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#clearDefaultUTCTimingSources clearDefaultUTCTimingSources()}
-         */
-        removeUTCTimingSource: function(schemeIdUri, value) {
-            UTCTimingSources.forEach(function(obj, idx){
-               if (obj.schemeIdUri === schemeIdUri && obj.value === value){
-                    UTCTimingSources.splice(idx, 1);
-               }
-            });
-        },
-
-        /**
-         * <p>Allows you to clear the stored array of time sources.</p>
-         * <p>Example use: If you have exposed the Date header, calling this method
-         * will allow the date header on the manifest to be used instead of the time server.</p>
-         * <p>Example use: Calling this method, assuming there is not an exposed date header on the manifest,  will default back
-         * to using a binary search to discover the live edge</p>
-         *
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#restoreDefaultUTCTimingSources restoreDefaultUTCTimingSources()}
-         */
-        clearDefaultUTCTimingSources: function() {
-            UTCTimingSources = [];
-        },
-
-        /**
-         * <p>Allows you to restore the default time sources after calling {@link MediaPlayer#clearDefaultUTCTimingSources clearDefaultUTCTimingSources()}</p>
-         *
-         * @default
-         * <ul>
-         *     <li>schemeIdUri:urn:mpeg:dash:utc:http-xsdate:2014</li>
-         *     <li>value:http://time.akamai.com</li>
-         * </ul>
-         *
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#addUTCTimingSource addUTCTimingSource()}
-         */
-        restoreDefaultUTCTimingSources: function() {
-            this.addUTCTimingSource(DEFAULT_TIME_SOURCE_SCHEME, DEFAULT_TIME_SERVER);
-        },
-
-
-        /**
-         * <p>Allows you to enable the use of the Date Header, if exposed with CORS, as a timing source for live edge detection. The
-         * use of the date header will happen only after the other timing source that take precedence fail or are omitted as described.
-         * {@link MediaPlayer#clearDefaultUTCTimingSources clearDefaultUTCTimingSources()} </p>
-         *
-         * @default {boolean} True
-         * @memberof MediaPlayer#
-         * @see {@link MediaPlayer#addUTCTimingSource addUTCTimingSource()}
-         */
-        enableManifestDateHeaderTimeSource: function(value) {
-            useManifestDateHeaderTimeSource = value;
-        },
-
-        /**
          * Use this method to attach an HTML5 VideoElement for dash.js to operate upon.
          *
-         * @param view An HTML5 VideoElement that has already been defined in the DOM.
+         * @param view An HTML5 VideoElement that has already defined in the DOM.
+         *
          * @memberof MediaPlayer#
          */
         attachView: function (view) {
@@ -862,42 +561,47 @@ MediaPlayer = function (context) {
             }
 
             // TODO : update
-            resetAndPlay.call(this);
+
+            doReset.call(this);
+
+            if (isReady.call(this)) {
+                doAutoPlay.call(this);
+            }
         },
 
         /**
-         * Use this method to set a source URL to a valid MPD manifest file OR
-         * a previously downloaded and parsed manifest object.  Optionally, can
-         * also provide protection information
+         * Use this method to set a source URL to a valid MPD manifest file.
          *
-         * @param {string | object} urlOrManifest A URL to a valid MPD manifest file, or a
-         * parsed manifest object.
-         * @param {MediaPlayer.dependencies.ProtectionController} [protectionCtrl] optional
-         * protection controller
-         * @param {MediaPlayer.vo.protection.ProtectionData} [data] object containing
-         * property names corresponding to key system name strings and associated
-         * values being instances of
+         * @param {string} url A URL to a valid MPD manifest file.
          * @throw "MediaPlayer not initialized!"
          *
          * @memberof MediaPlayer#
          */
-        attachSource: function (urlOrManifest, protectionCtrl, data) {
+        attachSource: function (url) {
             if (!initialized) {
                 throw "MediaPlayer not initialized!";
             }
 
-            if (typeof urlOrManifest === "string") {
-                this.uriQueryFragModel.reset();
-                source = this.uriQueryFragModel.parseURI(urlOrManifest);
-            } else {
-                source = urlOrManifest;
-            }
-
-            protectionController = protectionCtrl;
-            protectionData = data;
+            this.uriQueryFragModel.reset();
+            source = this.uriQueryFragModel.parseURI(url);
 
             // TODO : update
-            resetAndPlay.call(this);
+
+            doReset.call(this);
+
+            if (isReady.call(this)) {
+                doAutoPlay.call(this);
+            }
+        },
+
+        /**
+         * Attach KeySystem-specific data to use for License Acquisition with EME
+         * @param data and object containing property names corresponding to key
+         * system name strings and associated values being instances of
+         * MediaPlayer.vo.protection.ProtectionData
+         */
+        attachProtectionData: function(data) {
+            protectionData = data;
         },
 
         /**
@@ -908,14 +612,13 @@ MediaPlayer = function (context) {
         reset: function() {
             this.attachSource(null);
             this.attachView(null);
-            protectionController = null;
-            protectionData = null;
         },
 
         /**
          * The play method initiates playback of the media defined by the {@link MediaPlayer#attachSource attachSource()} method.
          *
          * @see {@link MediaPlayer#attachSource attachSource()}
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -927,6 +630,7 @@ MediaPlayer = function (context) {
          * @returns {boolean} The current ready state of the MediaPlayer
          * @see {@link MediaPlayer#attachView attachView()}
          * @see {@link MediaPlayer#attachSource attachSource()}
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -936,8 +640,9 @@ MediaPlayer = function (context) {
          * Sets the currentTime property of the attached video element.  If it is a live stream with a
          * timeShiftBufferLength, then the DVR window offset will be automatically calculated.
          *
-         * @param value {number} A relative time, in seconds, based on the return value of the {@link MediaPlayer#duration duration()} method is expected
+         * @param {number} value A relative time, in seconds, based on the return value of the {@link MediaPlayer#duration duration()} method is expected
          * @see {@link MediaPlayer#getDVRSeekOffset getDVRSeekOffset()}
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -946,7 +651,8 @@ MediaPlayer = function (context) {
         /**
          * Current time of the playhead, in seconds.
          *
-         * @returns {number} The current playhead time of the media.
+         * @returns {number} Returns the current playhead time of the media.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -955,7 +661,8 @@ MediaPlayer = function (context) {
         /**
          * Duration of the media's playback, in seconds.
          *
-         * @returns {number} The current duration of the media.
+         * @returns {number} Returns the current duration of the media.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -965,7 +672,8 @@ MediaPlayer = function (context) {
          * Use this method to get the current playhead time as an absolute value, the time in seconds since midnight UTC, Jan 1 1970.
          * Note - this property only has meaning for live streams
          *
-         * @returns {number} The current playhead time as UTC timestamp.
+         * @returns {number} Returns the current playhead time as UTC timestamp.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -975,7 +683,8 @@ MediaPlayer = function (context) {
          * Use this method to get the current duration as an absolute value, the time in seconds since midnight UTC, Jan 1 1970.
          * Note - this property only has meaning for live streams.
          *
-         * @returns {number} The current duration as UTC timestamp.
+         * @returns {number} Returns the current duration as UTC timestamp.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -985,6 +694,7 @@ MediaPlayer = function (context) {
          * The timeShiftBufferLength (DVR Window), in seconds.
          *
          * @returns {number} The window of allowable play time behind the live point of a live stream.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -995,9 +705,11 @@ MediaPlayer = function (context) {
          * NOTE - If you do not need the raw offset value (i.e. media analytics, tracking, etc) consider using the {@link MediaPlayer#seek seek()} method
          * which will calculate this value for you and set the video element's currentTime property all in one simple call.
          *
-         * @param value {number} A relative time, in seconds, based on the return value of the {@link MediaPlayer#duration duration()} method is expected.
-         * @returns {number} A value that is relative the available range within the timeShiftBufferLength (DVR Window).
+         * @param {number} value A relative time, in seconds, based on the return value of the {@link MediaPlayer#duration duration()} method is expected.
+         * @returns A value that is relative the available range within the timeShiftBufferLength (DVR Window).
+         *
          * @see {@link MediaPlayer#seek seek()}
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -1009,7 +721,8 @@ MediaPlayer = function (context) {
          * @param {number} time - UTC timestamp to be converted into date and time.
          * @param {string} locales - a region identifier (i.e. en_US).
          * @param {boolean} hour12 - 12 vs 24 hour. Set to true for 12 hour time formatting.
-         * @returns {string} A formatted time and date string.
+         * @returns {string} a formatted time and date string.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -1018,8 +731,9 @@ MediaPlayer = function (context) {
         /**
          * A utility method which converts seconds into TimeCode (i.e. 300 --> 05:00).
          *
-         * @param value {number} A number in seconds to be converted into a formatted time code.
+         * @param value - A number in seconds to be converted into a time code format.
          * @returns {string} A formatted time code string.
+         *
          * @memberof MediaPlayer#
          * @method
          */
@@ -1035,7 +749,6 @@ MediaPlayer.prototype = {
 
 MediaPlayer.dependencies = {};
 MediaPlayer.dependencies.protection = {};
-MediaPlayer.dependencies.protection.servers = {};
 MediaPlayer.utils = {};
 MediaPlayer.models = {};
 MediaPlayer.vo = {};
@@ -1048,14 +761,12 @@ MediaPlayer.di = {};
  * The list of events supported by MediaPlayer
  */
 MediaPlayer.events = {
-    RESET_COMPLETE: "resetComplete",
     METRICS_CHANGED: "metricschanged",
     METRIC_CHANGED: "metricchanged",
     METRIC_UPDATED: "metricupdated",
     METRIC_ADDED: "metricadded",
     MANIFEST_LOADED: "manifestloaded",
-    STREAM_SWITCH_STARTED: "streamswitchstarted",
-    STREAM_SWITCH_COMPLETED: "streamswitchcompleted",
+    SWITCH_STREAM: "streamswitched",
     STREAM_INITIALIZED: "streaminitialized",
     TEXT_TRACK_ADDED: "texttrackadded",
     BUFFER_LOADED: "bufferloaded",

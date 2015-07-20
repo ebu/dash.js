@@ -35,21 +35,17 @@ MediaPlayer.rules.PlaybackTimeRule = function () {
         scheduleController = {},
 
         onPlaybackSeeking = function(e) {
-            // TODO this a dirty workaround to call this handler after a handelr from ScheduleController class. That
-            // handler calls FragmentModel.cancelPendingRequests(). We should cancel pending requests before we start
-            // creating requests for a seeking time.
-            setTimeout(function() {
-                var time = e.data.seekTime;
-                seekTarget.audio = time;
-                seekTarget.video = time;
-                seekTarget.fragmentedText=time;
-            },0);
+            var streamId = e.sender.getStreamId(),
+                time = e.data.seekTime;
+            seekTarget[streamId] = seekTarget[streamId] || {};
+            seekTarget[streamId].audio = time;
+            seekTarget[streamId].video = time;
+            seekTarget[streamId].fragmentedText=time;
         };
 
     return {
         adapter: undefined,
         sourceBufferExt: undefined,
-        playbackController: undefined,
 
         setup: function() {
             this[MediaPlayer.dependencies.PlaybackController.eventList.ENAME_PLAYBACK_SEEKING] = onPlaybackSeeking;
@@ -70,17 +66,16 @@ MediaPlayer.rules.PlaybackTimeRule = function () {
                 EPSILON = 0.1,
                 streamProcessor = scheduleController[streamId][mediaType].streamProcessor,
                 track = streamProcessor.getCurrentTrack(),
-                st = seekTarget ? seekTarget[mediaType] : null,
+                st = seekTarget[streamId] ? seekTarget[streamId][mediaType] : null,
                 hasSeekTarget = (st !== undefined) && (st !== null),
                 p = hasSeekTarget ? MediaPlayer.rules.SwitchRequest.prototype.STRONG  : MediaPlayer.rules.SwitchRequest.prototype.DEFAULT,
                 rejected = sc.getFragmentModel().getRequests({state: MediaPlayer.dependencies.FragmentModel.states.REJECTED})[0],
                 keepIdx = !!rejected && !hasSeekTarget,
                 currentTime = this.adapter.getIndexHandlerTime(streamProcessor),
-                playbackTime = this.playbackController.getTime(),
+                playbackTime = streamProcessor.playbackController.getTime(),
                 rejectedEnd = rejected ? rejected.startTime + rejected.duration : null,
                 useRejected = !hasSeekTarget && rejected && ((rejectedEnd > playbackTime) && (rejected.startTime <= currentTime) || isNaN(currentTime)),
-                buffer = streamProcessor.bufferController.getBuffer(),
-                range = null,
+                range,
                 time,
                 request;
 
@@ -95,22 +90,20 @@ MediaPlayer.rules.PlaybackTimeRule = function () {
                 return;
             }
 
-            if (hasSeekTarget) {
-                seekTarget[mediaType] = null;
+            if (seekTarget[streamId]) {
+                seekTarget[streamId][mediaType] = null;
             }
 
-            if (buffer) {
-                range = this.sourceBufferExt.getBufferRange(streamProcessor.bufferController.getBuffer(), time);
+            range = this.sourceBufferExt.getBufferRange(streamProcessor.bufferController.getBuffer(), time);
 
-                if (range !== null) {
-                    time = range.end;
-                }
+            if (range !== null) {
+                time = range.end;
             }
 
             request = this.adapter.getFragmentRequestForTime(streamProcessor, track, time, {keepIdx: keepIdx});
 
             if (useRejected && request && request.index !== rejected.index) {
-                request = this.adapter.getFragmentRequestForTime(streamProcessor, track, rejected.startTime + (rejected.duration / 2) + EPSILON, {keepIdx: keepIdx, timeThreshold: 0});
+                request = this.adapter.getFragmentRequestForTime(streamProcessor, track, rejected.startTime + (rejected.duration / 2) + EPSILON, {keepIdx: keepIdx});
             }
 
             while (request && streamProcessor.getFragmentModel().isFragmentLoadedOrPending(request)) {

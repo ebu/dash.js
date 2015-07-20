@@ -35,7 +35,6 @@ MediaPlayer.rules.ScheduleRulesCollection = function () {
         fragmentsToExecuteRules = [],
         nextFragmentRules = [];
 
-
     return {
         bufferLevelRule: undefined,
         pendingRequestsRule: undefined,

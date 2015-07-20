@@ -103,7 +103,6 @@ Dash.dependencies.TimelineConverter = function () {
             var start = representation.adaptation.period.start,
                 end = start + representation.adaptation.period.duration,
                 range = {start: start, end: end},
-                d = representation.segmentDuration || ((representation.segments && representation.segments.length) ? representation.segments[representation.segments.length-1].duration : 0),
                 checkTime,
                 now;
 
@@ -119,7 +118,7 @@ Dash.dependencies.TimelineConverter = function () {
             // MPD@timeShiftBufferDepth such that only Media Segments for which the sum of the start time of the
             // Media Segment and the Period start time falls in the interval [NOW- MPD@timeShiftBufferDepth - @duration, min(CheckTime, NOW)] are included.
             start = Math.max((now - representation.adaptation.period.mpd.timeShiftBufferDepth), 0);
-            end = (isNaN(checkTime) ? now : Math.min(checkTime, now)) - d;
+            end = isNaN(checkTime) ? now : Math.min(checkTime, now);
             range = {start: start, end: end};
 
             return range;
@@ -142,7 +141,7 @@ Dash.dependencies.TimelineConverter = function () {
 
             // the difference between expected and actual live edge time is supposed to be a difference between client
             // and server time as well
-            clientServerTimeShift += e.data.liveEdge - (expectedLiveEdge + e.data.searchTime);
+            clientServerTimeShift = e.data.liveEdge - (expectedLiveEdge + e.data.searchTime);
             isClientServerTimeSyncCompleted = true;
         },
 
@@ -190,10 +189,6 @@ Dash.dependencies.TimelineConverter = function () {
 
         isTimeSyncCompleted: function() {
             return isClientServerTimeSyncCompleted;
-        },
-
-        setTimeSyncCompleted: function(value) {
-            isClientServerTimeSyncCompleted = value;
         },
 
         getClientTimeOffset: function() {

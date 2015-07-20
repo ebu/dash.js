@@ -222,16 +222,14 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
             fillmoving("video", httpRequests);
             fillmoving("audio", httpRequests);
 
-            var streamIdx = $scope.streamInfo.index;
-
             if (repSwitch !== null) {
-                bitrateIndexValue = metricsExt.getIndexForRepresentation(repSwitch.to, streamIdx);
-                bandwidthValue = metricsExt.getBandwidthForRepresentation(repSwitch.to, streamIdx);
+                bitrateIndexValue = metricsExt.getIndexForRepresentation(repSwitch.to);
+                bandwidthValue = metricsExt.getBandwidthForRepresentation(repSwitch.to);
                 bandwidthValue = bandwidthValue / 1000;
                 bandwidthValue = Math.round(bandwidthValue);
             }
 
-            numBitratesValue = metricsExt.getMaxIndexForBufferType(type, streamIdx);
+            numBitratesValue = metricsExt.getMaxIndexForBufferType(type, $scope.streamInfo.index);
 
             if (bufferLevel !== null) {
                 bufferLengthValue = bufferLevel.level.toPrecision(5);
@@ -536,7 +534,7 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     player.addEventListener(MediaPlayer.events.ERROR, onError.bind(this));
     player.addEventListener(MediaPlayer.events.METRIC_CHANGED, metricChanged.bind(this));
     player.addEventListener(MediaPlayer.events.METRIC_UPDATED, metricUpdated.bind(this));
-    player.addEventListener(MediaPlayer.events.STREAM_SWITCH_COMPLETED, streamSwitch.bind(this));
+    player.addEventListener(MediaPlayer.events.SWITCH_STREAM, streamSwitch.bind(this));
 
     player.attachView(video);
     player.setAutoPlay(true);
@@ -617,11 +615,10 @@ app.controller('DashController', function($scope, Sources, Notes, Contributors, 
     }
 
     $scope.doLoad = function () {
-        var protData = null;
         if ($scope.selectedItem.hasOwnProperty("protData")) {
-            protData = $scope.selectedItem.protData;
+            player.attachProtectionData($scope.selectedItem.protData);
         }
-        player.attachSource($scope.selectedItem.url, null, protData);
+        player.attachSource($scope.selectedItem.url);
         player.setAutoSwitchQuality($scope.abrEnabled);
         $scope.manifestUpdateInfo = null;
     }

@@ -13,23 +13,19 @@
         {
             var player, video, source, context;
 
-            // Example specifying only the video element, where the video element has a child source element
+            // Example specifying only the video element
             video = document.querySelector("#video1");
             player = Dash.create(video);
 
-            // Example specifying only the video element, where the video element has a src attribute
-            video = document.querySelector("#video2");
-            player = Dash.create(video);
-
             //Example adding video and source
-            video = document.querySelector("#video3");
+            video = document.querySelector("#video2");
             source = document.createElement("source");
             source.src = "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd";
             source.type = "application/dash+xml";
             player = Dash.create(video, source);
 
             //Example adding video, source and context
-            video = document.querySelector("#video4");
+            video = document.querySelector("#video3");
             source = document.createElement("source");
             source.src = "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd";
             source.type = "application/dash+xml";
@@ -50,12 +46,10 @@
                 <source src="http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd" type="application/dash+xml"/>
             </video>
             <p/>
-            <video id="video2" autoplay src="http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd" controls="true"/>
-            <p/>
-            <video id="video3" autoplay controls="true">
+            <video id="video2" autoplay controls="true">
             </video>
             <p/>
-            <video id="video4" autoplay controls="true">
+            <video id="video3" autoplay controls="true">
             </video>
         </div>
     </body>

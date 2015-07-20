@@ -39,14 +39,6 @@
 MediaPlayer.models.ProtectionModel = {
 
     /**
-     * Returns an array of all initialization data sets currently used by
-     * active sessions.
-     *
-     * @return {ArrayBuffer[]} an array of initialization data buffers
-     getAllInitData: function() {},
-     */
-
-    /**
      * Determine if the user-agent supports one of the given key systems and
      * content type configurations. Sends ENAME_KEY_SYSTEM_ACCESS_COMPLETE event
      * with a KeySystemAccess object as event data
@@ -167,6 +159,5 @@ MediaPlayer.models.ProtectionModel.eventList = {
     ENAME_KEY_SESSION_CREATED: "keySessionCreated",
     ENAME_KEY_SESSION_REMOVED: "keySessionRemoved",
     ENAME_KEY_SESSION_CLOSED: "keySessionClosed",
-    ENAME_KEY_STATUSES_CHANGED: "keyStatusesChanged",
-    ENAME_TEARDOWN_COMPLETE: "teardownComplete"
+    ENAME_KEY_STATUSES_CHANGED: "keyStatusesChanged"
 };

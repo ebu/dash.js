@@ -66,17 +66,6 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
             })(idx);
         },
 
-        closeKeySessionInternal = function(sessionToken) {
-            var session = sessionToken.session;
-
-            // Remove event listeners
-            session.removeEventListener("keystatuseschange", sessionToken);
-            session.removeEventListener("message", sessionToken);
-
-            // Send our request to the key session
-            return session.close();
-        },
-
         // This is our main event handler for all desired HTMLMediaElement events
         // related to EME.  These events are translated into our API-independent
         // versions of the same events
@@ -87,10 +76,8 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
                     switch (event.type) {
 
                         case "encrypted":
-                            if (event.initData) {
-                                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_NEED_KEY,
-                                        new MediaPlayer.vo.protection.NeedKey(event.initData, event.initDataType));
-                            }
+                            self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_NEED_KEY,
+                                new MediaPlayer.vo.protection.NeedKey(event.initData, event.initDataType));
                             break;
                     }
                 }
@@ -185,48 +172,12 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
         },
 
         teardown: function() {
-            var numSessions = sessions.length,
-                session,
-                self = this;
-            if (numSessions !== 0) {
-                // Called when we are done closing a session.  Success or fail
-                var done = function(session) {
-                    removeSession(session);
-                    if (sessions.length === 0) {
-                        if (videoElement) {
-                            videoElement.removeEventListener("encrypted", eventHandler);
-                            videoElement.setMediaKeys(null).then(function () {
-                                self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_TEARDOWN_COMPLETE);
-                            });
-                        }
-                    }
-                };
-                for (var i = 0; i < numSessions; i++) {
-                    session = sessions[i];
-                    (function (s) {
-                        // Override closed promise resolver
-                        session.session.closed.then(function () {
-                            done(s);
-                        });
-                        // Close the session and handle errors, otherwise promise
-                        // resolver above will be called
-                        closeKeySessionInternal(session).catch(function () {
-                            done(s);
-                        });
-
-                    })(session);
-                }
-            } else {
-                this.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_TEARDOWN_COMPLETE);
+            if (videoElement) {
+                videoElement.removeEventListener("encrypted", eventHandler);
             }
-        },
-
-        getAllInitData: function() {
-            var retVal = [];
             for (var i = 0; i < sessions.length; i++) {
-                retVal.push(sessions[i].initData);
+                this.closeKeySession(sessions[i]);
             }
-            return retVal;
         },
 
         requestKeySystemAccess: function(ksConfigurations) {
@@ -252,7 +203,7 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
 
         setMediaElement: function(mediaElement) {
             if (videoElement) {
-                videoElement.removeEventListener("encrypted", eventHandler);
+                videoElement.removeEventListener("encrypted", eventHandler().bind(this));
             }
             videoElement = mediaElement;
             videoElement.addEventListener("encrypted", eventHandler);
@@ -279,6 +230,13 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
 
             if (!this.keySystem || !mediaKeys) {
                 throw new Error("Can not create sessions until you have selected a key system");
+            }
+
+            // Check for duplicate initData.
+            for (var i = 0; i < sessions.length; i++) {
+                if (this.protectionExt.initDataEquals(initData, sessions[i].initData)) {
+                    return;
+                }
             }
 
             var session = mediaKeys.createSession(sessionType);
@@ -351,10 +309,15 @@ MediaPlayer.models.ProtectionModel_21Jan2015 = function () {
 
         closeKeySession: function(sessionToken) {
 
+            var session = sessionToken.session;
+
+            // Remove event listeners
+            session.removeEventListener("keystatuseschange", sessionToken);
+            session.removeEventListener("message", sessionToken);
+
             // Send our request to the key session
             var self = this;
-            closeKeySessionInternal(sessionToken).catch(function(error) {
-                removeSession(sessionToken);
+            session.close().catch(function(error) {
                 self.notify(MediaPlayer.models.ProtectionModel.eventList.ENAME_KEY_SESSION_CLOSED,
                         null, "Error closing session (" + sessionToken.getSessionID() + ") " + error.name);
             });

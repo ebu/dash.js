@@ -83,11 +83,10 @@ MediaPlayer.utils.CustomTimeRanges = function () {
                     //            or
                     //|-----------------Range i----------------|
                     //|-------Range to remove -----|
-                    this.customTimeRangeArray[i].start=end;
+                    this.customTimeRangeArray[i].end=start;
                 }
             }
-
-            this.length = this.customTimeRangeArray.length;
+            
         },
         mergeRanges : function(rangeIndex1,rangeIndex2) {
             var range1=this.customTimeRangeArray[rangeIndex1];

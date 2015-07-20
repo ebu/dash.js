@@ -100,7 +100,7 @@ describe("TimelineConverter", function () {
                 range = timelineConverter.calcSegmentAvailabilityRange(representation, isDynamic);
 
             expect(range.start).toEqual(expectedValue);
-            expectedValue = 9;
+            expectedValue = 10;
             expect(range.end).toEqual(expectedValue);
         });
     });

@@ -32,7 +32,7 @@
 MediaPlayer.dependencies.FragmentModel = function () {
     "use strict";
 
-    var context = null,
+    var context,
         executedRequests = [],
         pendingRequests = [],
         loadingRequests = [],
@@ -352,17 +352,13 @@ MediaPlayer.dependencies.FragmentModel = function () {
         },
 
         abortRequests: function() {
-            var reqs = [];
             this.fragmentLoader.abort();
 
-            while (loadingRequests.length > 0) {
-                reqs.push(loadingRequests[0]);
-                removeRequest.call(this, loadingRequests, loadingRequests[0]);
+            for (var i = 0, ln = loadingRequests.length; i < ln; i += 1) {
+                removeRequest.call(this, executedRequests, loadingRequests[i]);
             }
 
             loadingRequests = [];
-            
-            return reqs;
         },
 
         executeRequest: function(request) {
@@ -393,12 +389,6 @@ MediaPlayer.dependencies.FragmentModel = function () {
         reset: function() {
             this.abortRequests();
             this.cancelPendingRequests();
-            context = null;
-            executedRequests = [];
-            pendingRequests = [];
-            loadingRequests = [];
-            rejectedRequests = [];
-            isLoadingPostponed = false;
         }
     };
 };

@@ -31,7 +31,8 @@
 MediaPlayer.rules.SameTimeRequestRule = function () {
     "use strict";
 
-    var lastMediaRequestIdxs = {},
+    var LOADING_REQUEST_THRESHOLD = 4,
+        lastMediaRequestIdxs = {},
 
         findClosestToTime = function(fragmentModels, time) {
             var req,
@@ -106,8 +107,6 @@ MediaPlayer.rules.SameTimeRequestRule = function () {
         };
 
     return {
-        playbackController: undefined,
-
         setup: function() {
             this[MediaPlayer.dependencies.FragmentController.eventList.ENAME_STREAM_COMPLETED] = onStreamCompleted;
         },
@@ -142,7 +141,7 @@ MediaPlayer.rules.SameTimeRequestRule = function () {
                 return;
             }
 
-            currentTime = this.playbackController.getTime();
+            currentTime = fragmentModels[0].getContext().playbackController.getTime();
             reqForCurrentTime = getForTime(fragmentModels, currentTime);
             req = reqForCurrentTime || findClosestToTime(fragmentModels, currentTime) || current;
 
@@ -162,7 +161,7 @@ MediaPlayer.rules.SameTimeRequestRule = function () {
 
                 if (model.getIsPostponed() && !isNaN(req.startTime)) continue;
 
-                if (loadingLength > MediaPlayer.dependencies.ScheduleController.LOADING_REQUEST_THRESHOLD) {
+                if (loadingLength > LOADING_REQUEST_THRESHOLD) {
                     callback(new MediaPlayer.rules.SwitchRequest([], p));
                     return;
                 }

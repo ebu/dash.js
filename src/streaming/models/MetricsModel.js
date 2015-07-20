@@ -258,50 +258,42 @@ MediaPlayer.models.MetricsModel = function () {
         },
 
         updateManifestUpdateInfo: function(manifestUpdate, updatedFields) {
-            if (manifestUpdate) {
-                for (var field in updatedFields) {
-                    manifestUpdate[field] = updatedFields[field];
-                }
-
-                this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE, manifestUpdate);
+            for (var field in updatedFields) {
+                manifestUpdate[field] = updatedFields[field];
             }
+
+            this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE, manifestUpdate);
         },
 
         addManifestUpdateStreamInfo: function(manifestUpdate, id, index, start, duration) {
-            if (manifestUpdate) {
-                var vo = new MediaPlayer.vo.metrics.ManifestUpdate.StreamInfo();
+            var vo = new MediaPlayer.vo.metrics.ManifestUpdate.StreamInfo();
 
-                vo.id = id;
-                vo.index = index;
-                vo.start = start;
-                vo.duration = duration;
+            vo.id = id;
+            vo.index = index;
+            vo.start = start;
+            vo.duration = duration;
 
-                manifestUpdate.streamInfo.push(vo);
-                this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE_STREAM_INFO, manifestUpdate);
+            manifestUpdate.streamInfo.push(vo);
+            this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE_STREAM_INFO, manifestUpdate);
 
-                return vo;
-            }
-            return null;
+            return vo;
         },
 
         addManifestUpdateTrackInfo: function(manifestUpdate, id, index, streamIndex, mediaType, presentationTimeOffset, startNumber, fragmentInfoType) {
-            if (manifestUpdate) {
-                var vo = new MediaPlayer.vo.metrics.ManifestUpdate.TrackInfo();
+            var vo = new MediaPlayer.vo.metrics.ManifestUpdate.TrackInfo();
 
-                vo.id = id;
-                vo.index = index;
-                vo.streamIndex = streamIndex;
-                vo.mediaType = mediaType;
-                vo.startNumber = startNumber;
-                vo.fragmentInfoType = fragmentInfoType;
-                vo.presentationTimeOffset = presentationTimeOffset;
+            vo.id = id;
+            vo.index = index;
+            vo.streamIndex = streamIndex;
+            vo.mediaType = mediaType;
+            vo.startNumber = startNumber;
+            vo.fragmentInfoType = fragmentInfoType;
+            vo.presentationTimeOffset = presentationTimeOffset;
 
-                manifestUpdate.trackInfo.push(vo);
-                this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE_TRACK_INFO, manifestUpdate);
+            manifestUpdate.trackInfo.push(vo);
+            this.metricUpdated(manifestUpdate.mediaType, this.adapter.metricsList.MANIFEST_UPDATE_TRACK_INFO, manifestUpdate);
 
-                return vo;
-            }
-            return null;
+            return vo;
         },
 
         addPlayList: function (mediaType, start, mstart, starttype) {

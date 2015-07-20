@@ -35,18 +35,18 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
 
     return {
         system:undefined,
-        videoModel: undefined,
         eventBus:undefined,
         errHandler: undefined,
 
         initialize: function (type, bufferController) {
             mimeType = type;
+            this.videoModel = bufferController.videoModel;
             mediaInfo = bufferController.streamProcessor.getCurrentTrack().mediaInfo;
             this.buffered =  this.system.getObject("customTimeRanges");
             this.initializationSegmentReceived= false;
             this.timescale = 90000;
         },
-        append: function (bytes, chunk) {
+        append: function (bytes,appendedBytesInfo) {
             var self = this,
                 result,
                 label,
@@ -69,24 +69,19 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                     //this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
                     //self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
                     fragmentExt = self.system.getObject("fragmentExt");
-                    this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes);
+                    this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes.buffer);
                 }else{
                     fragmentExt = self.system.getObject("fragmentExt");
-                    samplesInfo = fragmentExt.getSamplesInfo(bytes);
+                    samplesInfo = fragmentExt.getSamplesInfo(bytes.buffer);
                     for(i= 0 ; i<samplesInfo.length ;i++) {
-                        if(!this.firstSubtitleStart){
-                            this.firstSubtitleStart = samplesInfo[0].cts-chunk.start*this.timescale;
-                        }
-                        samplesInfo[i].cts-=this.firstSubtitleStart;
 
-                        ccContent=window.UTF8.decode(new Uint8Array(bytes.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
+                        this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
+                        ccContent=window.UTF8.decode(new Uint8Array(bytes.buffer.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
                             result = [].concat(result);
-                            console.warn(result);
                             for(var j = 0; j < result.length; j++){
-                                this.buffered.add(result[i].start, result[i].end);
                                 this.customCaptions.addCueToPlaylist(result[j]);
                             }
                             //this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
@@ -97,7 +92,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
 
                 }
             }else{
-                bytes = new Uint8Array(bytes);
                 ccContent=window.UTF8.decode(bytes);
                 try {
                     result = self.getParser().parse(ccContent);

@@ -43,13 +43,10 @@ MediaPlayer.rules.BufferLevelRule = function () {
             return 0;
         },
 
-        decideBufferLength = function (minBufferTime, duration, isDynamic) {
+        decideBufferLength = function (minBufferTime, duration) {
             var minBufferTarget;
 
-            // For dynamic streams buffer length must not exceed a value of the live edge delay.
-            if (isDynamic) {
-                minBufferTarget = this.playbackController.getLiveDelay();
-            } else if (isNaN(duration) || MediaPlayer.dependencies.BufferController.DEFAULT_MIN_BUFFER_TIME < duration && minBufferTime < duration) {
+            if (isNaN(duration) || MediaPlayer.dependencies.BufferController.DEFAULT_MIN_BUFFER_TIME < duration && minBufferTime < duration) {
                 minBufferTarget = Math.max(MediaPlayer.dependencies.BufferController.DEFAULT_MIN_BUFFER_TIME, minBufferTime);
             } else if (minBufferTime >= duration) {
                 minBufferTarget = Math.min(duration, MediaPlayer.dependencies.BufferController.DEFAULT_MIN_BUFFER_TIME);
@@ -65,7 +62,7 @@ MediaPlayer.rules.BufferLevelRule = function () {
                 criticalBufferLevel = scheduleController.bufferController.getCriticalBufferLevel(),
                 vmetrics = self.metricsModel.getReadOnlyMetricsFor("video"),
                 ametrics = self.metricsModel.getReadOnlyMetricsFor("audio"),
-                minBufferTarget = decideBufferLength.call(this, scheduleController.bufferController.getMinBufferTime(), duration, isDynamic),
+                minBufferTarget = decideBufferLength.call(this, scheduleController.bufferController.getMinBufferTime(), duration),
                 currentBufferTarget = minBufferTarget,
                 bufferMax = scheduleController.bufferController.bufferMax,
                 //isLongFormContent = (duration >= MediaPlayer.dependencies.BufferController.LONG_FORM_CONTENT_DURATION_THRESHOLD),
@@ -121,7 +118,6 @@ MediaPlayer.rules.BufferLevelRule = function () {
         metricsExt: undefined,
         metricsModel: undefined,
         abrController: undefined,
-        playbackController: undefined,
 
         setup: function() {
             this[MediaPlayer.dependencies.BufferController.eventList.ENAME_BUFFER_LEVEL_OUTRUN] = onBufferLevelOutrun;
@@ -151,10 +147,10 @@ MediaPlayer.rules.BufferLevelRule = function () {
                 track = scheduleCtrl.streamProcessor.getCurrentTrack(),
                 isDynamic = scheduleCtrl.streamProcessor.isDynamic(),
                 rate = this.metricsExt.getCurrentPlaybackRate(metrics),
-                duration = streamInfo.manifestInfo.duration,
+                duration = streamInfo.duration,
                 bufferedDuration = bufferLevel / Math.max(rate, 1),
                 fragmentDuration = track.fragmentDuration,
-                currentTime = this.playbackController.getTime(),
+                currentTime = scheduleCtrl.playbackController.getTime(),
                 timeToEnd = isDynamic ? Number.POSITIVE_INFINITY : duration - currentTime,
                 requiredBufferLength = Math.min(getRequiredBufferLength.call(this, isDynamic, duration, scheduleCtrl), timeToEnd),
                 remainingDuration = Math.max(requiredBufferLength - bufferedDuration, 0),
