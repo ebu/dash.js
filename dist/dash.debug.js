@@ -5676,6 +5676,10 @@ MediaPlayer.utils.TTMLParser = function() {
         }
     }, computeStyle = function(cueStyle) {
         var properties = [];
+        var value;
+        var valueInPx;
+        var rgbaValue;
+        var textAlign;
         for (var key in cueStyle) {
             if (cueStyle.hasOwnProperty(key)) {
                 var property = cueStyle[key];
@@ -5688,14 +5692,14 @@ MediaPlayer.utils.TTMLParser = function() {
                     continue;
                 }
                 if (key === "line-padding") {
-                    var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("c")));
-                    var valuePx = value * cellUnit[0] + "px;";
-                    properties.push("padding-left:" + valuePx + " padding-right:" + valuePx);
+                    value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("c")));
+                    valueInPx = value * cellUnit[0] + "px;";
+                    properties.push("padding-left:" + valueInPx + " padding-right:" + valueInPx);
                 } else if (key === "font-size" || key === "line-height") {
                     if (property !== "normal") {
-                        var value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
-                        var valuePx = value / 100 * cellUnit[1] + "px;";
-                        properties.push(key + ":" + valuePx);
+                        value = parseFloat(property.slice(property.indexOf(":") + 1, property.indexOf("%")));
+                        valueInPx = value / 100 * cellUnit[1] + "px;";
+                        properties.push(key + ":" + valueInPx);
                     } else {
                         properties.push(key + ":" + property + ";");
                     }
@@ -5741,7 +5745,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(font);
                 } else if (key === "text-align") {
                     if (arrayContains("text-align", properties)) {
-                        var textAlign = {
+                        textAlign = {
                             right: "justify-content: flex-end;",
                             start: "justify-content: flex-start;",
                             center: "justify-content: center;",
@@ -5750,7 +5754,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         };
                         properties.push(textAlign[property]);
                     } else {
-                        var textAlign = {
+                        textAlign = {
                             right: [ "justify-content: flex-end;", "text-align: right;" ],
                             start: [ "justify-content: flex-start;", "text-align: start;" ],
                             center: [ "justify-content: center;", "text-align: center;" ],
@@ -5762,7 +5766,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
                 } else if (key === "multi-row-align") {
                     if (arrayContains("text-align", properties)) {
-                        properties.splice(indexOfProperty(propertyFromArray("text-align", properties), properties), 1);
+                        deletePropertyFromArray("text-align", properties);
                     }
                     var multiRowAlign = {
                         start: "text-align: start;",
@@ -5773,8 +5777,15 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(multiRowAlign[property]);
                 } else if (key === "background-color") {
                     if (property.indexOf("#") > -1 && property.length - 1 === 8) {
-                        var rgbaValue = convertRGBA(property);
+                        rgbaValue = convertRGBA(property);
                         properties.push("background-color: " + rgbaValue);
+                    } else {
+                        properties.push(key + ":" + property + ";");
+                    }
+                } else if (key === "color") {
+                    if (property.indexOf("#") > -1 && property.length - 1 === 8) {
+                        rgbaValue = convertRGBA(property);
+                        properties.push("color: " + rgbaValue);
                     } else {
                         properties.push(key + ":" + property + ";");
                     }
@@ -5876,12 +5887,16 @@ MediaPlayer.utils.TTMLParser = function() {
     }, objectContains = function(text, object) {
         var res = false;
         for (var key in object) {
-            if (key.indexOf(text) > -1) {
-                res = true;
-                break;
+            if (object.hasOwnProperty(key)) {
+                if (key.indexOf(text) > -1) {
+                    res = true;
+                    break;
+                }
             }
         }
         return res;
+    }, deletePropertyFromArray = function(property, array) {
+        array.splice(indexOfProperty(propertyFromArray(property, array), array), 1);
     }, indexOfProperty = function(text, array) {
         return array.indexOf(text);
     }, propertyFromArray = function(text, array) {
@@ -5902,8 +5917,8 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || [ 32, 15 ];
-        videoWidth = 1280;
-        videoHeight = 720;
+        videoWidth = document.getElementById("videoPlayer").clientWidth;
+        videoHeight = document.getElementById("videoPlayer").clientHeight;
         cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         ttmlLayout = [].concat(ttmlLayout);
         ttmlStylings = [].concat(ttmlStylings);
@@ -5924,6 +5939,9 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
                 pStartTime = parseTimings(cue["p@begin"]);
                 pEndTime = parseTimings(cue["p@end"]);
+            } else if (cue.p.hasOwnProperty("span@begin") && cue.p.hasOwnProperty("span@end")) {
+                spanStartTime = parseTimings(cue.p["span@begin"]);
+                spanEndTime = parseTimings(cue.p["span@end"]);
             } else {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
@@ -5932,7 +5950,7 @@ MediaPlayer.utils.TTMLParser = function() {
             paragraphRegionProperties = [];
             pStyleID = cue["p@style"];
             pRegionID = cue["p@region"];
-            if (isNaN(pStartTime) || isNaN(pEndTime)) {
+            if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
@@ -5942,7 +5960,6 @@ MediaPlayer.utils.TTMLParser = function() {
             if (pRegionID) {
                 paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromID(ttmlLayout, ttmlStylings, pRegionID)) || getRegionFromID(ttmlLayout, ttmlStylings, pRegionID);
             }
-            console.warn(paragraphRegionProperties);
             if (!arrayContains("align-items", paragraphRegionProperties)) {
                 paragraphRegionProperties.push("align-items: flex-start;");
             }
@@ -6004,18 +6021,14 @@ MediaPlayer.utils.TTMLParser = function() {
             if (arrayContains("unicode-bidi", paragraphStyleProperties) || arrayContains("direction", paragraphStyleProperties)) {
                 innerContainer.style.cssText += propertyFromArray("unicode-bidi", paragraphStyleProperties);
                 innerContainer.style.cssText += propertyFromArray("direction", paragraphStyleProperties);
-                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("unicode-bidi", paragraphStyleProperties), paragraphStyleProperties), 1);
-                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("direction", paragraphStyleProperties), paragraphStyleProperties), 1);
+                deletePropertyFromArray("unicode-bidi", paragraphStyleProperties);
+                deletePropertyFromArray("direction", paragraphStyleProperties);
             }
             cue.p = [].concat(cue.p);
             cue.p.forEach(function(caption) {
                 if (caption.hasOwnProperty("br")) {
                     innerContainer.appendChild(document.createElement("br"));
                 } else if (caption.hasOwnProperty("span")) {
-                    if (caption.hasOwnProperty("span@begin")) {
-                        spanStartTime = parseTimings(caption["span@begin"]);
-                        spanEndTime = parseTimings(caption["span@end"]);
-                    }
                     caption["span"] = [].concat(caption["span"]);
                     var inlineSpan = document.createElement("span");
                     if (caption.hasOwnProperty("span@style")) {
@@ -6030,8 +6043,7 @@ MediaPlayer.utils.TTMLParser = function() {
                             if (typeof el == "string" || el instanceof String) {
                                 if (arrayContains("padding", paragraphStyleProperties)) {
                                     var linePaddingSpan = document.createElement("span");
-                                    var style = propertyFromArray("padding", paragraphStyleProperties);
-                                    linePaddingSpan.style.cssText = style;
+                                    linePaddingSpan.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
                                     linePaddingSpan.innerHTML = el;
                                     inlineSpan.appendChild(linePaddingSpan);
                                 } else {
@@ -6052,21 +6064,18 @@ MediaPlayer.utils.TTMLParser = function() {
                     var textNode = document.createElement("span");
                     textNode.innerHTML = caption;
                     if (arrayContains("padding", paragraphStyleProperties)) {
-                        var style = propertyFromArray("padding", paragraphStyleProperties);
-                        textNode.style.cssText = style;
+                        textNode.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
                     }
                     innerContainer.appendChild(textNode);
                 }
             });
             if (arrayContains("padding", paragraphStyleProperties)) {
-                paragraphStyleProperties.splice(indexOfProperty(propertyFromArray("padding", paragraphStyleProperties), paragraphStyleProperties), 1);
+                deletePropertyFromArray("padding", paragraphStyleProperties);
             }
             if (paragraphStyleProperties) {
                 paragraph.style.cssText = paragraphStyleProperties.join(" ");
             }
             paragraph.appendChild(innerContainer);
-            console.warn(pStartTime);
-            console.warn(spanStartTime);
             captionArray.push({
                 start: spanStartTime || pStartTime,
                 end: spanEndTime || pEndTime,
@@ -8266,14 +8275,7 @@ MediaPlayer.dependencies.TextController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion"), defaultRegion = "top: 85%; left: 30%; width: 40%; height: 20%; padding: 0%; overflow: visible; white-space:normal";
-    function addPositioningToCaption(cue) {
-        if (cue.paragraphRegion.length == 0) {
-            captionRegion.style.cssText = defaultRegion;
-        } else {
-            captionRegion.style.cssText = cue.paragraphRegion.join(" ");
-        }
-    }
+    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion");
     return {
         initialize: function(videoModel) {
             video = videoModel;
@@ -8300,10 +8302,8 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 return;
             }
             while (captionRegion.firstChild) {
-                captionRegion.removeChild(captionRegion.firstChild);
-            }
-            if (!activeCue.showBackground) {
                 captionRegion.style.cssText = "";
+                captionRegion.removeChild(captionRegion.firstChild);
             }
             playlist.forEach(function(cue) {
                 if (time >= cue.start && time <= cue.end) {
@@ -8314,7 +8314,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                     if (activeCue.data) {
                         captionRegion.appendChild(activeCue.data);
-                        addPositioningToCaption(activeCue);
+                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
                     }
                 }
             });
@@ -11410,11 +11410,9 @@ MediaPlayer.utils.CustomControls = function() {
     "use strict";
     return {
         createControls: function(videoModel) {
-            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), caption = document.getElementById("caption"), captionArea = document.getElementById("captionRegion");
-            if (video.autoplay) {
-                playbutton.classList.add("icon-pause");
-                playbutton.classList.remove("icon-play");
-            }
+            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), captionButton = document.getElementById("caption"), captionRegion = document.getElementById("captionRegion");
+            playbutton.classList.add("icon-pause");
+            playbutton.classList.remove("icon-play");
             setTimeout(function() {
                 controls.classList.add("controls-user-inactive");
                 controls.classList.remove("controls-user-active");
@@ -11455,12 +11453,12 @@ MediaPlayer.utils.CustomControls = function() {
             }
             playbutton.addEventListener("click", playpause, false);
             video.addEventListener("click", playpause, false);
-            captionArea.addEventListener("click", playpause, false);
-            caption.addEventListener("click", function() {
-                if (captionArea.style.display === "none") {
-                    captionArea.style.display = "table";
+            captionRegion.addEventListener("click", playpause, false);
+            captionButton.addEventListener("click", function() {
+                if (captionRegion.style.display === "none") {
+                    captionRegion.style.display = "table";
                 } else {
-                    captionArea.style.display = "none";
+                    captionRegion.style.display = "none";
                     var elems = document.getElementsByTagName("*"), i;
                     for (i in elems) {
                         if ((" " + elems[i].className + " ").indexOf(" " + "text" + " ") > -1) {
