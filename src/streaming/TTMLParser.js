@@ -401,12 +401,18 @@ MediaPlayer.utils.TTMLParser = function() {
         },
 
         // Return the computed style from a certain ID.
-        getStyleFromID = function(id) {
-            var cueStyle = getStyle(ttmlStylings, id);
-            if (cueStyle) {
-                // Compute the style for the cue in CSS form.
-                return computeStyle(cueStyle);
-            }
+        getStyleFromID = function(reference) {
+            var style = [];
+            var ids = reference.match(/\S+/g);
+            ids.forEach(function(id){
+                var cueStyle = getStyle(ttmlStylings, id);
+                if (cueStyle) {
+                    // Compute the style for the cue in CSS form.
+                    var styleFromId = computeStyle(cueStyle);
+                    style.push.apply(style, styleFromId);
+                }
+            });
+            return style;
         },
 
         // Return the computed region from a certain ID.

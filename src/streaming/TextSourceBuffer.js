@@ -78,15 +78,12 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                             this.firstSubtitleStart = samplesInfo[0].cts-chunk.start*this.timescale;
                         }
                         samplesInfo[i].cts-=this.firstSubtitleStart;
-
+                        this.buffered.add(samplesInfo[i].cts/this.timescale,(samplesInfo[i].cts+samplesInfo[i].duration)/this.timescale);
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try{
                             result = parser.parse(ccContent);
-                            result = [].concat(result);
-                            console.warn(result);
                             for(var j = 0; j < result.length; j++){
-                                this.buffered.add(result[i].start, result[i].end);
                                 this.customCaptions.addCueToPlaylist(result[j]);
                             }
                             //this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);

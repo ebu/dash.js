@@ -5682,11 +5682,17 @@ MediaPlayer.utils.TTMLParser = function() {
             showBackground = true;
         }
         return properties;
-    }, getStyleFromID = function(id) {
-        var cueStyle = getStyle(ttmlStylings, id);
-        if (cueStyle) {
-            return computeStyle(cueStyle);
-        }
+    }, getStyleFromID = function(reference) {
+        var style = [];
+        var ids = reference.match(/\S+/g);
+        ids.forEach(function(id) {
+            var cueStyle = getStyle(ttmlStylings, id);
+            if (cueStyle) {
+                var styleFromId = computeStyle(cueStyle);
+                style.push.apply(style, styleFromId);
+            }
+        });
+        return style;
     }, getRegionFromID = function(ttmlLayout, ttmlStylings, id) {
         var cueRegion = getRegion(ttmlLayout, id);
         if (cueRegion) {
@@ -5943,14 +5949,12 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                             this.firstSubtitleStart = samplesInfo[0].cts - chunk.start * this.timescale;
                         }
                         samplesInfo[i].cts -= this.firstSubtitleStart;
+                        this.buffered.add(samplesInfo[i].cts / this.timescale, (samplesInfo[i].cts + samplesInfo[i].duration) / this.timescale);
                         ccContent = window.UTF8.decode(new Uint8Array(bytes.slice(samplesInfo[i].offset, samplesInfo[i].offset + samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try {
                             result = parser.parse(ccContent);
-                            result = [].concat(result);
-                            console.warn(result);
                             for (var j = 0; j < result.length; j++) {
-                                this.buffered.add(result[i].start, result[i].end);
                                 this.customCaptions.addCueToPlaylist(result[j]);
                             }
                         } catch (e) {}
