@@ -5475,20 +5475,22 @@ MediaPlayer.utils.TTMLParser = function() {
             return parseInt(i, 16);
         });
         return "rgba(" + rgb.join(",") + "," + a + ");";
-    }, findStyle = function(ttmlStylings, cueStyleID) {
-        for (var j = 0; j < ttmlStylings.length; j++) {
-            var currStyle = ttmlStylings[j];
-            if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
-                return currStyle;
+    }, arrayContains = function(text, array) {
+        for (var i = 0; i < array.length; i++) {
+            if (array[i].indexOf(text) > -1) {
+                return true;
             }
         }
-    }, findRegion = function(ttmlLayout, cueRegionID) {
-        for (var j = 0; j < ttmlLayout.length; j++) {
-            var currReg = ttmlLayout[j];
-            if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
-                return currReg;
+        return false;
+    }, getPropertyFromArray = function(text, array) {
+        for (var i = 0; i < array.length; i++) {
+            if (array[i].indexOf(text) > -1) {
+                return array[i];
             }
         }
+        return null;
+    }, deletePropertyFromArray = function(property, array) {
+        array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
     }, computeStyle = function(cueStyle, cellUnit) {
         var properties = [];
         for (var key in cueStyle) {
@@ -5606,102 +5608,107 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push("unicode-bidi:" + cueStyle["unicode-bidi"]);
             }
         }
-        return properties;
-    }, computeRegion = function(cueRegion, cellUnit) {
-        var properties = [];
-        for (var key in cueRegion) {
-            if (!cueRegion.hasOwnProperty(key)) {
-                continue;
-            }
-            var property = cueRegion[key];
-            key = key.replace("region@tts:", "");
-            key = key.replace("region@xml:", "");
-            key = key.replace("region@id:", "");
-            key = key.replace("region@", "");
-            key = camelCaseToDash(key);
-            if (key === "region" || key === "id") {
-                continue;
-            }
-            if (key === "extent") {
-                var coords = property.split(/\s/);
-                properties.push("width: " + coords[0] + ";");
-                properties.push("height: " + coords[1] + ";");
-            } else if (key === "origin") {
-                var coords = property.split(/\s/);
-                properties.push("left: " + coords[0] + ";");
-                properties.push("top: " + coords[1] + ";");
-            } else if (key === "display-align") {
-                var displayAlign = {
-                    before: "align-items: flex-start;",
-                    center: "align-items: center;",
-                    after: "align-items: flex-end;"
-                };
-                properties.push(displayAlign[property]);
-            } else if (key === "writing-mode") {
-                var writingMode = {
-                    lrtb: "-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;",
-                    rltb: "-ms-writing-mode: rl-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;                                   direction: rtl;                                   unicode-bidi: bidi-override;",
-                    tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                    -webkit-writing-mode: vertical-rl;                                   -moz-writing-mode: vertical-rl;                                   -ms-writing-mode: vertical-rl;                                   writing-mode: vertical-rl; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
-                    tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */                                    -webkit-writing-mode: vertical-lr;                                   -moz-writing-mode: vertical-lr;                                   -ms-writing-mode: vertical-lr;                                   writing-mode: vertical-lr; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
-                    lr: "-ms-writing-mode: lr-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;",
-                    rl: "-ms-writing-mode: rl-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;                                 direction: rtl;",
-                    tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                  -webkit-writing-mode: vertical-rl;                                 -moz-writing-mode: vertical-rl;                                 -ms-writing-mode: vertical-rl;                                 writing-mode: vertical-rl; /* new syntax */                                 -webkit-text-orientation: upright;                                 -moz-text-orientation: upright;                                 -ms-text-orientation: upright;                                 text-orientation: upright;"
-                };
-                properties.push(writingMode[property]);
-            } else if (key === "style") {
-                var styleFromID = findStyleFromID(property, cellUnit);
-                styleFromID.forEach(function(prop) {
-                    properties.push(prop);
-                });
-            } else {
-                var result;
-                result = key + ":" + property + ";";
-                properties.push(result);
-            }
+        if ("font-style" in cueStyle) {
+            properties.push("font-style:" + cueStyle["font-style"] + ";");
+        }
+        if ("font-weight" in cueStyle) {
+            properties.push("font-weight:" + cueStyle["font-weight"] + ";");
+        }
+        if ("direction" in cueStyle) {
+            properties.push("direction:" + cueStyle["direction"] + ";");
+        }
+        if ("text-decoration" in cueStyle) {
+            properties.push("text-decoration:" + cueStyle["text-decoration"] + ";");
         }
         return properties;
-    }, findStyleFromID = function(reference, cellUnit) {
+    }, findStyleInTTML = function(ttmlStylings, cueStyleID) {
+        for (var j = 0; j < ttmlStylings.length; j++) {
+            var currStyle = ttmlStylings[j];
+            if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
+                return currStyle;
+            }
+        }
+    }, getStyleFromReference = function(reference, cellUnit) {
         var styles = [];
         var ids = reference.match(/\S+/g);
         ids.forEach(function(id) {
-            var cueStyle = findStyle(ttmlStylings, id);
+            var cueStyle = findStyleInTTML(ttmlStylings, id);
             if (cueStyle) {
                 var stylesFromId = computeStyle(cueStyle, cellUnit);
                 styles = styles.concat(stylesFromId);
             }
         });
         return styles;
-    }, findRegionFromID = function(reference, cellUnit) {
+    }, computeRegion = function(cueRegion, cellUnit) {
+        var properties = [];
+        for (var key in cueRegion) {
+            var newKey = key.replace("region@tts:", "");
+            newKey = newKey.replace("region@xml:", "");
+            newKey = newKey.replace("region@id:", "");
+            newKey = newKey.replace("region@", "");
+            newKey = camelCaseToDash(newKey);
+            cueRegion[newKey] = cueRegion[key];
+            delete cueRegion[key];
+        }
+        if ("extent" in cueRegion) {
+            var coords = cueRegion["extent"].split(/\s/);
+            properties.push("width: " + coords[0] + ";");
+            properties.push("height: " + coords[1] + ";");
+        }
+        if ("origin" in cueRegion) {
+            var coords = cueRegion["origin"].split(/\s/);
+            properties.push("left: " + coords[0] + ";");
+            properties.push("top: " + coords[1] + ";");
+        }
+        if ("display-align" in cueRegion) {
+            var displayAlign = {
+                before: "align-items: flex-start;",
+                center: "align-items: center;",
+                after: "align-items: flex-end;"
+            };
+            properties.push(displayAlign[cueRegion["display-align"]]);
+        }
+        if ("writing-mode" in cueRegion) {
+            var writingMode = {
+                lrtb: "-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;",
+                rltb: "-ms-writing-mode: rl-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;                                   direction: rtl;                                   unicode-bidi: bidi-override;",
+                tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                    -webkit-writing-mode: vertical-rl;                                   -moz-writing-mode: vertical-rl;                                   -ms-writing-mode: vertical-rl;                                   writing-mode: vertical-rl; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
+                tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */                                    -webkit-writing-mode: vertical-lr;                                   -moz-writing-mode: vertical-lr;                                   -ms-writing-mode: vertical-lr;                                   writing-mode: vertical-lr; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
+                lr: "-ms-writing-mode: lr-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;",
+                rl: "-ms-writing-mode: rl-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;                                 direction: rtl;",
+                tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                  -webkit-writing-mode: vertical-rl;                                 -moz-writing-mode: vertical-rl;                                 -ms-writing-mode: vertical-rl;                                 writing-mode: vertical-rl; /* new syntax */                                 -webkit-text-orientation: upright;                                 -moz-text-orientation: upright;                                 -ms-text-orientation: upright;                                 text-orientation: upright;"
+            };
+            properties.push(writingMode[cueRegion["writing-mode"]]);
+        }
+        if ("style" in cueRegion) {
+            var styleFromID = getStyleFromReference(cueRegion["style"], cellUnit);
+            properties.concat(styleFromID);
+        }
+        if ("padding" in cueRegion) {
+            properties.push("padding:" + cueRegion["padding"] + ";");
+        }
+        if ("overflow" in cueRegion) {
+            properties.push("overflow:" + cueRegion["overflow"] + ";");
+        }
+        return properties;
+    }, findRegionInTTML = function(ttmlLayout, cueRegionID) {
+        for (var j = 0; j < ttmlLayout.length; j++) {
+            var currReg = ttmlLayout[j];
+            if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
+                return currReg;
+            }
+        }
+    }, getRegionFromReference = function(reference, cellUnit) {
         var regions = [];
         var ids = reference.match(/\S+/g);
         ids.forEach(function(id) {
-            var cueRegion = findRegion(ttmlLayout, id);
+            var cueRegion = findRegionInTTML(ttmlLayout, id);
             if (cueRegion) {
                 var regionsFromId = computeRegion(cueRegion, cellUnit);
                 regions = regions.concat(regionsFromId);
             }
         });
         return regions;
-    }, arrayContains = function(text, array) {
-        var res = false;
-        array.forEach(function(str) {
-            if (str.indexOf(text) > -1) {
-                res = true;
-            }
-        });
-        return res;
-    }, deletePropertyFromArray = function(property, array) {
-        array.splice(indexOfProperty(propertyFromArray(property, array), array), 1);
-    }, indexOfProperty = function(text, array) {
-        return array.indexOf(text);
-    }, propertyFromArray = function(text, array) {
-        var res = "";
-        array.forEach(function(str) {
-            if (str.indexOf(text) > -1) {
-                res = str;
-            }
-        });
-        return res;
     }, internalParse = function(data) {
         var captionArray = [], errorMsg;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
@@ -5751,10 +5758,10 @@ MediaPlayer.utils.TTMLParser = function() {
                 throw errorMsg;
             }
             if (divRegionID) {
-                paragraphRegionProperties = findRegionFromID(divRegionID, cellUnit);
+                paragraphRegionProperties = getRegionFromReference(divRegionID, cellUnit);
             }
             if (pRegionID) {
-                paragraphRegionProperties = paragraphRegionProperties.concat(findRegionFromID(pRegionID, cellUnit));
+                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromReference(pRegionID, cellUnit));
             }
             if (!arrayContains("align-items", paragraphRegionProperties)) {
                 paragraphRegionProperties.push("align-items: flex-start;");
@@ -5766,13 +5773,13 @@ MediaPlayer.utils.TTMLParser = function() {
                 paragraphRegionProperties.push("-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;");
             }
             if (bodyStyleID) {
-                paragraphStyleProperties = findStyleFromID(bodyStyleID, cellUnit);
+                paragraphStyleProperties = getStyleFromReference(bodyStyleID, cellUnit);
             }
             if (divStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(findStyleFromID(divStyleID, cellUnit));
+                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromReference(divStyleID, cellUnit));
             }
             if (pStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(findStyleFromID(pStyleID, cellUnit));
+                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromReference(pStyleID, cellUnit));
             }
             if (!arrayContains("background-color", paragraphStyleProperties)) {
                 paragraphStyleProperties.push("background-color: rgba(0,0,0,0);");
@@ -5815,8 +5822,8 @@ MediaPlayer.utils.TTMLParser = function() {
             var innerContainer = document.createElement("div");
             innerContainer.className = "innerContainer";
             if (arrayContains("unicode-bidi", paragraphStyleProperties) || arrayContains("direction", paragraphStyleProperties)) {
-                innerContainer.style.cssText += propertyFromArray("unicode-bidi", paragraphStyleProperties);
-                innerContainer.style.cssText += propertyFromArray("direction", paragraphStyleProperties);
+                innerContainer.style.cssText += getPropertyFromArray("unicode-bidi", paragraphStyleProperties);
+                innerContainer.style.cssText += getPropertyFromArray("direction", paragraphStyleProperties);
                 deletePropertyFromArray("unicode-bidi", paragraphStyleProperties);
                 deletePropertyFromArray("direction", paragraphStyleProperties);
             }
@@ -5828,9 +5835,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     caption["span"] = [].concat(caption["span"]);
                     var inlineSpan = document.createElement("span");
                     if (caption.hasOwnProperty("span@style")) {
-                        var styleBlock = findStyleFromID(caption["span@style"], cellUnit);
+                        var styleBlock = getStyleFromReference(caption["span@style"], cellUnit);
                         if (arrayContains("padding", paragraphStyleProperties) && caption["span"].length == 1) {
-                            styleBlock.push(propertyFromArray("padding", paragraphStyleProperties));
+                            styleBlock.push(getPropertyFromArray("padding", paragraphStyleProperties));
                         }
                         inlineSpan.style.cssText = styleBlock.join(" ");
                     }
@@ -5839,7 +5846,7 @@ MediaPlayer.utils.TTMLParser = function() {
                             if (typeof el === "string" || el instanceof String) {
                                 if (arrayContains("padding", paragraphStyleProperties)) {
                                     var linePaddingSpan = document.createElement("span");
-                                    linePaddingSpan.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
+                                    linePaddingSpan.style.cssText = getPropertyFromArray("padding", paragraphStyleProperties);
                                     linePaddingSpan.innerHTML = el;
                                     inlineSpan.appendChild(linePaddingSpan);
                                 } else {
@@ -5860,7 +5867,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     var textNode = document.createElement("span");
                     textNode.innerHTML = caption;
                     if (arrayContains("padding", paragraphStyleProperties)) {
-                        textNode.style.cssText = propertyFromArray("padding", paragraphStyleProperties);
+                        textNode.style.cssText = getPropertyFromArray("padding", paragraphStyleProperties);
                     }
                     innerContainer.appendChild(textNode);
                 }
