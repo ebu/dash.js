@@ -5629,6 +5629,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 return currStyle;
             }
         }
+        return null;
     }, getProcessedStyle = function(reference, cellUnit) {
         var styles = [];
         var ids = reference.match(/\S+/g);
@@ -5637,6 +5638,8 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueStyle) {
                 var stylesFromId = processStyle(cueStyle, cellUnit);
                 styles = styles.concat(stylesFromId);
+            } else {
+                styles = [].concat(styles);
             }
         });
         return styles;
@@ -5699,6 +5702,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 return currReg;
             }
         }
+        return null;
     }, getProcessedRegion = function(reference, cellUnit) {
         var regions = [];
         var ids = reference.match(/\S+/g);
@@ -5707,6 +5711,8 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueRegion) {
                 var regionsFromId = processRegion(cueRegion, cellUnit);
                 regions = regions.concat(regionsFromId);
+            } else {
+                regions = [].concat(regions);
             }
         });
         return regions;
@@ -5719,7 +5725,7 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         var cellUnitDefault = [ 32, 15 ];
-        var cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || cellUnitDefault;
+        var cellResolution = cellUnitDefault || ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
         var videoWidth = document.getElementById("videoPlayer").clientWidth;
         var videoHeight = document.getElementById("videoPlayer").clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
@@ -5791,8 +5797,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
             }
             var defaultStyleProperties = {
-                "background-color": "rgba(0,0,0,0);",
-                color: "rgba(255,255,255,1);",
+                color: "rgb(255,255,255);",
+                "background-color": "rgb(0,0,0);",
                 direction: "ltr;",
                 "font-family": "monospace, sans-serif;",
                 "font-size": cellUnit[1] + "px;",

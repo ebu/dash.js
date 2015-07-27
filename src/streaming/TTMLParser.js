@@ -330,6 +330,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     return currStyle;
                 }
             }
+            return null;
         },
         // Return the computed style from a certain ID.
         getProcessedStyle = function(reference, cellUnit) {
@@ -342,6 +343,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Process the style for the cue in CSS form.
                     var stylesFromId = processStyle(cueStyle, cellUnit);
                     styles = styles.concat(stylesFromId);
+                } else {
+                    styles = [].concat(styles);
                 }
             });
             return styles;
@@ -477,6 +480,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     return currReg;
                 }
             }
+            return null;
         },
 
         // Return the computed region from a certain ID.
@@ -489,7 +493,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (cueRegion) {
                     // Process the region for the cue in CSS form.
                     var regionsFromId = processRegion(cueRegion, cellUnit);
-                    regions = regions.concat(regionsFromId);
+                     regions = regions.concat(regionsFromId);
+                } else {
+                    regions = [].concat(regions);
                 }
             });
             return regions;
@@ -523,7 +529,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Extract the cellResolution information
             var cellUnitDefault = [32, 15]; // Default cellResolution.
-            var cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat) || cellUnitDefault;
+            var cellResolution = cellUnitDefault || ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
 
             // Recover the video width and height displayed by the player.
             // TODO: Make it dynamic by the controller.
@@ -669,8 +675,8 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // Add initial/default values to what's not defined in the styling:
                 var defaultStyleProperties = {
-                    'background-color': 'rgba(0,0,0,0);',
-                    'color': 'rgba(255,255,255,1);',
+                    'color': 'rgb(255,255,255);',
+                    'background-color': 'rgb(0,0,0);',
                     'direction': 'ltr;',
                     'font-family': 'monospace, sans-serif;',
                     'font-size': cellUnit[1] + 'px;',
@@ -683,7 +689,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     'unicode-bidi': 'normal;',
                     'white-space': 'normal;'
                 };
-
                 for (var key in defaultStyleProperties) {
                     if (!arrayContains(key, cueStyleProperties)) {
                         cueStyleProperties.push(key + ':' + defaultStyleProperties[key]);
