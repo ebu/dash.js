@@ -36,7 +36,7 @@ MediaPlayer.utils.TTMLParser = function() {
      * */
     var SECONDS_IN_HOUR = 60 * 60, // Expression of an hour in seconds
         SECONDS_IN_MIN = 60, // Expression of a minute in seconds
-        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, // Regex defining the time
+        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))?$/, // Regex defining the time
         ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
