@@ -352,7 +352,7 @@ MediaPlayer.utils.TTMLParser = function() {
          * - processRegion: return an array of strings with the cue region under a CSS style form.
          * - findRegionFromID: Return the unprocessed region from TTMLLayout corresponding to the ID researched.
          * - getProcessedRegion: Return the processed region(s) from the ID(s) received in entry.
-         * **/
+         ***/
 
             // Compute the region properties to return an array with the cleaned properties.
         processRegion = function(cueRegion, cellUnit) {
@@ -508,7 +508,6 @@ MediaPlayer.utils.TTMLParser = function() {
          */
 
         internalParse = function(data) {
-            var captionArray = [];
             // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
 
@@ -575,6 +574,8 @@ MediaPlayer.utils.TTMLParser = function() {
              *
              * ***/
 
+            // Caption array is the final result return containing all the cues' information.
+            var captionArray = [];
 
             cues.forEach(function(cue) {
                 // TODO: this foreach should be a map.
@@ -733,7 +734,6 @@ MediaPlayer.utils.TTMLParser = function() {
 
                         // Stock the span subtitles in an array (in case there are only one value).
                         var spanElements = [].concat(pElement['span']);
-                        console.warn("spanElements", spanElements);
 
                         // Create the span element.
                         var spanHTMLElement = document.createElement('span');
@@ -814,6 +814,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 // We then place the cue inside the paragraph element.
                 cueHTMLElement.appendChild(cueContainer);
 
+                // We add all the cue information in captionArray.
                 captionArray.push({
                     start: spanStartTime || pStartTime,
                     end: spanEndTime || pEndTime,

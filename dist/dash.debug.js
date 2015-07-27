@@ -5711,7 +5711,6 @@ MediaPlayer.utils.TTMLParser = function() {
         });
         return regions;
     }, internalParse = function(data) {
-        var captionArray = [];
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlLayout = ttml.tt.head.layout;
         ttmlStyling = ttml.tt.head.styling;
@@ -5739,6 +5738,7 @@ MediaPlayer.utils.TTMLParser = function() {
         var bodyStyleID = ttml.tt["body@style"];
         var divStyleID = ttml.tt.body["div@style"];
         var divRegionID = ttml.tt.body["div@region"];
+        var captionArray = [];
         cues.forEach(function(cue) {
             if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
                 var pStartTime = parseTimings(cue["p@begin"]);
@@ -5826,7 +5826,6 @@ MediaPlayer.utils.TTMLParser = function() {
             pElements.forEach(function(pElement) {
                 if (pElement.hasOwnProperty("span")) {
                     var spanElements = [].concat(pElement["span"]);
-                    console.warn("spanElements", spanElements);
                     var spanHTMLElement = document.createElement("span");
                     if (pElement.hasOwnProperty("span@style")) {
                         var spanStyle = getProcessedStyle(pElement["span@style"], cellUnit);
