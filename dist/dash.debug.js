@@ -5833,6 +5833,9 @@ MediaPlayer.utils.TTMLParser = function() {
             }
             var pElements = [].concat(cue.p);
             pElements.forEach(function(pElement) {
+                if (pElement.hasOwnProperty("metadata")) {
+                    return;
+                }
                 if (pElement.hasOwnProperty("span")) {
                     var spanElements = [].concat(pElement["span"]);
                     var spanHTMLElement = document.createElement("span");
@@ -5845,6 +5848,9 @@ MediaPlayer.utils.TTMLParser = function() {
                         spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
                     spanElements.forEach(function(spanEl) {
+                        if (spanElements.hasOwnProperty("metadata")) {
+                            return;
+                        }
                         if (typeof spanEl === "string" || spanEl instanceof String) {
                             var textNode = document.createTextNode(spanEl);
                             spanHTMLElement.appendChild(textNode);

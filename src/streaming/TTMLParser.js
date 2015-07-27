@@ -733,6 +733,11 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // For each child of the paragraph we add it in the cue depending of its kind (span, br, text).
                 pElements.forEach(function(pElement) {
+                    // If metadata is present, do not process.
+                    if(pElement.hasOwnProperty('metadata')) {
+                        return;
+                    }
+
                     /**
                      * If the p element contains spans: create an spans elements if the cue contains subtitles in span.
                      */
@@ -758,6 +763,10 @@ MediaPlayer.utils.TTMLParser = function() {
 
                         // if the span has more than one element, we check for each of them their nature (br or text).
                         spanElements.forEach(function(spanEl) {
+                            // If metadata is present, do not process.
+                            if(spanElements.hasOwnProperty('metadata')) {
+                                return;
+                            }
                             // If the element is a string
                             if (typeof spanEl === 'string' || spanEl instanceof String) {
                                 var textNode = document.createTextNode(spanEl);
