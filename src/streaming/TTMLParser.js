@@ -37,7 +37,7 @@ MediaPlayer.utils.TTMLParser = function() {
     var SECONDS_IN_HOUR = 60 * 60, // Expression of an hour in seconds
         SECONDS_IN_MIN = 60, // Expression of a minute in seconds
         timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, // Regex defining the time
-        ttml,// contains the whole ttml document received
+        ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
 
@@ -110,25 +110,25 @@ MediaPlayer.utils.TTMLParser = function() {
         },
 
         // Convert an RGBA value written in Hex to rgba(v,v,v,a).
-        convertHexToRGBA = function(rgba){
+        convertHexToRGBA = function(rgba) {
             // Get the hexadecimal value without the #.
             var hex = rgba.slice(1);
             // Separate the values in pairs.
             var hexMatrice = hex.match(/.{2}/g);
             // Convert the alpha value in decimal between 0 and 1.
-            var alpha = parseFloat(parseInt((parseInt(hexMatrice[3], 16)/255)*1000)/1000);
+            var alpha = parseFloat(parseInt((parseInt(hexMatrice[3], 16) / 255) * 1000) / 1000);
             // Get the standard RGB value.
-            var rgb = hexMatrice.slice(0,3).map(function() {
+            var rgb = hexMatrice.slice(0, 3).map(function() {
                 return parseInt(i, 16);
             });
             // Return the RGBA value for CSS.
-            return 'rgba(' + rgb.join(',') +',' + alpha + ');';
+            return 'rgba(' + rgb.join(',') + ',' + alpha + ');';
         },
 
         // Return whether or not an array contains a certain text
         arrayContains = function(text, array) {
-            for (var i = 0; i < array.length; i++){
-                if(array[i].indexOf(text) > -1){
+            for (var i = 0; i < array.length; i++) {
+                if (array[i].indexOf(text) > -1) {
                     return true;
                 }
             }
@@ -137,8 +137,8 @@ MediaPlayer.utils.TTMLParser = function() {
 
         // Return the whole value that contains "text"
         getPropertyFromArray = function(text, array) {
-            for(var i = 0; i < array.length; i++){
-                if(array[i].indexOf(text) > -1){
+            for (var i = 0; i < array.length; i++) {
+                if (array[i].indexOf(text) > -1) {
                     return array[i];
                 }
             }
@@ -147,7 +147,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
         // Delete a a property from an array.
         deletePropertyFromArray = function(property, array) {
-            array.splice(array.indexOf(getPropertyFromArray(property,array)), 1);
+            array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
         },
 
         /**
@@ -158,11 +158,11 @@ MediaPlayer.utils.TTMLParser = function() {
          * **/
 
 
-        // Compute the style properties to return an array with the cleaned properties.
+            // Compute the style properties to return an array with the cleaned properties.
         processStyle = function(cueStyle, cellUnit) {
             var properties = [];
 
-            // Clean the "@" from the xml2json parsing:
+            // Clean up from the xml2json parsing:
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     //Clean the properties from the parsing.
@@ -179,43 +179,43 @@ MediaPlayer.utils.TTMLParser = function() {
             }
 
             // Line padding is computed from the cellResolution.
-            if('line-padding' in cueStyle){
+            if ('line-padding' in cueStyle) {
                 var valuePadding = parseFloat(cueStyle['line-padding'].slice(cueStyle['line-padding'].indexOf(":") + 1,
                     cueStyle['line-padding'].indexOf('c')));
                 var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
                 properties.push("padding-left:" + valuePaddingInPx + " padding-right:" + valuePaddingInPx);
             }
             // Font size is computed from the cellResolution.
-            if('font-size' in cueStyle){
+            if ('font-size' in cueStyle) {
                 var valueFtSize = parseFloat(cueStyle['font-size'].slice(cueStyle['font-size'].indexOf(":") + 1,
                     cueStyle['font-size'].indexOf('%')));
-                var valueFtSizeInPx = valueFtSize/100 * cellUnit[1] + "px;";
+                var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
                 properties.push('font-size:' + valueFtSizeInPx);
             }
             // Line height is computed from the cellResolution.
-            if('line-heigt' in cueStyle){
-                if(cueStyle['line-height'] === 'normal'){
+            if ('line-heigt' in cueStyle) {
+                if (cueStyle['line-height'] === 'normal') {
                     properties.push('line-heigth: normal;');
                 } else {
-                    var valueFtSize     = parseFloat(cueStyle['line-heigt'].slice(cueStyle['line-heigt'].indexOf(":") + 1,
+                    var valueFtSize = parseFloat(cueStyle['line-heigt'].slice(cueStyle['line-heigt'].indexOf(":") + 1,
                         cueStyle['line-heigt'].indexOf('%')));
                     var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
                     properties.push(key + ':' + valueFtSizeInPx);
                 }
             }
             // Font-family can be specified by a generic family name or a custom family name.
-            if('font-family' in cueStyle){
+            if ('font-family' in cueStyle) {
                 var fontFamilies = {
                     monospace: 'font-family: monospace;',
                     sansSerif: 'font-family: sans-serif;',
                     serif: 'font-family: serif;',
                     monospaceSansSerif: 'font-family: monospace, sans-serif;',
-                    monospaceSerif:     'font-family: monospace, serif;',
+                    monospaceSerif: 'font-family: monospace, serif;',
                     proportionalSansSerif: 'font-family: Arial;',
                     proportionalSerif: 'font-family: Times New Roman;',
                     'default': 'font-family: monospace, sans-serif;'
                 };
-                if(cueStyle['font-family'] in fontFamilies){
+                if (cueStyle['font-family'] in fontFamilies) {
                     properties.push(fontFamilies[cueStyle['font-family']]);
                 } else {
                     properties.push('font-family:' + cueStyle['font-family'] + ';');
@@ -225,7 +225,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // Text align needs to be set from two properties:
             // The standard text-align CSS property.
             // The justify-content property as we use flex boxes.
-            if ('text-align'in cueStyle) {
+            if ('text-align' in cueStyle) {
                 var textAlign = {
                     right: ["justify-content: flex-end;", "text-align: right;"],
                     start: ["justify-content: flex-start;", "text-align: start;"],
@@ -233,7 +233,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     end: ["justify-content: flex-end;", "text-align: end;"],
                     left: ["justify-content: flex-start;", "text-align: left;"]
                 };
-                if(cueStyle['text-align'] in textAlign) {
+                if (cueStyle['text-align'] in textAlign) {
                     properties.push(textAlign[cueStyle['text-align']][0]);
                     properties.push(textAlign[cueStyle['text-align']][1]);
                 }
@@ -241,8 +241,8 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Multi Row align is set only by the text-align property.
             // TODO: TO CHECK
-            if('multi-row-align' in cueStyle){
-                if(arrayContains('text-align', properties)) {
+            if ('multi-row-align' in cueStyle) {
+                if (arrayContains('text-align', properties)) {
                     deletePropertyFromArray('text-align', properties);
                 }
                 var multiRowAlign = {
@@ -251,15 +251,15 @@ MediaPlayer.utils.TTMLParser = function() {
                     end: "text-align: end;",
                     auto: ""
                 };
-                if(cueStyle['multi-row-align'] in multiRowAlign) {
+                if (cueStyle['multi-row-align'] in multiRowAlign) {
                     properties.push(multiRowAlign[cueStyle['multi-row-align']]);
                 } else {
                     properties.push('text-align:' + cueStyle['multi-row-align']);
                 }
             }
             // Background color can be specified from hexadecimal (RGB or RGBA) value.
-            if('background-color' in cueStyle){
-                if(cueStyle['background-color'].indexOf('#') > -1 && (cueStyle['background-color'].length - 1) === 8){
+            if ('background-color' in cueStyle) {
+                if (cueStyle['background-color'].indexOf('#') > -1 && (cueStyle['background-color'].length - 1) === 8) {
                     var rgbaValue = convertHexToRGBA(cueStyle['background-color']);
                     properties.push('background-color: ' + rgbaValue);
                 } else {
@@ -267,21 +267,21 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
             }
             // Color can be specified from hexadecimal (RGB or RGBA) value.
-            if('color' in cueStyle) {
-                if(cueStyle['color'].indexOf('#') > -1 && (cueStyle['color'].length - 1) === 8){
+            if ('color' in cueStyle) {
+                if (cueStyle['color'].indexOf('#') > -1 && (cueStyle['color'].length - 1) === 8) {
                     var rgbaValue = convertHexToRGBA(cueStyle['color']);
                     properties.push('color: ' + rgbaValue);
                 } else {
                     properties.push('color:' + cueStyle['color'] + ";");
                 }
             }
-            // Wrap ption is determined by the white-space CSS property.
-            if('wrap-option' in cueStyle) {
+            // Wrap option is determined by the white-space CSS property.
+            if ('wrap-option' in cueStyle) {
                 var wrapOption = {
                     wrap: "white-space: normal;",
                     noWrap: "white-space: nowrap;"
                 };
-                if(cueStyle['wrap-option'] in wrapOption){
+                if (cueStyle['wrap-option'] in wrapOption) {
                     properties.push(wrapOption[cueStyle['wrap-option']]);
                 } else {
                     properties.push('white-space:' + cueStyle['wrap-option'])
@@ -294,7 +294,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     embed: "unicode-bidi: embed;",
                     bidiOverride: "unicode-bidi: bidi-override;"
                 };
-                if(cueStyle['unicode-bidi'] in unicodeBidi){
+                if (cueStyle['unicode-bidi'] in unicodeBidi) {
                     properties.push(unicodeBidi[cueStyle['unicode-bidi']]);
                 } else {
                     properties.push('unicode-bidi:' + cueStyle['unicode-bidi'])
@@ -303,16 +303,16 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Standard properties identical to CSS.
 
-            if('font-style' in cueStyle){
+            if ('font-style' in cueStyle) {
                 properties.push('font-style:' + cueStyle['font-style'] + ';');
             }
-            if('font-weight' in cueStyle){
+            if ('font-weight' in cueStyle) {
                 properties.push('font-weight:' + cueStyle['font-weight'] + ';');
             }
-            if('direction' in cueStyle){
+            if ('direction' in cueStyle) {
                 properties.push('direction:' + cueStyle['direction'] + ';');
             }
-            if('text-decoration' in cueStyle){
+            if ('text-decoration' in cueStyle) {
                 properties.push('text-decoration:' + cueStyle['text-decoration'] + ';');
             }
             return properties;
@@ -334,7 +334,7 @@ MediaPlayer.utils.TTMLParser = function() {
         getProcessedStyle = function(reference, cellUnit) {
             var styles = [];
             var ids = reference.match(/\S+/g);
-            ids.forEach(function(id){
+            ids.forEach(function(id) {
                 // Find the style for each id received.
                 var cueStyle = findStyleFromID(ttmlStyling, id);
                 if (cueStyle) {
@@ -353,12 +353,13 @@ MediaPlayer.utils.TTMLParser = function() {
          * - getProcessedRegion: Return the processed region(s) from the ID(s) received in entry.
          * **/
 
-        // Compute the region properties to return an array with the cleaned properties.
+            // Compute the region properties to return an array with the cleaned properties.
         processRegion = function(cueRegion, cellUnit) {
             var properties = [];
 
+            // Clean up from the xml2json parsing:
             for (var key in cueRegion) {
-            //Clean the properties from the parsing.
+                //Clean the properties from the parsing.
                 var newKey = key.replace("region@tts:", "");
                 newKey = newKey.replace("region@xml:", "");
                 newKey = newKey.replace("region@id:", "");
@@ -370,19 +371,19 @@ MediaPlayer.utils.TTMLParser = function() {
                 delete cueRegion[key];
             }
             // Extent property corresponds to width and height
-            if('extent' in cueRegion){
+            if ('extent' in cueRegion) {
                 var coords = cueRegion['extent'].split(/\s/);
                 properties.push("width: " + coords[0] + ';');
                 properties.push("height: " + coords[1] + ';');
             }
             // Origin property corresponds to top and left
-            if('origin' in cueRegion) {
+            if ('origin' in cueRegion) {
                 var coords = cueRegion['origin'].split(/\s/);
                 properties.push("left: " + coords[0] + ';');
                 properties.push("top: " + coords[1] + ';');
             }
             // DisplayAlign property corresponds to vertical-align
-            if('display-align' in cueRegion) {
+            if ('display-align' in cueRegion) {
                 var displayAlign = {
                     before: "align-items: flex-start;",
                     center: "align-items: center;",
@@ -391,7 +392,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push(displayAlign[cueRegion['display-align']]);
             }
             // WritingMode is not yet implemented (for CSS3, to come)
-            if('writing-mode' in cueRegion){
+            if ('writing-mode' in cueRegion) {
                 var writingMode = {
                     lrtb: "-ms-writing-mode: lr-tb;\
                                    -webkit-writing-mode: horizontal-tb;\
@@ -447,18 +448,18 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push(writingMode[cueRegion['writing-mode']]);
             }
             // Style will give to the region the style properties from the style selected
-            if('style' in cueRegion){
+            if ('style' in cueRegion) {
                 var styleFromID = getProcessedStyle(cueRegion['style'], cellUnit);
                 properties.concat(styleFromID);
             }
 
             // Standard properties identical to CSS.
 
-            if('padding' in cueRegion){
-                properties.push('padding:' + cueRegion['padding'] +';');
+            if ('padding' in cueRegion) {
+                properties.push('padding:' + cueRegion['padding'] + ';');
             }
-            if('overflow' in cueRegion){
-                properties.push('overflow:' + cueRegion['overflow'] +';');
+            if ('overflow' in cueRegion) {
+                properties.push('overflow:' + cueRegion['overflow'] + ';');
             }
 
             return properties;
@@ -481,7 +482,7 @@ MediaPlayer.utils.TTMLParser = function() {
         getProcessedRegion = function(reference, cellUnit) {
             var regions = [];
             var ids = reference.match(/\S+/g);
-            ids.forEach(function(id){
+            ids.forEach(function(id) {
                 // Find the region for each id received.
                 var cueRegion = findRegionFromID(ttmlLayout, id);
                 if (cueRegion) {
@@ -506,9 +507,7 @@ MediaPlayer.utils.TTMLParser = function() {
          */
 
         internalParse = function(data) {
-            var captionArray = [],
-                errorMsg;
-
+            var captionArray = [];
             // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
 
@@ -518,7 +517,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Check if the document is conform to the specification.
             if (!passStructuralConstraints()) {
-                errorMsg = "TTML document has incorrect structure";
+                var errorMsg = "TTML document has incorrect structure";
                 throw errorMsg;
             }
 
@@ -554,7 +553,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Check if cues is not empty or undefined.
             if (!cues || cues.length === 0) {
-                errorMsg = "TTML document does not contain any cues";
+                var errorMsg = "TTML document does not contain any cues";
                 throw errorMsg;
             }
 
@@ -592,11 +591,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 // Obtain the start and end time of the cue.
                 if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
                     var pStartTime = parseTimings(cue['p@begin']);
-                    var pEndTime   = parseTimings(cue['p@end']);
-                } else if(cue.p.hasOwnProperty('span@begin') && cue.p.hasOwnProperty('span@end')) {
+                    var pEndTime = parseTimings(cue['p@end']);
+                } else if (cue.p.hasOwnProperty('span@begin') && cue.p.hasOwnProperty('span@end')) {
                     var spanStartTime = parseTimings(cue.p['span@begin']);
-                    var spanEndTime   = parseTimings(cue.p['span@end']);
-                } else{
+                    var spanEndTime = parseTimings(cue.p['span@end']);
+                } else {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
@@ -629,7 +628,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
 
                 // Add initial/default values to what's not defined in the layout:
-                var defaultLayoutProperties ={
+                var defaultLayoutProperties = {
                     'top': '85%;',
                     'left': '5%;',
                     'width': '90%;',
@@ -642,7 +641,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     'writing-mode': 'horizontal-tb;'
                 };
 
-                for(var key in defaultLayoutProperties) {
+                for (var key in defaultLayoutProperties) {
                     if (!arrayContains(key, paragraphRegionProperties)) {
                         paragraphRegionProperties.push(key + ':' + defaultLayoutProperties[key]);
 
@@ -667,7 +666,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
 
                 // Add initial/default values to what's not defined in the styling:
-                var defaultStyleProperties ={
+                var defaultStyleProperties = {
                     'background-color': 'rgba(0,0,0,0);',
                     'color': 'rgba(255,255,255,1);',
                     'direction': 'ltr;',
@@ -683,7 +682,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     'white-space': 'normal;'
                 };
 
-                for(var key in defaultStyleProperties) {
+                for (var key in defaultStyleProperties) {
                     if (!arrayContains(key, paragraphStyleProperties)) {
                         paragraphStyleProperties.push(key + ':' + defaultStyleProperties[key]);
 
@@ -704,9 +703,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 innerContainer.className = 'innerContainer';
 
                 // If the properties define these two properties, we place them in innerContainer.
-                if(arrayContains('unicode-bidi', paragraphStyleProperties) || arrayContains('direction', paragraphStyleProperties)){
-                    innerContainer.style.cssText += getPropertyFromArray('unicode-bidi',paragraphStyleProperties);
-                    innerContainer.style.cssText += getPropertyFromArray('direction',paragraphStyleProperties);
+                if (arrayContains('unicode-bidi', paragraphStyleProperties) || arrayContains('direction', paragraphStyleProperties)) {
+                    innerContainer.style.cssText += getPropertyFromArray('unicode-bidi', paragraphStyleProperties);
+                    innerContainer.style.cssText += getPropertyFromArray('direction', paragraphStyleProperties);
 
                     deletePropertyFromArray('unicode-bidi', paragraphStyleProperties);
                     deletePropertyFromArray('direction', paragraphStyleProperties);
@@ -719,7 +718,7 @@ MediaPlayer.utils.TTMLParser = function() {
                  *      iii) The cue contains text
                  * ***/
 
-                // If the cue has only one element, it needs to be put in an array.
+                    // If the cue has only one element, it needs to be put in an array.
                 cue.p = [].concat(cue.p);
 
                 // For each child of the paragraph we add it in the cue depending of its kind (span, br, text).
@@ -796,7 +795,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     deletePropertyFromArray('padding', paragraphStyleProperties);
                 }
 
-                    // Finally we set the style to the cue.
+                // Finally we set the style to the cue.
                 if (paragraphStyleProperties) {
                     paragraph.style.cssText = paragraphStyleProperties.join(" ");
                 }

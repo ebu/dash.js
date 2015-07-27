@@ -5710,12 +5710,12 @@ MediaPlayer.utils.TTMLParser = function() {
         });
         return regions;
     }, internalParse = function(data) {
-        var captionArray = [], errorMsg;
+        var captionArray = [];
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlLayout = ttml.tt.head.layout;
         ttmlStyling = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
-            errorMsg = "TTML document has incorrect structure";
+            var errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
         }
         var cellUnitDefault = [ 32, 15 ];
@@ -5732,7 +5732,7 @@ MediaPlayer.utils.TTMLParser = function() {
         var cues = ttml.tt.body.div ? ttml.tt.body.div : ttml.tt.body;
         cues = [].concat(cues);
         if (!cues || cues.length === 0) {
-            errorMsg = "TTML document does not contain any cues";
+            var errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
         var bodyStyleID = ttml.tt["body@style"];
