@@ -5433,7 +5433,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStylings, ttmlLayout, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))$/, ttml, ttmlStyling, ttmlLayout, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5470,11 +5470,11 @@ MediaPlayer.utils.TTMLParser = function() {
     }, convertHexToRGBA = function(rgba) {
         var hex = rgba.slice(1);
         var hexMatrice = hex.match(/.{2}/g);
-        var result = parseFloat(parseInt(parseInt(hexMatrice[3], 16) / 255 * 1e3) / 1e3);
-        var rgb = result.slice(0, 3).map(function() {
+        var alpha = parseFloat(parseInt(parseInt(hexMatrice[3], 16) / 255 * 1e3) / 1e3);
+        var rgb = hexMatrice.slice(0, 3).map(function() {
             return parseInt(i, 16);
         });
-        return "rgba(" + rgb.join(",") + "," + a + ");";
+        return "rgba(" + rgb.join(",") + "," + alpha + ");";
     }, arrayContains = function(text, array) {
         for (var i = 0; i < array.length; i++) {
             if (array[i].indexOf(text) > -1) {
@@ -5491,7 +5491,7 @@ MediaPlayer.utils.TTMLParser = function() {
         return null;
     }, deletePropertyFromArray = function(property, array) {
         array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
-    }, computeStyle = function(cueStyle, cellUnit) {
+    }, processStyle = function(cueStyle, cellUnit) {
         var properties = [];
         for (var key in cueStyle) {
             if (cueStyle.hasOwnProperty(key)) {
@@ -5621,25 +5621,25 @@ MediaPlayer.utils.TTMLParser = function() {
             properties.push("text-decoration:" + cueStyle["text-decoration"] + ";");
         }
         return properties;
-    }, findStyleInTTML = function(ttmlStylings, cueStyleID) {
-        for (var j = 0; j < ttmlStylings.length; j++) {
-            var currStyle = ttmlStylings[j];
+    }, findStyleFromID = function(ttmlStyling, cueStyleID) {
+        for (var j = 0; j < ttmlStyling.length; j++) {
+            var currStyle = ttmlStyling[j];
             if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
                 return currStyle;
             }
         }
-    }, getStyleFromReference = function(reference, cellUnit) {
+    }, getProcessedStyle = function(reference, cellUnit) {
         var styles = [];
         var ids = reference.match(/\S+/g);
         ids.forEach(function(id) {
-            var cueStyle = findStyleInTTML(ttmlStylings, id);
+            var cueStyle = findStyleFromID(ttmlStyling, id);
             if (cueStyle) {
-                var stylesFromId = computeStyle(cueStyle, cellUnit);
+                var stylesFromId = processStyle(cueStyle, cellUnit);
                 styles = styles.concat(stylesFromId);
             }
         });
         return styles;
-    }, computeRegion = function(cueRegion, cellUnit) {
+    }, processRegion = function(cueRegion, cellUnit) {
         var properties = [];
         for (var key in cueRegion) {
             var newKey = key.replace("region@tts:", "");
@@ -5681,7 +5681,7 @@ MediaPlayer.utils.TTMLParser = function() {
             properties.push(writingMode[cueRegion["writing-mode"]]);
         }
         if ("style" in cueRegion) {
-            var styleFromID = getStyleFromReference(cueRegion["style"], cellUnit);
+            var styleFromID = getProcessedStyle(cueRegion["style"], cellUnit);
             properties.concat(styleFromID);
         }
         if ("padding" in cueRegion) {
@@ -5691,20 +5691,20 @@ MediaPlayer.utils.TTMLParser = function() {
             properties.push("overflow:" + cueRegion["overflow"] + ";");
         }
         return properties;
-    }, findRegionInTTML = function(ttmlLayout, cueRegionID) {
+    }, findRegionFromID = function(ttmlLayout, cueRegionID) {
         for (var j = 0; j < ttmlLayout.length; j++) {
             var currReg = ttmlLayout[j];
             if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
                 return currReg;
             }
         }
-    }, getRegionFromReference = function(reference, cellUnit) {
+    }, getProcessedRegion = function(reference, cellUnit) {
         var regions = [];
         var ids = reference.match(/\S+/g);
         ids.forEach(function(id) {
-            var cueRegion = findRegionInTTML(ttmlLayout, id);
+            var cueRegion = findRegionFromID(ttmlLayout, id);
             if (cueRegion) {
-                var regionsFromId = computeRegion(cueRegion, cellUnit);
+                var regionsFromId = processRegion(cueRegion, cellUnit);
                 regions = regions.concat(regionsFromId);
             }
         });
@@ -5713,7 +5713,7 @@ MediaPlayer.utils.TTMLParser = function() {
         var captionArray = [], errorMsg;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         ttmlLayout = ttml.tt.head.layout;
-        ttmlStylings = ttml.tt.head.styling;
+        ttmlStyling = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {
             errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
@@ -5724,7 +5724,7 @@ MediaPlayer.utils.TTMLParser = function() {
         var videoHeight = document.getElementById("videoPlayer").clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         ttmlLayout = [].concat(ttmlLayout);
-        ttmlStylings = [].concat(ttmlStylings);
+        ttmlStyling = [].concat(ttmlStyling);
         var nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
         if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
             ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
@@ -5749,73 +5749,65 @@ MediaPlayer.utils.TTMLParser = function() {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            var paragraphStyleProperties = [];
-            var paragraphRegionProperties = [];
-            var pStyleID = cue["p@style"];
-            var pRegionID = cue["p@region"];
             if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
+            var paragraphStyleProperties = [];
+            var paragraphRegionProperties = [];
+            var pStyleID = cue["p@style"];
+            var pRegionID = cue["p@region"];
             if (divRegionID) {
-                paragraphRegionProperties = getRegionFromReference(divRegionID, cellUnit);
+                paragraphRegionProperties = getProcessedRegion(divRegionID, cellUnit);
             }
             if (pRegionID) {
-                paragraphRegionProperties = paragraphRegionProperties.concat(getRegionFromReference(pRegionID, cellUnit));
+                paragraphRegionProperties = paragraphRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
             }
-            if (!arrayContains("align-items", paragraphRegionProperties)) {
-                paragraphRegionProperties.push("align-items: flex-start;");
-            }
-            if (!arrayContains("overflow", paragraphRegionProperties)) {
-                paragraphRegionProperties.push("overflow: hidden;");
-            }
-            if (!arrayContains("writingMode", paragraphRegionProperties)) {
-                paragraphRegionProperties.push("-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;");
+            var defaultLayoutProperties = {
+                top: "85%;",
+                left: "5%;",
+                width: "90%;",
+                height: "10%;",
+                "align-items": "flex-start;",
+                overflow: "visible;",
+                "-ms-writing-mode": "lr-tb, horizontal-tb;;",
+                "-webkit-writing-mode": "horizontal-tb;",
+                "-moz-writing-mode": "horizontal-tb;",
+                "writing-mode": "horizontal-tb;"
+            };
+            for (var key in defaultLayoutProperties) {
+                if (!arrayContains(key, paragraphRegionProperties)) {
+                    paragraphRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
+                }
             }
             if (bodyStyleID) {
-                paragraphStyleProperties = getStyleFromReference(bodyStyleID, cellUnit);
+                paragraphStyleProperties = getProcessedStyle(bodyStyleID, cellUnit);
             }
             if (divStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromReference(divStyleID, cellUnit));
+                paragraphStyleProperties = paragraphStyleProperties.concat(getProcessedStyle(divStyleID, cellUnit));
             }
             if (pStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getStyleFromReference(pStyleID, cellUnit));
+                paragraphStyleProperties = paragraphStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
             }
-            if (!arrayContains("background-color", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("background-color: rgba(0,0,0,0);");
-            }
-            if (!arrayContains("color", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("color: rgba(255,255,255,1);");
-            }
-            if (!arrayContains("direction", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("direction: ltr;");
-            }
-            if (!arrayContains("font-family", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("font-family: monospace, sans-serif;");
-            }
-            if (!arrayContains("font-size", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("font-size:" + cellUnit[1] + "px;");
-            }
-            if (!arrayContains("font-style", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("font-style: normal;");
-            }
-            if (!arrayContains("line-height", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("line-height: normal;");
-            }
-            if (!arrayContains("font-weight", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("font-weight: normal;");
-            }
-            if (!arrayContains("text-align", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("text-align: start; justify-content: flex-start;");
-            }
-            if (!arrayContains("text-decoration", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("text-decoration: none;");
-            }
-            if (!arrayContains("unicode-bidi", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("unicode-bidi: normal;");
-            }
-            if (!arrayContains("white-space", paragraphStyleProperties)) {
-                paragraphStyleProperties.push("white-space: normal;");
+            var defaultStyleProperties = {
+                "background-color": "rgba(0,0,0,0);",
+                color: "rgba(255,255,255,1);",
+                direction: "ltr;",
+                "font-family": "monospace, sans-serif;",
+                "font-size": cellUnit[1] + "px;",
+                "font-style": "normal;",
+                "line-height": "normal;",
+                "font-weight": "normal;",
+                "text-align": "start;",
+                "justify-content": "flex-start;",
+                "text-decoration": "none;",
+                "unicode-bidi": "normal;",
+                "white-space": "normal;"
+            };
+            for (var key in defaultStyleProperties) {
+                if (!arrayContains(key, paragraphStyleProperties)) {
+                    paragraphStyleProperties.push(key + ":" + defaultStyleProperties[key]);
+                }
             }
             var paragraph = document.createElement("div");
             paragraph.className = "paragraph";
@@ -5835,7 +5827,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     caption["span"] = [].concat(caption["span"]);
                     var inlineSpan = document.createElement("span");
                     if (caption.hasOwnProperty("span@style")) {
-                        var styleBlock = getStyleFromReference(caption["span@style"], cellUnit);
+                        var styleBlock = getProcessedStyle(caption["span@style"], cellUnit);
                         if (arrayContains("padding", paragraphStyleProperties) && caption["span"].length == 1) {
                             styleBlock.push(getPropertyFromArray("padding", paragraphStyleProperties));
                         }
