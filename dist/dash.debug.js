@@ -5433,7 +5433,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])((\.[0-9][0-9][0-9])|(\.[0-9][0-9]))?$/, ttml, ttmlStyling, ttmlLayout, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5451,10 +5451,7 @@ MediaPlayer.utils.TTMLParser = function() {
         return parsedTime;
     }, passStructuralConstraints = function() {
         var passed = false, hasTt = ttml.hasOwnProperty("tt"), hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false, hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false, hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false, hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
-        if (hasTt && hasHead && hasLayout && hasStyling && hasBody) {
-            passed = true;
-        }
-        return passed;
+        return hasTt && hasHead && hasLayout && hasStyling && hasBody;
     }, getNamespacePrefix = function(json, ns) {
         var r = Object.keys(json).filter(function(k) {
             return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
