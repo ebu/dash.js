@@ -207,14 +207,14 @@ MediaPlayer.utils.TTMLParser = function() {
             // Font-family can be specified by a generic family name or a custom family name.
             if ('font-family' in cueStyle) {
                 var fontFamilies = {
-                    monospace: 'font-family: monospace;',
-                    sansSerif: 'font-family: sans-serif;',
-                    serif: 'font-family: serif;',
-                    monospaceSansSerif: 'font-family: monospace, sans-serif;',
-                    monospaceSerif: 'font-family: monospace, serif;',
+                    monospace            : 'font-family: monospace;',
+                    sansSerif            : 'font-family: sans-serif;',
+                    serif                : 'font-family: serif;',
+                    monospaceSansSerif   : 'font-family: monospace, sans-serif;',
+                    monospaceSerif       : 'font-family: monospace, serif;',
                     proportionalSansSerif: 'font-family: Arial;',
-                    proportionalSerif: 'font-family: Times New Roman;',
-                    'default': 'font-family: monospace, sans-serif;'
+                    proportionalSerif    : 'font-family: Times New Roman;',
+                    'default'            : 'font-family: monospace, sans-serif;'
                 };
                 if (cueStyle['font-family'] in fontFamilies) {
                     properties.push(fontFamilies[cueStyle['font-family']]);
@@ -222,7 +222,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push('font-family:' + cueStyle['font-family'] + ';');
                 }
             }
-
             // Text align needs to be set from two properties:
             // The standard text-align CSS property.
             // The justify-content property as we use flex boxes.
@@ -239,23 +238,20 @@ MediaPlayer.utils.TTMLParser = function() {
                     properties.push(textAlign[cueStyle['text-align']][1]);
                 }
             }
-
             // Multi Row align is set only by the text-align property.
             // TODO: TO CHECK
             if ('multi-row-align' in cueStyle) {
-                if (arrayContains('text-align', properties)) {
-                    deletePropertyFromArray('text-align', properties);
-                }
                 var multiRowAlign = {
                     start: "text-align: start;",
                     center: "text-align: center;",
                     end: "text-align: end;",
                     auto: ""
                 };
+                if (arrayContains('text-align', properties) && cueStyle['multi-row-align'] != 'auto') {
+                    deletePropertyFromArray('text-align', properties);
+                }
                 if (cueStyle['multi-row-align'] in multiRowAlign) {
                     properties.push(multiRowAlign[cueStyle['multi-row-align']]);
-                } else {
-                    properties.push('text-align:' + cueStyle['multi-row-align']);
                 }
             }
             // Background color can be specified from hexadecimal (RGB or RGBA) value.
@@ -454,7 +450,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // Style will give to the region the style properties from the style selected
             if ('style' in cueRegion) {
                 var styleFromID = getProcessedStyle(cueRegion['style'], cellUnit);
-                properties.concat(styleFromID);
+                properties = properties.concat(styleFromID);
             }
 
             // Standard properties identical to CSS.
@@ -529,7 +525,12 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Extract the cellResolution information
             var cellUnitDefault = [32, 15]; // Default cellResolution.
-            var cellResolution = cellUnitDefault || ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+            var cellResolution;
+            if (ttml.hasOwnProperty("tt@ttp:cellResolution")){
+                cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+            } else {
+                cellResolution = cellUnitDefault;
+            }
 
             // Recover the video width and height displayed by the player.
             // TODO: Make it dynamic by the controller.

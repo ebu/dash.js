@@ -5555,19 +5555,17 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
         if ("multi-row-align" in cueStyle) {
-            if (arrayContains("text-align", properties)) {
-                deletePropertyFromArray("text-align", properties);
-            }
             var multiRowAlign = {
                 start: "text-align: start;",
                 center: "text-align: center;",
                 end: "text-align: end;",
                 auto: ""
             };
+            if (arrayContains("text-align", properties) && cueStyle["multi-row-align"] != "auto") {
+                deletePropertyFromArray("text-align", properties);
+            }
             if (cueStyle["multi-row-align"] in multiRowAlign) {
                 properties.push(multiRowAlign[cueStyle["multi-row-align"]]);
-            } else {
-                properties.push("text-align:" + cueStyle["multi-row-align"]);
             }
         }
         if ("background-color" in cueStyle) {
@@ -5686,7 +5684,7 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         if ("style" in cueRegion) {
             var styleFromID = getProcessedStyle(cueRegion["style"], cellUnit);
-            properties.concat(styleFromID);
+            properties = properties.concat(styleFromID);
         }
         if ("padding" in cueRegion) {
             properties.push("padding:" + cueRegion["padding"] + ";");
@@ -5725,7 +5723,12 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         var cellUnitDefault = [ 32, 15 ];
-        var cellResolution = cellUnitDefault || ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        var cellResolution;
+        if (ttml.hasOwnProperty("tt@ttp:cellResolution")) {
+            cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        } else {
+            cellResolution = cellUnitDefault;
+        }
         var videoWidth = document.getElementById("videoPlayer").clientWidth;
         var videoHeight = document.getElementById("videoPlayer").clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
