@@ -5507,7 +5507,8 @@ MediaPlayer.utils.TTMLParser = function() {
         if ("line-padding" in cueStyle) {
             var valuePadding = parseFloat(cueStyle["line-padding"].slice(cueStyle["line-padding"].indexOf(":") + 1, cueStyle["line-padding"].indexOf("c")));
             var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
-            properties.push("padding-left:" + valuePaddingInPx + " padding-right:" + valuePaddingInPx);
+            properties.push("padding-left:" + valuePaddingInPx + ";");
+            properties.push("padding-right:" + valuePaddingInPx + ";");
         }
         if ("font-size" in cueStyle) {
             var valueFtSize = parseFloat(cueStyle["font-size"].slice(cueStyle["font-size"].indexOf(":") + 1, cueStyle["font-size"].indexOf("%")));
@@ -5753,15 +5754,15 @@ MediaPlayer.utils.TTMLParser = function() {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            var paragraphStyleProperties = [];
-            var paragraphRegionProperties = [];
+            var cueStyleProperties = [];
+            var cueRegionProperties = [];
             var pStyleID = cue["p@style"];
             var pRegionID = cue["p@region"];
             if (divRegionID) {
-                paragraphRegionProperties = getProcessedRegion(divRegionID, cellUnit);
+                cueRegionProperties = getProcessedRegion(divRegionID, cellUnit);
             }
             if (pRegionID) {
-                paragraphRegionProperties = paragraphRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
+                cueRegionProperties = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
             }
             var defaultLayoutProperties = {
                 top: "85%;",
@@ -5776,18 +5777,18 @@ MediaPlayer.utils.TTMLParser = function() {
                 "writing-mode": "horizontal-tb;"
             };
             for (var key in defaultLayoutProperties) {
-                if (!arrayContains(key, paragraphRegionProperties)) {
-                    paragraphRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
+                if (!arrayContains(key, cueRegionProperties)) {
+                    cueRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
                 }
             }
             if (bodyStyleID) {
-                paragraphStyleProperties = getProcessedStyle(bodyStyleID, cellUnit);
+                cueStyleProperties = getProcessedStyle(bodyStyleID, cellUnit);
             }
             if (divStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getProcessedStyle(divStyleID, cellUnit));
+                cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(divStyleID, cellUnit));
             }
             if (pStyleID) {
-                paragraphStyleProperties = paragraphStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
+                cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
             }
             var defaultStyleProperties = {
                 "background-color": "rgba(0,0,0,0);",
@@ -5805,78 +5806,74 @@ MediaPlayer.utils.TTMLParser = function() {
                 "white-space": "normal;"
             };
             for (var key in defaultStyleProperties) {
-                if (!arrayContains(key, paragraphStyleProperties)) {
-                    paragraphStyleProperties.push(key + ":" + defaultStyleProperties[key]);
+                if (!arrayContains(key, cueStyleProperties)) {
+                    cueStyleProperties.push(key + ":" + defaultStyleProperties[key]);
                 }
             }
-            var paragraph = document.createElement("div");
-            paragraph.className = "paragraph";
-            var innerContainer = document.createElement("div");
-            innerContainer.className = "innerContainer";
-            if (arrayContains("unicode-bidi", paragraphStyleProperties) || arrayContains("direction", paragraphStyleProperties)) {
-                innerContainer.style.cssText += getPropertyFromArray("unicode-bidi", paragraphStyleProperties);
-                innerContainer.style.cssText += getPropertyFromArray("direction", paragraphStyleProperties);
-                deletePropertyFromArray("unicode-bidi", paragraphStyleProperties);
-                deletePropertyFromArray("direction", paragraphStyleProperties);
+            var cueHTMLElement = document.createElement("div");
+            cueHTMLElement.className = "paragraph";
+            var cueContainer = document.createElement("div");
+            cueContainer.className = "cueContainer";
+            if (arrayContains("unicode-bidi", cueStyleProperties)) {
+                cueContainer.style.cssText += getPropertyFromArray("unicode-bidi", cueStyleProperties);
+                deletePropertyFromArray("unicode-bidi", cueStyleProperties);
             }
-            cue.p = [].concat(cue.p);
-            cue.p.forEach(function(caption) {
-                if (caption.hasOwnProperty("br")) {
-                    innerContainer.appendChild(document.createElement("br"));
-                } else if (caption.hasOwnProperty("span")) {
-                    caption["span"] = [].concat(caption["span"]);
-                    var inlineSpan = document.createElement("span");
-                    if (caption.hasOwnProperty("span@style")) {
-                        var styleBlock = getProcessedStyle(caption["span@style"], cellUnit);
-                        if (arrayContains("padding", paragraphStyleProperties) && caption["span"].length == 1) {
-                            styleBlock.push(getPropertyFromArray("padding", paragraphStyleProperties));
+            if (arrayContains("direction", cueStyleProperties)) {
+                cueContainer.style.cssText += getPropertyFromArray("direction", cueStyleProperties);
+                deletePropertyFromArray("direction", cueStyleProperties);
+            }
+            var pElements = [].concat(cue.p);
+            pElements.forEach(function(pElement) {
+                if (pElement.hasOwnProperty("span")) {
+                    var spanElements = [].concat(pElement["span"]);
+                    console.warn("spanElements", spanElements);
+                    var spanHTMLElement = document.createElement("span");
+                    if (pElement.hasOwnProperty("span@style")) {
+                        var spanStyle = getProcessedStyle(pElement["span@style"], cellUnit);
+                        if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                            spanStyle.push(getPropertyFromArray("padding-left", cueStyleProperties));
+                            spanStyle.push(getPropertyFromArray("padding-right", cueStyleProperties));
                         }
-                        inlineSpan.style.cssText = styleBlock.join(" ");
+                        spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
-                    if (caption["span"].length > 1) {
-                        caption["span"].forEach(function(el) {
-                            if (typeof el === "string" || el instanceof String) {
-                                if (arrayContains("padding", paragraphStyleProperties)) {
-                                    var linePaddingSpan = document.createElement("span");
-                                    linePaddingSpan.style.cssText = getPropertyFromArray("padding", paragraphStyleProperties);
-                                    linePaddingSpan.innerHTML = el;
-                                    inlineSpan.appendChild(linePaddingSpan);
-                                } else {
-                                    var textNode = document.createElement("span");
-                                    textNode.innerHTML = el;
-                                    inlineSpan.appendChild(textNode);
-                                }
-                            } else if (el.hasOwnProperty("br")) {
-                                inlineSpan.appendChild(document.createElement("br"));
-                            }
-                        });
-                        innerContainer.appendChild(inlineSpan);
-                    } else {
-                        inlineSpan.innerHTML = caption["span"];
-                        innerContainer.appendChild(inlineSpan);
-                    }
+                    spanElements.forEach(function(spanEl) {
+                        if (typeof spanEl === "string" || spanEl instanceof String) {
+                            var textNode = document.createTextNode(spanEl);
+                            spanHTMLElement.appendChild(textNode);
+                        } else if ("br" in spanEl) {
+                            spanHTMLElement.appendChild(document.createElement("br"));
+                        }
+                    });
+                    cueContainer.appendChild(spanHTMLElement);
+                } else if (pElement.hasOwnProperty("br")) {
+                    cueContainer.appendChild(document.createElement("br"));
                 } else {
                     var textNode = document.createElement("span");
-                    textNode.innerHTML = caption;
-                    if (arrayContains("padding", paragraphStyleProperties)) {
-                        textNode.style.cssText = getPropertyFromArray("padding", paragraphStyleProperties);
+                    textNode.innerHTML = pElement;
+                    if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                        textNode.style.cssText += getPropertyFromArray("padding-left", cueStyleProperties);
+                        textNode.style.cssText += getPropertyFromArray("padding-right", cueStyleProperties);
                     }
-                    innerContainer.appendChild(textNode);
+                    cueContainer.appendChild(textNode);
                 }
             });
-            if (arrayContains("padding", paragraphStyleProperties)) {
-                deletePropertyFromArray("padding", paragraphStyleProperties);
+            if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                deletePropertyFromArray("padding-left", cueStyleProperties);
+                deletePropertyFromArray("padding-right", cueStyleProperties);
             }
-            if (paragraphStyleProperties) {
-                paragraph.style.cssText = paragraphStyleProperties.join(" ");
+            if (cueStyleProperties) {
+                cueHTMLElement.style.cssText = cueStyleProperties.join(" ");
             }
-            paragraph.appendChild(innerContainer);
+            if (cueRegionProperties) {
+                cueRegionProperties = cueRegionProperties.join(" ");
+            }
+            cueHTMLElement.appendChild(cueContainer);
             captionArray.push({
                 start: spanStartTime || pStartTime,
                 end: spanEndTime || pEndTime,
-                data: paragraph,
-                type: "text",
-                paragraphRegion: paragraphRegionProperties
+                cueHTMLElement: cueHTMLElement,
+                cueRegion: cueRegionProperties,
+                type: "text"
             });
         });
         return captionArray;
@@ -8801,9 +8798,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         diff = newDiff;
                         activeCue = cue;
                     }
-                    if (activeCue.data) {
-                        captionRegion.appendChild(activeCue.data);
-                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
+                    if (activeCue.cueHTMLElement) {
+                        captionRegion.appendChild(activeCue.cueHTMLElement);
+                        captionRegion.style.cssText = activeCue.cueRegion;
                     }
                 }
             });

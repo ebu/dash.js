@@ -102,11 +102,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     /*** When the cue is found, we apply its text, style and positioning. ***/
 
                     // Add the HTML elements to the captionText container.
-                    if (activeCue.data) {
-                        captionRegion.appendChild(activeCue.data);
+                    if (activeCue.cueHTMLElement) {
+                        // Append the cue to the HTML caption layer.
+                        captionRegion.appendChild(activeCue.cueHTMLElement);
 
                         // Apply the positioning to our text.
-                        captionRegion.style.cssText = activeCue.paragraphRegion.join(" ");
+                        captionRegion.style.cssText = activeCue.cueRegion;
                     }
                 }
             });
