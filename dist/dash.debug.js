@@ -5664,6 +5664,15 @@ MediaPlayer.utils.TTMLParser = function() {
         return null;
     }, deletePropertyFromArray = function(property, array) {
         array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
+    }, removeDuplicatesFromArrayAndConcat = function(primeArray, arrayToAdd) {
+        for (var i = 0; i < primeArray.length; i++) {
+            for (var j = 0; j < arrayToAdd.length; j++) {
+                if (primeArray[i].split(":")[0].indexOf(arrayToAdd[j].split(":")[0]) > -1) {
+                    primeArray.splice(i, 1);
+                }
+            }
+        }
+        return primeArray.concat(arrayToAdd);
     }, processStyle = function(cueStyle, cellUnit) {
         var properties = [];
         for (var key in cueStyle) {
@@ -5680,8 +5689,8 @@ MediaPlayer.utils.TTMLParser = function() {
         if ("line-padding" in cueStyle) {
             var valuePadding = parseFloat(cueStyle["line-padding"].slice(cueStyle["line-padding"].indexOf(":") + 1, cueStyle["line-padding"].indexOf("c")));
             var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
-            properties.push("padding-left:" + valuePaddingInPx + ";");
-            properties.push("padding-right:" + valuePaddingInPx + ";");
+            properties.push("padding-left:" + valuePaddingInPx);
+            properties.push("padding-right:" + valuePaddingInPx);
         }
         if ("font-size" in cueStyle) {
             var valueFtSize = parseFloat(cueStyle["font-size"].slice(cueStyle["font-size"].indexOf(":") + 1, cueStyle["font-size"].indexOf("%")));
@@ -5967,18 +5976,30 @@ MediaPlayer.utils.TTMLParser = function() {
                     cueRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
                 }
             }
+            var bodyStyle;
+            var divStyle;
+            var pStyle;
             if (bodyStyleID) {
-                cueStyleProperties = getProcessedStyle(bodyStyleID, cellUnit);
+                bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
             }
             if (divStyleID) {
-                cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(divStyleID, cellUnit));
+                divStyle = getProcessedStyle(divStyleID, cellUnit);
+                if (bodyStyle) {
+                    divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+                }
             }
             if (pStyleID) {
-                cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
+                pStyle = getProcessedStyle(pStyleID, cellUnit);
+                if (bodyStyle && divStyle) {
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                } else if (bodyStyle) {
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+                } else if (divStyle) {
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                }
             }
             var defaultStyleProperties = {
-                color: "rgb(255,255,255);",
-                "background-color": "rgb(0,0,0);",
+                color: "rgb(0,0,0);",
                 direction: "ltr;",
                 "font-family": "monospace, sans-serif;",
                 "font-size": cellUnit[1] + "px;",

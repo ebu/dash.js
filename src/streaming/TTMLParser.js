@@ -161,6 +161,18 @@ MediaPlayer.utils.TTMLParser = function() {
             array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
         },
 
+        removeDuplicatesFromArrayAndConcat = function(primeArray, arrayToAdd){
+            for(var i = 0;i < primeArray.length; i++){
+                for(var j = 0;j < arrayToAdd.length; j++){
+                    // Take only the name of the property
+                    if(primeArray[i].split(':')[0].indexOf(arrayToAdd[j].split(':')[0]) > -1){
+                        primeArray.splice(i, 1);
+                    }
+                }
+            }
+            return primeArray.concat(arrayToAdd);
+        },
+
         /**
          * Processing of styling information:
          * - processStyle: return an array of strings with the cue style under a CSS style form.
@@ -194,8 +206,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 var valuePadding = parseFloat(cueStyle['line-padding'].slice(cueStyle['line-padding'].indexOf(":") + 1,
                     cueStyle['line-padding'].indexOf('c')));
                 var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
-                properties.push("padding-left:" + valuePaddingInPx + ";");
-                properties.push("padding-right:" + valuePaddingInPx + ";");
+                properties.push("padding-left:" + valuePaddingInPx);
+                properties.push("padding-right:" + valuePaddingInPx);
             }
             // Font size is computed from the cellResolution.
             if ('font-size' in cueStyle) {
@@ -681,24 +693,38 @@ MediaPlayer.utils.TTMLParser = function() {
                 /**
                  * Find the style defined for the cue.
                  */
+                var bodyStyle;
+                var divStyle;
+                var pStyle;
 
                 // If the body element reference a style.
                 if (bodyStyleID) {
-                    cueStyleProperties = getProcessedStyle(bodyStyleID, cellUnit);
-                }
-                // If the div element reference a style.
-                if (divStyleID) {
-                    cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(divStyleID, cellUnit));
-                }
-                // If the p element reference a style.
-                if (pStyleID) {
-                    cueStyleProperties = cueStyleProperties.concat(getProcessedStyle(pStyleID, cellUnit));
+                    bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
                 }
 
-                // Add initial/default values to what's not defined in the styling:
+                // If the div element reference a style.
+                if (divStyleID) {
+                    divStyle = getProcessedStyle(divStyleID, cellUnit);
+                    if(bodyStyle){
+                        divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+                    }
+                }
+
+                // If the p element reference a style.
+                if (pStyleID) {
+                    pStyle = getProcessedStyle(pStyleID, cellUnit);
+                    if(bodyStyle && divStyle){
+                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                    } else if(bodyStyle){
+                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+                    } else if(divStyle){
+                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                    }
+                }
+
+               // Add initial/default values to what's not defined in the styling:
                 var defaultStyleProperties = {
-                    'color': 'rgb(255,255,255);',
-                    'background-color': 'rgb(0,0,0);',
+                    'color': 'rgb(0,0,0);',
                     'direction': 'ltr;',
                     'font-family': 'monospace, sans-serif;',
                     'font-size': cellUnit[1] + 'px;',
@@ -760,7 +786,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
 
                     /**
-                     * If the p element contains spans: create an spans elements if the cue contains subtitles in span.
+                     * If the p element contains spans: create the span elements.
                      */
                     if (pElement.hasOwnProperty('span')) {
 
