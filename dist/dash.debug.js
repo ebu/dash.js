@@ -369,6 +369,167 @@ function ObjectIron(map) {
     };
 }
 
+function xml2json_hi_translator() {
+    var X = {
+        err: function(msg) {
+            alert("Error: " + msg);
+        },
+        toObj: function(xml, parent) {
+            if (xml.nodeType == 9) return X.toObj(xml.documentElement, parent);
+            var o = {};
+            if (!parent || parent instanceof Array) {
+                if (xml.nodeType == 1) {
+                    o[xml.nodeName] = X.toObj(xml, o);
+                } else X.err("unhandled node type: " + xml.nodeType);
+                return o;
+            }
+            if (xml.nodeType == 1) {
+                if (xml.attributes.length) for (var i = 0; i < xml.attributes.length; i++) parent[xml.nodeName + "@" + xml.attributes[i].nodeName] = xml.attributes[i].nodeValue;
+                if (xml.firstChild) {
+                    var textChild = 0, cdataChild = 0, hasElementChild = false, needsArray = false;
+                    var elemCount = {};
+                    for (var n = xml.firstChild; n; n = n.nextSibling) {
+                        if (n.nodeType == 1) {
+                            hasElementChild = true;
+                            elemCount[n.nodeName] = elemCount[n.nodeName] ? elemCount[n.nodeName] + 1 : 1;
+                            if (elemCount[n.nodeName] > 1) needsArray = true;
+                        } else if (n.nodeType == 3 && n.nodeValue.match(/[^ \f\n\r\t\v]/)) textChild++; else if (n.nodeType == 4) cdataChild++;
+                    }
+                    if (hasElementChild && textChild) needsArray = true;
+                    if (hasElementChild && cdataChild) needsArray = true;
+                    if (textChild && cdataChild) needsArray = true;
+                    if (cdataChild > 1) needsArray = true;
+                    if (hasElementChild && !needsArray) {
+                        X.removeWhite(xml);
+                        for (var n = xml.firstChild; n; n = n.nextSibling) {
+                            if (n.nodeType == 3) o["#text"] = X.escape(n.nodeValue); else if (n.nodeType == 4) o["#cdata"] = X.escape(n.nodeValue); else if (o[n.nodeName]) {
+                                if (o[n.nodeName] instanceof Array) o[n.nodeName][o[n.nodeName].length] = X.toObj(n, o); else o[n.nodeName] = [ o[n.nodeName], X.toObj(n, o) ];
+                            } else o[n.nodeName] = X.toObj(n, o);
+                        }
+                    } else if (needsArray) {
+                        o = [];
+                        X.removeWhite(xml);
+                        for (var n = xml.firstChild; n; n = n.nextSibling) {
+                            if (n.nodeType == 3) o[o.length] = X.escape(n.nodeValue); else if (n.nodeType == 4) o[o.length] = {
+                                "#cdata": X.escape(n.nodeValue)
+                            }; else {
+                                o[o.length] = X.toObj(n, o);
+                            }
+                        }
+                    } else if (textChild) {
+                        o = X.escape(X.innerXml(xml));
+                    } else if (cdataChild) {
+                        X.removeWhite(xml);
+                        o["#cdata"] = X.escape(xml.firstChild.nodeValue);
+                    }
+                }
+                if (!xml.firstChild) o = null;
+            } else X.err("unhandled node type: " + xml.nodeType);
+            return o;
+        },
+        toJson: function(o, ind) {
+            var json = "";
+            if (o instanceof Array) {
+                for (var i = 0, n = o.length; i < n; i++) {
+                    var extra_indent = "";
+                    if (typeof o[i] == "string") extra_indent = ind + "	";
+                    o[i] = extra_indent + X.toJson(o[i], ind + "	");
+                }
+                json += "[" + (o.length > 1 ? "\n" + o.join(",\n") + "\n" + ind : o.join("")) + "]";
+            } else if (o == null) json += "null"; else if (typeof o == "string") json += '"' + o.toString() + '"'; else if (typeof o == "object") {
+                json += ind + "{";
+                var i = 0;
+                for (var member in o) i++;
+                for (var member in o) {
+                    json += "\n" + ind + '	"' + member + '":' + X.toJson(o[member], ind + "	");
+                    json += i > 1 ? "," : "\n" + ind;
+                    i--;
+                }
+                json += "}";
+            } else json += o.toString();
+            return json;
+        },
+        innerXml: function(node) {
+            var s = "";
+            if ("innerHTML" in node) s = node.innerHTML; else {
+                var asXml = function(n) {
+                    var s = "";
+                    if (n.nodeType == 1) {
+                        s += "<" + n.nodeName;
+                        for (var i = 0; i < n.attributes.length; i++) s += " " + n.attributes[i].nodeName + '="' + (n.attributes[i].nodeValue || "").toString() + '"';
+                        if (n.firstChild) {
+                            s += ">";
+                            for (var c = n.firstChild; c; c = c.nextSibling) s += asXml(c);
+                            s += "</" + n.nodeName + ">";
+                        } else s += "/>";
+                    } else if (n.nodeType == 3) s += n.nodeValue; else if (n.nodeType == 4) s += "<![CDATA[" + n.nodeValue + "]]>";
+                    return s;
+                };
+                for (var c = node.firstChild; c; c = c.nextSibling) s += asXml(c);
+            }
+            return s;
+        },
+        escape: function(txt) {
+            return txt.replace(/[\\]/g, "\\\\").replace(/[\"]/g, '\\"').replace(/[\n]/g, "\\n").replace(/[\r]/g, "\\r");
+        },
+        removeWhite: function(e) {
+            e.normalize();
+            for (var n = e.firstChild; n; ) {
+                if (n.nodeType == 3) {
+                    if (!n.nodeValue.match(/[^ \f\n\r\t\v]/)) {
+                        var nxt = n.nextSibling;
+                        e.removeChild(n);
+                        n = nxt;
+                    } else n = n.nextSibling;
+                } else if (n.nodeType == 1) {
+                    X.removeWhite(n);
+                    n = n.nextSibling;
+                } else n = n.nextSibling;
+            }
+            return e;
+        },
+        parseXml: function(xmlString) {
+            var dom = null;
+            var xml = require("libxml");
+            dom = xml.parseFromString(xmlString);
+            return dom;
+        }
+    };
+    return X;
+}
+
+function xml2json_hi(xml, tab) {
+    var X = xml2json_hi_translator();
+    if (xml.nodeType == 9) xml = xml.documentElement;
+    var o = X.toObj(X.removeWhite(xml));
+    var json = X.toJson(o, "");
+    return tab ? json.replace(/\t/g, tab) : json.replace(/\t|\n/g, "");
+}
+
+function parseXml(xml) {
+    var dom = null;
+    if (window.DOMParser) {
+        try {
+            dom = new DOMParser().parseFromString(xml, "text/xml");
+        } catch (e) {
+            dom = null;
+        }
+    } else if (window.ActiveXObject) {
+        try {
+            dom = new ActiveXObject("Microsoft.XMLDOM");
+            dom.async = false;
+            if (!dom.loadXML(xml)) window.alert(dom.parseError.reason + dom.parseError.srcText);
+        } catch (e) {
+            dom = null;
+        }
+    } else alert("oops");
+    return dom;
+}
+
+if (typeof module != "undefined") {
+    module.exports = xml2json_hi_translator();
+}
+
 (function(scope) {
     "use strict";
     var dijon = {
@@ -5631,7 +5792,7 @@ MediaPlayer.utils.TTMLParser = function() {
         ids.forEach(function(id) {
             var cueStyle = findStyleFromID(ttmlStyling, id);
             if (cueStyle) {
-                var stylesFromId = processStyle(cueStyle, cellUnit);
+                var stylesFromId = processStyle(JSON.parse(JSON.stringify(cueStyle)), cellUnit);
                 styles = styles.concat(stylesFromId);
             } else {
                 styles = [].concat(styles);
@@ -5704,7 +5865,7 @@ MediaPlayer.utils.TTMLParser = function() {
         ids.forEach(function(id) {
             var cueRegion = findRegionFromID(ttmlLayout, id);
             if (cueRegion) {
-                var regionsFromId = processRegion(cueRegion, cellUnit);
+                var regionsFromId = processRegion(JSON.parse(JSON.stringify(cueRegion)), cellUnit);
                 regions = regions.concat(regionsFromId);
             } else {
                 regions = [].concat(regions);

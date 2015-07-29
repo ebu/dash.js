@@ -333,7 +333,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 var cueStyle = findStyleFromID(ttmlStyling, id);
                 if (cueStyle) {
                     // Process the style for the cue in CSS form.
-                    var stylesFromId = processStyle(cueStyle, cellUnit);
+                    // Send a copy of the style object, so it does not modify the original by cleaning it.
+                    var stylesFromId = processStyle(JSON.parse(JSON.stringify(cueStyle)), cellUnit);
                     styles = styles.concat(stylesFromId);
                 } else {
                     styles = [].concat(styles);
@@ -484,8 +485,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 var cueRegion = findRegionFromID(ttmlLayout, id);
                 if (cueRegion) {
                     // Process the region for the cue in CSS form.
-                    var regionsFromId = processRegion(cueRegion, cellUnit);
-                     regions = regions.concat(regionsFromId);
+                    // Send a copy of the style object, so it does not modify the original by cleaning it.
+                    var regionsFromId = processRegion(JSON.parse(JSON.stringify(cueRegion)), cellUnit);
+                    regions = regions.concat(regionsFromId);
                 } else {
                     regions = [].concat(regions);
                 }

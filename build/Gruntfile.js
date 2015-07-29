@@ -63,6 +63,7 @@ module.exports = function(grunt) {
           "../dist/dash.debug.js": [
             "../src/lib/xml2json.js",
             "../src/lib/objectiron.js",
+            "../src/lib/xml2json_henriko.js",
             "../src/lib/dijon.js",
             "../src/lib/Math.js",
             "../src/lib/long.js",
