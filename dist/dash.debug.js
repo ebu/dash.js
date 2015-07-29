@@ -5611,18 +5611,33 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         return parsedTime;
     }, passStructuralConstraints = function() {
-        var passed = false, hasTt = ttml.hasOwnProperty("tt"), hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false, hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false, hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false, hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
+        var hasTt = ttml.hasOwnProperty("tt"), hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false, hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false, hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false, hasBody = hasTt ? ttml.tt.hasOwnProperty("body") : false;
         return hasTt && hasHead && hasLayout && hasStyling && hasBody;
     }, getNamespacePrefix = function(json, ns) {
         var r = Object.keys(json).filter(function(k) {
-            return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
+            return (k.split(":")[0] === "tt@xmlns" || k.split(":")[1] === "tt@xmlns") && json[k] === ns;
         }).map(function(k) {
-            return k.split(":")[1];
+            return k.split(":")[2] || k.split(":")[1];
         });
         if (r.length != 1) {
             return null;
         }
         return r[0];
+    }, removeNamespacePrefix = function(json, nsPrefix) {
+        for (var key in json) {
+            if (json.hasOwnProperty(key)) {
+                if ((typeof json[key] === "object" || json[key] instanceof Object) && !Array.isArray(json[key])) {
+                    removeNamespacePrefix(json[key], nsPrefix);
+                } else if (Array.isArray(json[key])) {
+                    for (var i = 0; i < json[key].length; i++) {
+                        removeNamespacePrefix(json[key][i], nsPrefix);
+                    }
+                }
+                var newKey = key.slice(key.indexOf(nsPrefix) + nsPrefix.length + 1);
+                json[newKey] = json[key];
+                delete json[key];
+            }
+        }
     }, camelCaseToDash = function(key) {
         return key.replace(/([a-z])([A-Z])/g, "$1-$2").toLowerCase();
     }, convertHexToRGBA = function(rgba) {
@@ -5874,6 +5889,10 @@ MediaPlayer.utils.TTMLParser = function() {
         return regions;
     }, internalParse = function(data) {
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+        var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
+        if (ttNS) {
+            removeNamespacePrefix(ttml, ttNS);
+        }
         ttmlLayout = ttml.tt.head.layout;
         ttmlStyling = ttml.tt.head.styling;
         if (!passStructuralConstraints()) {

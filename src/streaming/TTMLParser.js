@@ -73,10 +73,8 @@ MediaPlayer.utils.TTMLParser = function() {
         },
 
         passStructuralConstraints = function() {
-            var passed = false,
-
-                // Check if the ttml document provide all the necessary elements.
-                hasTt = ttml.hasOwnProperty("tt"),
+            // Check if the ttml document provide all the necessary elements.
+            var hasTt = ttml.hasOwnProperty("tt"),
                 hasHead = hasTt ? ttml.tt.hasOwnProperty("head") : false,
                 hasLayout = hasHead ? ttml.tt.head.hasOwnProperty("layout") : false,
                 hasStyling = hasHead ? ttml.tt.head.hasOwnProperty("styling") : false,
@@ -90,14 +88,31 @@ MediaPlayer.utils.TTMLParser = function() {
             // Obtain the namespace prefix.
             var r = Object.keys(json)
                 .filter(function(k) {
-                    return k.split(":")[0] === "tt@xmlns" && json[k] === ns;
+                    return (k.split(":")[0] === "tt@xmlns" || k.split(":")[1] === "tt@xmlns") && json[k] === ns;
                 }).map(function(k) {
-                    return k.split(":")[1];
+                    return k.split(":")[2] || k.split(":")[1];
                 });
             if (r.length != 1) {
                 return null;
             }
             return r[0];
+        },
+
+        removeNamespacePrefix = function(json, nsPrefix) {
+            for (var key in json){
+                if (json.hasOwnProperty(key)){
+                    if((typeof json[key] === 'object' || json[key] instanceof Object) && !Array.isArray(json[key])) {
+                        removeNamespacePrefix(json[key], nsPrefix);
+                    } else if (Array.isArray(json[key])) {
+                        for(var i = 0; i < json[key].length; i++) {
+                            removeNamespacePrefix(json[key][i], nsPrefix);
+                        }
+                    }
+                    var newKey = key.slice(key.indexOf(nsPrefix) + nsPrefix.length + 1);
+                    json[newKey] = json[key];
+                    delete json[key];
+                }
+            }
         },
 
         // backgroundColor = background-color, convert from camelCase to dash.
@@ -510,6 +525,14 @@ MediaPlayer.utils.TTMLParser = function() {
         internalParse = function(data) {
             // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+
+            // Get the namespace if there is one defined in the JSON object.
+            var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
+
+            // Remove the namespace before each node if it exists:
+            if(ttNS){
+               removeNamespacePrefix(ttml, ttNS);
+            }
 
             // Extract styling and layout from the document.
             ttmlLayout = ttml.tt.head.layout;
