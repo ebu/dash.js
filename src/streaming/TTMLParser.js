@@ -719,6 +719,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
                     } else if(divStyle){
                         cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                    } else {
+                        cueStyleProperties = pStyle;
                     }
                 }
 
@@ -778,8 +780,11 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Stock the p subtitles in an array (in case there are only one value).
                 var pElements = [].concat(cue.p);
 
+                // Record the indexes of line breaks 'br' in this array.
+                var indexesdBr = [];
+
                 // For each child of the paragraph we add it in the cue depending of its kind (span, br, text).
-                pElements.forEach(function(pElement) {
+                pElements.forEach(function(pElement, indexBr) {
                     // If metadata is present, do not process.
                     if(pElement.hasOwnProperty('metadata')) {
                         return;
@@ -833,6 +838,7 @@ MediaPlayer.utils.TTMLParser = function() {
                      * Create a br element if there is one in the cue.
                      */
                     else if (pElement.hasOwnProperty('br')) {
+                        indexesdBr.push(indexBr);
                         // We append the line break to the cue container.
                         cueContainer.appendChild(document.createElement('br'));
                     }

@@ -5996,6 +5996,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
                 } else if (divStyle) {
                     cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                } else {
+                    cueStyleProperties = pStyle;
                 }
             }
             var defaultStyleProperties = {
@@ -6030,7 +6032,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 deletePropertyFromArray("direction", cueStyleProperties);
             }
             var pElements = [].concat(cue.p);
-            pElements.forEach(function(pElement) {
+            var indexesdBr = [];
+            pElements.forEach(function(pElement, indexBr) {
                 if (pElement.hasOwnProperty("metadata")) {
                     return;
                 }
@@ -6058,6 +6061,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     });
                     cueContainer.appendChild(spanHTMLElement);
                 } else if (pElement.hasOwnProperty("br")) {
+                    indexesdBr.push(indexBr);
                     cueContainer.appendChild(document.createElement("br"));
                 } else {
                     var textNode = document.createElement("span");
