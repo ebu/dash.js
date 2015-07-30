@@ -543,7 +543,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Remove the namespace before each node if it exists:
             if(ttNS){
-               removeNamespacePrefix(ttml, ttNS);
+                removeNamespacePrefix(ttml, ttNS);
             }
 
             // Extract styling and layout from the document.
@@ -724,10 +724,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
                 }
 
-               // Add initial/default values to what's not defined in the styling:
+                // Add initial/default values to what's not defined in the styling:
                 var defaultStyleProperties = {
                     'color': 'rgb(255,255,255);',
-                    'background-color': 'rgb(0,0,0);',
                     'direction': 'ltr;',
                     'font-family': 'monospace, sans-serif;',
                     'font-size': cellUnit[1] + 'px;',
@@ -805,11 +804,6 @@ MediaPlayer.utils.TTMLParser = function() {
                         // Extract the style of the span.
                         if (pElement.hasOwnProperty('span@style')) {
                             var spanStyle = getProcessedStyle(pElement['span@style'], cellUnit);
-                            // If line padding from the paragraph style has to be applied to the span.
-                            if (arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
-                                spanStyle.push(getPropertyFromArray('padding-left', cueStyleProperties));
-                                spanStyle.push(getPropertyFromArray('padding-right', cueStyleProperties));
-                            }
                             spanHTMLElement.style.cssText = spanStyle.join(" ");
                         }
 
@@ -841,7 +835,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     else if (pElement.hasOwnProperty('br')) {
                         indexesdBr.push(indexBr);
                         // We append the line break to the cue container.
-                        cueContainer.appendChild(document.createElement('br'));
+                        var brEl = document.createElement('br');
+                        brEl.className = 'lineBreak';
+                        cueContainer.appendChild(brEl);
                     }
 
                     /**
@@ -851,15 +847,68 @@ MediaPlayer.utils.TTMLParser = function() {
                         // Add the text to an individual span element (to add line padding if it is defined).
                         var textNode = document.createElement('span');
                         textNode.innerHTML = pElement;
-                        // If line padding from the paragraph style has to be applied to the text node.
-                        if (arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
-                            textNode.style.cssText += getPropertyFromArray('padding-left', cueStyleProperties);
-                            textNode.style.cssText += getPropertyFromArray('padding-right', cueStyleProperties);
-                        }
+                        
                         // We append the element to the cue container.
                         cueContainer.appendChild(textNode);
                     }
                 });
+
+                // TODO: clean, separate and comment.
+                if(arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
+                    var linePaddingLeft = getPropertyFromArray('padding-left', cueStyleProperties);
+                    var linePaddingRight = getPropertyFromArray('padding-right', cueStyleProperties);
+                    var linePadding = linePaddingLeft.concat(linePaddingRight);
+                    var nodeList = Array.prototype.slice.call(cueContainer.children);
+                    var element  = cueContainer.getElementsByClassName('lineBreak')[0];
+                    var idx      = nodeList.indexOf(element);
+                    var indices  = [];
+                    while (idx != -1) {
+                        indices.push(idx);
+                        idx = nodeList.indexOf(element, idx + 1);
+                    }
+
+                    var outerHTMLBeforeBr = "";
+                    var outerHTMLAfterBr  = "";
+                    var cueOuterHTML = "";
+
+                    if (indices.length) {
+                        indices.forEach(function (i, index) {
+                            if(index === 0) {
+                                var styleBefore = "";
+                                for (var j = 0; j < i; j++) {
+                                    outerHTMLBeforeBr += nodeList[j].outerHTML;
+                                    if (j === 0 || j === i - 1) {
+                                        styleBefore = linePadding.concat(nodeList[j].style.cssText);
+                                    }
+                                }
+                                outerHTMLBeforeBr = '<span style="box-decoration-break: clone; ' + styleBefore + '">' + outerHTMLBeforeBr;
+                            }
+
+                            var styleAfter = "";
+                            for (var k = i + 1; k < nodeList.length; k++) {
+                                outerHTMLAfterBr += nodeList[k].outerHTML;
+                                if(k === i + 1 || k === nodeList.length - 1) {
+                                    styleAfter = linePadding.concat(nodeList[k].style.cssText);
+                                }
+                            }
+
+                            outerHTMLAfterBr = '<span style="box-decoration-break: clone; ' + styleAfter + '">' + outerHTMLAfterBr;
+
+                            if(outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
+                                cueOuterHTML += outerHTMLBeforeBr+ '</' + 'span>' + '<br' + '/>' + outerHTMLAfterBr + '</' + 'span>';
+                            } else if(outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)){
+                                cueOuterHTML += outerHTMLBeforeBr+ '</' + 'span>' + '<br' + '/>' + outerHTMLAfterBr + '</' + 'span>' + '<br' + '/>';
+                            } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
+                                cueOuterHTML += outerHTMLBeforeBr  + '</' + 'span>';
+                            } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
+                                cueOuterHTML += outerHTMLAfterBr  + '</' + 'span>';
+                            } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)) {
+                                cueOuterHTML += outerHTMLAfterBr  + '</' + 'span>'  + '<br' + '/>';
+                            }
+                        });
+                        cueContainer.innerHTML = cueOuterHTML;
+                    }
+                }
 
                 /**
                  * Set the style and region for the cue to be returned.

@@ -6002,7 +6002,6 @@ MediaPlayer.utils.TTMLParser = function() {
             }
             var defaultStyleProperties = {
                 color: "rgb(255,255,255);",
-                "background-color": "rgb(0,0,0);",
                 direction: "ltr;",
                 "font-family": "monospace, sans-serif;",
                 "font-size": cellUnit[1] + "px;",
@@ -6043,10 +6042,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     var spanHTMLElement = document.createElement("span");
                     if (pElement.hasOwnProperty("span@style")) {
                         var spanStyle = getProcessedStyle(pElement["span@style"], cellUnit);
-                        if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                            spanStyle.push(getPropertyFromArray("padding-left", cueStyleProperties));
-                            spanStyle.push(getPropertyFromArray("padding-right", cueStyleProperties));
-                        }
                         spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
                     spanElements.forEach(function(spanEl) {
@@ -6063,17 +6058,65 @@ MediaPlayer.utils.TTMLParser = function() {
                     cueContainer.appendChild(spanHTMLElement);
                 } else if (pElement.hasOwnProperty("br")) {
                     indexesdBr.push(indexBr);
-                    cueContainer.appendChild(document.createElement("br"));
+                    var brEl = document.createElement("br");
+                    brEl.className = "lineBreak";
+                    cueContainer.appendChild(brEl);
                 } else {
                     var textNode = document.createElement("span");
                     textNode.innerHTML = pElement;
-                    if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                        textNode.style.cssText += getPropertyFromArray("padding-left", cueStyleProperties);
-                        textNode.style.cssText += getPropertyFromArray("padding-right", cueStyleProperties);
-                    }
                     cueContainer.appendChild(textNode);
                 }
             });
+            if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                var linePaddingLeft = getPropertyFromArray("padding-left", cueStyleProperties);
+                var linePaddingRight = getPropertyFromArray("padding-right", cueStyleProperties);
+                var linePadding = linePaddingLeft.concat(linePaddingRight);
+                var nodeList = Array.prototype.slice.call(cueContainer.children);
+                var element = cueContainer.getElementsByClassName("lineBreak")[0];
+                var idx = nodeList.indexOf(element);
+                var indices = [];
+                while (idx != -1) {
+                    indices.push(idx);
+                    idx = nodeList.indexOf(element, idx + 1);
+                }
+                var outerHTMLBeforeBr = "";
+                var outerHTMLAfterBr = "";
+                var cueOuterHTML = "";
+                if (indices.length) {
+                    indices.forEach(function(i, index) {
+                        if (index === 0) {
+                            var styleBefore = "";
+                            for (var j = 0; j < i; j++) {
+                                outerHTMLBeforeBr += nodeList[j].outerHTML;
+                                if (j === 0 || j === i - 1) {
+                                    styleBefore = linePadding.concat(nodeList[j].style.cssText);
+                                }
+                            }
+                            outerHTMLBeforeBr = '<span style="box-decoration-break: clone; ' + styleBefore + '">' + outerHTMLBeforeBr;
+                        }
+                        var styleAfter = "";
+                        for (var k = i + 1; k < nodeList.length; k++) {
+                            outerHTMLAfterBr += nodeList[k].outerHTML;
+                            if (k === i + 1 || k === nodeList.length - 1) {
+                                styleAfter = linePadding.concat(nodeList[k].style.cssText);
+                            }
+                        }
+                        outerHTMLAfterBr = '<span style="box-decoration-break: clone; ' + styleAfter + '">' + outerHTMLAfterBr;
+                        if (outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
+                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>" + "<br" + "/>" + outerHTMLAfterBr + "</" + "span>";
+                        } else if (outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
+                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>" + "<br" + "/>" + outerHTMLAfterBr + "</" + "span>" + "<br" + "/>";
+                        } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
+                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>";
+                        } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
+                            cueOuterHTML += outerHTMLAfterBr + "</" + "span>";
+                        } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
+                            cueOuterHTML += outerHTMLAfterBr + "</" + "span>" + "<br" + "/>";
+                        }
+                    });
+                    cueContainer.innerHTML = cueOuterHTML;
+                }
+            }
             if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
                 deletePropertyFromArray("padding-left", cueStyleProperties);
                 deletePropertyFromArray("padding-right", cueStyleProperties);
