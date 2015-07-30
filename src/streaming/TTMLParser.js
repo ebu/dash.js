@@ -727,6 +727,7 @@ MediaPlayer.utils.TTMLParser = function() {
                // Add initial/default values to what's not defined in the styling:
                 var defaultStyleProperties = {
                     'color': 'rgb(255,255,255);',
+                    'background-color': 'rgb(0,0,0);',
                     'direction': 'ltr;',
                     'font-family': 'monospace, sans-serif;',
                     'font-size': cellUnit[1] + 'px;',
