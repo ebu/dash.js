@@ -6001,7 +6001,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
             }
             var defaultStyleProperties = {
-                color: "rgb(0,0,0);",
+                color: "rgb(255,255,255);",
                 direction: "ltr;",
                 "font-family": "monospace, sans-serif;",
                 "font-size": cellUnit[1] + "px;",
