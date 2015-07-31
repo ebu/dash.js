@@ -40,6 +40,31 @@ MediaPlayer.utils.TTMLParser = function() {
         ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
+        defaultLayoutProperties = {
+            'top': '85%;',
+            'left': '5%;',
+            'width': '90%;',
+            'height': '10%;',
+            'align-items': 'flex-start;',
+            'overflow': 'visible;',
+            '-ms-writing-mode': 'lr-tb, horizontal-tb;;',
+            '-webkit-writing-mode': 'horizontal-tb;',
+            '-moz-writing-mode': 'horizontal-tb;',
+            'writing-mode': 'horizontal-tb;'
+        },
+        defaultStyleProperties = {
+            'color'          : 'rgb(255,255,255);',
+            'direction'      : 'ltr;',
+            'font-family'    : 'monospace, sans-serif;',
+            'font-style'     : 'normal;',
+            'line-height'    : 'normal;',
+            'font-weight'    : 'normal;',
+            'text-align'     : 'start;',
+            'justify-content': 'flex-start;',
+            'text-decoration': 'none;',
+            'unicode-bidi'   : 'normal;',
+            'white-space'    : 'normal;'
+        },
 
         parseTimings = function(timingStr) {
             // Test if the time provided by the caption is valid.
@@ -167,7 +192,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Take only the name of the property
                     if(primeArray[i]){
                         if(primeArray[i].split(':')[0].indexOf(arrayToAdd[j].split(':')[0]) > -1){
-                        primeArray.splice(i, 1);
+                            primeArray.splice(i, 1);
                         }
                     }
                 }
@@ -365,8 +390,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Send a copy of the style object, so it does not modify the original by cleaning it.
                     var stylesFromId = processStyle(JSON.parse(JSON.stringify(cueStyle)), cellUnit);
                     styles = styles.concat(stylesFromId);
-                } else {
-                    styles = [].concat(styles);
                 }
             });
             return styles;
@@ -517,56 +540,88 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Send a copy of the style object, so it does not modify the original by cleaning it.
                     var regionsFromId = processRegion(JSON.parse(JSON.stringify(cueRegion)), cellUnit);
                     regions = regions.concat(regionsFromId);
-                } else {
-                    regions = [].concat(regions);
                 }
             });
             return regions;
         },
 
+        //Return the cellResolution defined by the TTML document.
+        getCellResolution = function() {
+            var defaultCellResolution = [32, 15]; // Default cellResolution.
+            if (ttml.hasOwnProperty("tt@ttp:cellResolution")){
+                return ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+            } else {
+                return defaultCellResolution;
+            }
+        },
+
+        // Return the cue wrapped into a span specifying its linePadding.
         applyLinePadding = function(cueHTML, cueStyle) {
+            // Extract the linePadding property from cueStyleProperties.
             var linePaddingLeft = getPropertyFromArray('padding-left', cueStyle);
             var linePaddingRight = getPropertyFromArray('padding-right', cueStyle);
             var linePadding = linePaddingLeft.concat(" "+linePaddingRight);
-            var nodeList = Array.prototype.slice.call(cueHTML.children);
-            var element  = cueHTML.getElementsByClassName('lineBreak')[0];
-            var idx      = nodeList.indexOf(element);
-            var indices  = [];
+
+            // Strings for the cue innerHTML construction.
             var spanStringEnd = "<\/span>";
             var br = "\<br>";
             var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
-            while (idx != -1) {
-                indices.push(idx);
-                idx = nodeList.indexOf(element, idx + 1);
-            }
 
+            // Declaration of the HTML elements to be used in the cue innerHTML construction.
             var outerHTMLBeforeBr = "";
             var outerHTMLAfterBr  = "";
             var cueInnerHTML = "";
 
+            // List all the nodes of the subtitle.
+            var nodeList = Array.prototype.slice.call(cueHTML.children);
+            // Take a br element as reference.
+            var brElement  = cueHTML.getElementsByClassName('lineBreak')[0];
+            // First index of the first br element.
+            var idx      = nodeList.indexOf(brElement);
+            // array of all the br element indices
+            var indices  = [];
+            // Find all the indices of the br elements.
+            while (idx != -1) {
+                indices.push(idx);
+                idx = nodeList.indexOf(brElement, idx + 1);
+            }
+
+            // If br elements are found:
             if (indices.length) {
+                // For each index of a br element we compute the HTML coming before and/or after it.
                 indices.forEach(function (i, index) {
+                    // If this is the first line break, we compute the HTML of the element coming before.
                     if(index === 0) {
                         var styleBefore = "";
+                        // for each element coming before the line break, we add its HTML.
                         for (var j = 0; j < i; j++) {
                             outerHTMLBeforeBr += nodeList[j].outerHTML;
-                            if (j === 0 || j === i - 1) {
+                            // If this is the first element, we add its style to the wrapper.
+                            if (j === 0) {
                                 styleBefore = linePadding.concat(nodeList[j].style.cssText);
                             }
                         }
+                        // The before element will comprises the clone property (for line wrapping), the style that
+                        // need to be applied (ex: background-color) and the rest og the HTML.
                         outerHTMLBeforeBr = clonePropertyString + styleBefore + '">' + outerHTMLBeforeBr;
                     }
-
+                    // For every element of the list, we compute the element coming after the line break.s
                     var styleAfter = "";
+                    // for each element coming after the line break, we add its HTML.
                     for (var k = i + 1; k < nodeList.length; k++) {
                         outerHTMLAfterBr += nodeList[k].outerHTML;
-                        if(k === i + 1 || k === nodeList.length - 1) {
+                        // If this is the last element, we add its style to the wrapper.
+                        if(k === nodeList.length - 1) {
                             styleAfter += linePadding.concat(nodeList[k].style.cssText);
                         }
                     }
 
+                    // The before element will comprises the clone property (for line wrapping), the style that
+                    // need to be applied (ex: background-color) and the rest og the HTML.
                     outerHTMLAfterBr = clonePropertyString + styleAfter + '">' + outerHTMLAfterBr;
 
+                    // For each line break we must add the before and/or after element to the final cue as well as
+                    // the line break when needed.
                     if(outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
                         cueInnerHTML += outerHTMLBeforeBr + spanStringEnd + br + outerHTMLAfterBr + spanStringEnd;
                     } else if(outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)){
@@ -579,8 +634,177 @@ MediaPlayer.utils.TTMLParser = function() {
                         cueInnerHTML += outerHTMLAfterBr  + spanStringEnd + br;
                     }
                 });
-                return cueInnerHTML;
+            } else {
+                // If there is no line break in the subtitle, we simply wrap cue in a span indicating the linePadding.
+                cueInnerHTML = clonePropertyString + linePadding + '">' + cueHTML.outerHTML + spanStringEnd;
             }
+            return cueInnerHTML;
+        },
+
+        /*** Create the cue element
+         * I. The cues are text only:
+         *      i) The cue contains a 'br' element
+         *      ii) The cue contains a span element
+         *      iii) The cue contains text
+         * ***/
+
+        constructCue = function(cueElements, cellUnit) {
+            var cue = document.createElement('div');
+            cueElements.forEach(function(el) {
+                // If metadata is present, do not process.
+                if(el.hasOwnProperty('metadata')) {
+                    return;
+                }
+
+                /**
+                 * If the p element contains spans: create the span elements.
+                 */
+                if (el.hasOwnProperty('span')) {
+
+                    // Stock the span subtitles in an array (in case there are only one value).
+                    var spanElements = [].concat(el['span']);
+
+                    // Create the span element.
+                    var spanHTMLElement = document.createElement('span');
+
+                    // Extract the style of the span.
+                    if (el.hasOwnProperty('span@style')) {
+                        var spanStyle = getProcessedStyle(el['span@style'], cellUnit);
+                        spanHTMLElement.style.cssText = spanStyle.join(" ");
+                    }
+
+
+                    // if the span has more than one element, we check for each of them their nature (br or text).
+                    spanElements.forEach(function(spanEl) {
+                        // If metadata is present, do not process.
+                        if(spanElements.hasOwnProperty('metadata')) {
+                            return;
+                        }
+                        // If the element is a string
+                        if (typeof spanEl === 'string' || spanEl instanceof String) {
+                            var textNode = document.createTextNode(spanEl);
+                            spanHTMLElement.appendChild(textNode);
+                            // If the element is a 'br' tag
+                        } else if ('br' in spanEl) {
+                            // Create a br element.
+                            spanHTMLElement.appendChild(document.createElement('br'));
+                        }
+                    });
+                    // We append the element to the cue container.
+                    cue.appendChild(spanHTMLElement);
+                }
+
+                /**
+                 * Create a br element if there is one in the cue.
+                 */
+                else if (el.hasOwnProperty('br')) {
+                    // We append the line break to the cue container.
+                    var brEl = document.createElement('br');
+                    brEl.className = 'lineBreak';
+                    cue.appendChild(brEl);
+                }
+
+                /**
+                 * Add the text that is not in any inline element
+                 */
+                else {
+                    // Add the text to an individual span element (to add line padding if it is defined).
+                    var textNode = document.createElement('span');
+                    textNode.innerHTML = el;
+
+                    // We append the element to the cue container.
+                    cue.appendChild(textNode);
+                }
+            });
+            return cue;
+        },
+
+        constructCueRegion = function(cue, cellUnit) {
+            var cueRegionProperties = []; // properties to be put in the "captionRegion" HTML element
+            // Obtain the region ID(s) assigned to the cue.
+            var pRegionID = cue['p@region'];
+            // If div has a region.
+            var divRegionID = ttml.tt.body['div@region'];
+
+            var divRegion;
+            var pRegion;
+
+            // If the div element reference a region.
+            if (divRegionID) {
+                divRegion = getProcessedRegion(divRegionID, cellUnit);
+            }
+            // If the p element reference a region.
+            if (pRegionID) {
+                pRegion = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
+                if(divRegion){
+                    cueRegionProperties = removeDuplicatesFromArrayAndConcat(divRegion, pRegion);
+                } else {
+                    cueRegionProperties = pRegion;
+                }
+            }
+
+            // Add initial/default values to what's not defined in the layout:
+            for (var key in defaultLayoutProperties) {
+                if(defaultLayoutProperties.hasOwnProperty(key)){
+                    if (!arrayContains(key, cueRegionProperties)) {
+                        cueRegionProperties.push(key + ':' + defaultLayoutProperties[key]);
+
+                    }
+                }
+            }
+            return cueRegionProperties;
+        },
+
+        constructCueStyle = function(cue, cellUnit) {
+            var cueStyleProperties = []; // properties to be put in the "paragraph" HTML element
+            // Obtain the style ID(s) assigned to the cue.
+            var pStyleID = cue['p@style'];
+            // If body has a style.
+            var bodyStyleID = ttml.tt['body@style'];
+            // If div has a style.
+            var divStyleID = ttml.tt.body['div@style'];
+
+            var bodyStyle;
+            var divStyle;
+            var pStyle;
+
+            // If the body element reference a style.
+            if (bodyStyleID) {
+                bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
+            }
+
+            // If the div element reference a style.
+            if (divStyleID) {
+                divStyle = getProcessedStyle(divStyleID, cellUnit);
+                if(bodyStyle){
+                    divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+                }
+            }
+
+            // If the p element reference a style.
+            if (pStyleID) {
+                pStyle = getProcessedStyle(pStyleID, cellUnit);
+                if(bodyStyle && divStyle){
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                } else if(bodyStyle){
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+                } else if(divStyle){
+                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                } else {
+                    cueStyleProperties = pStyle;
+                }
+            }
+
+            // Add initial/default values to what's not defined in the styling:
+            for (var key in defaultStyleProperties) {
+                if(defaultStyleProperties.hasOwnProperty(key)){
+                    if (!arrayContains(key, cueStyleProperties)) {
+                        cueStyleProperties.push(key + ':' + defaultStyleProperties[key]);
+
+                    }
+                }
+            }
+            return cueStyleProperties;
         },
 
         /**
@@ -618,13 +842,7 @@ MediaPlayer.utils.TTMLParser = function() {
             }
 
             // Extract the cellResolution information
-            var cellUnitDefault = [32, 15]; // Default cellResolution.
-            var cellResolution;
-            if (ttml.hasOwnProperty("tt@ttp:cellResolution")){
-                cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
-            } else {
-                cellResolution = cellUnitDefault;
-            }
+            var cellResolution = getCellResolution();
 
             // Recover the video width and height displayed by the player.
             // TODO: Make it dynamic by the controller.
@@ -633,6 +851,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // Compute the CellResolution unit in order to process properties using sizing (fontSize, linePadding, etc).
             var cellUnit = [videoWidth / cellResolution[0], videoHeight / cellResolution[1]];
+            defaultStyleProperties['font-size'] = cellUnit[1] + 'px;';
 
             // Stock ttmlLayout and ttmlStyling in an array (in case there are only one value).
             ttmlLayout = [].concat(ttmlLayout);
@@ -658,20 +877,13 @@ MediaPlayer.utils.TTMLParser = function() {
                 throw errorMsg;
             }
 
-            // If body has a style.
-            var bodyStyleID = ttml.tt['body@style'];
-
-            // If div has a style.
-            var divStyleID = ttml.tt.body['div@style'];
-
-            // If div has a region.
-            var divRegionID = ttml.tt.body['div@region'];
-
             /*** Parsing of every cue.
              *
              * cues: List of the cues found in the ttml parsing.
              *       We iterate on this list.
              * cue: Every cue is parsed individually and creates an HTML element with its style and children.
+             *
+             * pElements: all the nodes that can be found in the paragraph.
              *
              * ***/
 
@@ -679,18 +891,6 @@ MediaPlayer.utils.TTMLParser = function() {
             var captionArray = [];
 
             cues.forEach(function(cue) {
-                // TODO: this foreach should be a map.
-                // var x = []
-                // array.forEach(function(d) {
-                //    var y = ...
-                //    x.push(y)
-                // })
-                // is equivalent to:
-                // var x = array.map(function(d) {
-                //    var y = ...
-                //    return
-                // })
-
                 // Obtain the start and end time of the cue.
                 if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
                     var pStartTime = parseTimings(cue['p@begin']);
@@ -710,238 +910,77 @@ MediaPlayer.utils.TTMLParser = function() {
                     throw errorMsg;
                 }
 
-                var cueStyleProperties = []; // properties to be put in the "paragraph" HTML element
-                var cueRegionProperties = []; // properties to be put in the "captionRegion" HTML element
-
-                // Obtain the style and region IDs assigned to the cue.
-                var pStyleID = cue['p@style'];
-                var pRegionID = cue['p@region'];
-
                 /**
                  * Find the region defined for the cue.
                  */
-
-                // If the div element reference a region.
-                if (divRegionID) {
-                    cueRegionProperties = getProcessedRegion(divRegionID, cellUnit);
-                }
-                // If the p element reference a region.
-                if (pRegionID) {
-                    cueRegionProperties = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
-                }
-
-                // Add initial/default values to what's not defined in the layout:
-                var defaultLayoutProperties = {
-                    'top': '85%;',
-                    'left': '5%;',
-                    'width': '90%;',
-                    'height': '10%;',
-                    'align-items': 'flex-start;',
-                    'overflow': 'visible;',
-                    '-ms-writing-mode': 'lr-tb, horizontal-tb;;',
-                    '-webkit-writing-mode': 'horizontal-tb;',
-                    '-moz-writing-mode': 'horizontal-tb;',
-                    'writing-mode': 'horizontal-tb;'
-                };
-
-                for (var key in defaultLayoutProperties) {
-                    if (!arrayContains(key, cueRegionProperties)) {
-                        cueRegionProperties.push(key + ':' + defaultLayoutProperties[key]);
-
-                    }
-                }
-
+                // properties to be put in the "captionRegion" HTML element.
+                var cueRegionProperties = constructCueRegion(cue, cellUnit);
                 /**
                  * Find the style defined for the cue.
                  */
-                var bodyStyle;
-                var divStyle;
-                var pStyle;
-
-                // If the body element reference a style.
-                if (bodyStyleID) {
-                    bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
-                }
-
-                // If the div element reference a style.
-                if (divStyleID) {
-                    divStyle = getProcessedStyle(divStyleID, cellUnit);
-                    if(bodyStyle){
-                        divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
-                    }
-                }
-
-                // If the p element reference a style.
-                if (pStyleID) {
-                    pStyle = getProcessedStyle(pStyleID, cellUnit);
-                    if(bodyStyle && divStyle){
-                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
-                    } else if(bodyStyle){
-                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
-                    } else if(divStyle){
-                        cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
-                    } else {
-                        cueStyleProperties = pStyle;
-                    }
-                }
-
-                // Add initial/default values to what's not defined in the styling:
-                var defaultStyleProperties = {
-                    'color': 'rgb(255,255,255);',
-                    'direction': 'ltr;',
-                    'font-family': 'monospace, sans-serif;',
-                    'font-size': cellUnit[1] + 'px;',
-                    'font-style': 'normal;',
-                    'line-height': 'normal;',
-                    'font-weight': 'normal;',
-                    'text-align': 'start;',
-                    'justify-content': 'flex-start;',
-                    'text-decoration': 'none;',
-                    'unicode-bidi': 'normal;',
-                    'white-space': 'normal;'
-                };
-                for (var key in defaultStyleProperties) {
-                    if (!arrayContains(key, cueStyleProperties)) {
-                        cueStyleProperties.push(key + ':' + defaultStyleProperties[key]);
-
-                    }
-                }
+                // properties to be put in the "paragraph" HTML element.
+                var cueStyleProperties = constructCueStyle(cue, cellUnit);
 
                 /**
                  * /!\ Create the cue HTML Element containing the whole cue.
                  */
 
-                var cueHTMLElement = document.createElement('div');
-                cueHTMLElement.className = 'paragraph';
+                // Final cue HTML element.
+                var cueParagraph = document.createElement('div');
+                cueParagraph.className = 'paragraph';
 
-                // Create an inner Span containing the cue and its children if they exist.
-                // innerContainer will contain the direction and unicode-bidi information if they exist
+                // Stock the element in the subtitle (in p) in an array (in case there are only one value).
+                var pElements = [].concat(cue.p);
+
+                // Create an wrapper containing the cue information about unicodeBidi and direction
                 // as they need to be defined on at this level.
-                var cueContainer = document.createElement('div');
-                cueContainer.className = 'cueContainer';
+                // We append to the wrapper the cue itself.
+                var cueDirUniWrapper = constructCue(pElements, cellUnit);
+                cueDirUniWrapper.className = 'cueDirUniWrapper';
 
-                // If the properties define these two properties, we place them in innerContainer
-                // and delete them from the cue style so it is not added afterwards.
+                // If the style defines these two properties, we place them in cueContainer
+                // and delete them from the cue style so it is not added afterwards to the final cue.
                 if (arrayContains('unicode-bidi', cueStyleProperties)) {
-                    cueContainer.style.cssText += getPropertyFromArray('unicode-bidi', cueStyleProperties);
+                    cueDirUniWrapper.style.cssText += getPropertyFromArray('unicode-bidi', cueStyleProperties);
                     deletePropertyFromArray('unicode-bidi', cueStyleProperties);
                 }
                 if (arrayContains('direction', cueStyleProperties)) {
-                    cueContainer.style.cssText += getPropertyFromArray('direction', cueStyleProperties);
+                    cueDirUniWrapper.style.cssText += getPropertyFromArray('direction', cueStyleProperties);
                     deletePropertyFromArray('direction', cueStyleProperties);
                 }
 
-                /*** Create the cue element
-                 * I. The cues are text only:
-                 *      i) The cue contains a 'br' element
-                 *      ii) The cue contains a span element
-                 *      iii) The cue contains text
-                 * ***/
-
-                    // Stock the p subtitles in an array (in case there are only one value).
-                var pElements = [].concat(cue.p);
-
-                // For each child of the paragraph we add it in the cue depending of its kind (span, br, text).
-                pElements.forEach(function(pElement) {
-                    // If metadata is present, do not process.
-                    if(pElement.hasOwnProperty('metadata')) {
-                        return;
-                    }
-
-                    /**
-                     * If the p element contains spans: create the span elements.
-                     */
-                    if (pElement.hasOwnProperty('span')) {
-
-                        // Stock the span subtitles in an array (in case there are only one value).
-                        var spanElements = [].concat(pElement['span']);
-
-                        // Create the span element.
-                        var spanHTMLElement = document.createElement('span');
-
-                        // Extract the style of the span.
-                        if (pElement.hasOwnProperty('span@style')) {
-                            var spanStyle = getProcessedStyle(pElement['span@style'], cellUnit);
-                            spanHTMLElement.style.cssText = spanStyle.join(" ");
-                        }
-
-
-                        // if the span has more than one element, we check for each of them their nature (br or text).
-                        spanElements.forEach(function(spanEl) {
-                            // If metadata is present, do not process.
-                            if(spanElements.hasOwnProperty('metadata')) {
-                                return;
-                            }
-                            // If the element is a string
-                            if (typeof spanEl === 'string' || spanEl instanceof String) {
-                                var textNode = document.createTextNode(spanEl);
-                                spanHTMLElement.appendChild(textNode);
-                                // If the element is a 'br' tag
-                            } else if ('br' in spanEl) {
-                                // Create a br element.
-                                spanHTMLElement.appendChild(document.createElement('br'));
-                            }
-                            // TODO: recursivity: what does happen if the span contains spans elements?
-                        });
-                        // We append the element to the cue container.
-                        cueContainer.appendChild(spanHTMLElement);
-                    }
-
-                    /**
-                     * Create a br element if there is one in the cue.
-                     */
-                    else if (pElement.hasOwnProperty('br')) {
-                        // We append the line break to the cue container.
-                        var brEl = document.createElement('br');
-                        brEl.className = 'lineBreak';
-                        cueContainer.appendChild(brEl);
-                    }
-
-                    /**
-                     * Add the text that is not in any inline element
-                     */
-                    else {
-                        // Add the text to an individual span element (to add line padding if it is defined).
-                        var textNode = document.createElement('span');
-                        textNode.innerHTML = pElement;
-
-                        // We append the element to the cue container.
-                        cueContainer.appendChild(textNode);
-                    }
-                });
-
-                // TODO: clean, separate and comment.
+                // Apply the linePadding property if it is specifyied in the cue style.
                 if(arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
-                    cueContainer.innerHTML = applyLinePadding(cueContainer, cueStyleProperties);
+                    cueDirUniWrapper.innerHTML = applyLinePadding(cueDirUniWrapper, cueStyleProperties);
                 }
 
                 /**
-                 * Set the style and region for the cue to be returned.
+                 * Clean and set the style and region for the cue to be returned.
                  */
 
-                // Remove the line padding property from being added at the paragraph element level.
+                // Remove the line padding property from being added at the "paragraph" element level.
                 if (arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
                     deletePropertyFromArray('padding-left', cueStyleProperties);
                     deletePropertyFromArray('padding-right', cueStyleProperties);
                 }
 
-                // We link the p style to the cueHTMLelement, except line padding that is added in the span before.
+                // We link the p style to the finale cueParagraph element.
                 if (cueStyleProperties) {
-                    cueHTMLElement.style.cssText = cueStyleProperties.join(" ");
+                    cueParagraph.style.cssText = cueStyleProperties.join(" ");
                 }
                 // We define the CSS style for the cue region.
                 if (cueRegionProperties) {
                     cueRegionProperties = cueRegionProperties.join(" ");
                 }
 
-                // We then place the cue inside the paragraph element.
-                cueHTMLElement.appendChild(cueContainer);
+                // We then place the cue wrapper inside the paragraph element.
+                cueParagraph.appendChild(cueDirUniWrapper);
 
                 // We add all the cue information in captionArray.
                 captionArray.push({
                     start: spanStartTime || pStartTime,
                     end: spanEndTime || pEndTime,
-                    cueHTMLElement: cueHTMLElement,
+                    cueHTMLElement: cueParagraph,
                     cueRegion: cueRegionProperties,
                     type: "text"
                 });

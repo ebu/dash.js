@@ -5594,7 +5594,30 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, parseTimings = function(timingStr) {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, defaultLayoutProperties = {
+        top: "85%;",
+        left: "5%;",
+        width: "90%;",
+        height: "10%;",
+        "align-items": "flex-start;",
+        overflow: "visible;",
+        "-ms-writing-mode": "lr-tb, horizontal-tb;;",
+        "-webkit-writing-mode": "horizontal-tb;",
+        "-moz-writing-mode": "horizontal-tb;",
+        "writing-mode": "horizontal-tb;"
+    }, defaultStyleProperties = {
+        color: "rgb(255,255,255);",
+        direction: "ltr;",
+        "font-family": "monospace, sans-serif;",
+        "font-style": "normal;",
+        "line-height": "normal;",
+        "font-weight": "normal;",
+        "text-align": "start;",
+        "justify-content": "flex-start;",
+        "text-decoration": "none;",
+        "unicode-bidi": "normal;",
+        "white-space": "normal;"
+    }, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
             return NaN;
@@ -5820,8 +5843,6 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueStyle) {
                 var stylesFromId = processStyle(JSON.parse(JSON.stringify(cueStyle)), cellUnit);
                 styles = styles.concat(stylesFromId);
-            } else {
-                styles = [].concat(styles);
             }
         });
         return styles;
@@ -5893,36 +5914,41 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueRegion) {
                 var regionsFromId = processRegion(JSON.parse(JSON.stringify(cueRegion)), cellUnit);
                 regions = regions.concat(regionsFromId);
-            } else {
-                regions = [].concat(regions);
             }
         });
         return regions;
+    }, getCellResolution = function() {
+        var defaultCellResolution = [ 32, 15 ];
+        if (ttml.hasOwnProperty("tt@ttp:cellResolution")) {
+            return ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        } else {
+            return defaultCellResolution;
+        }
     }, applyLinePadding = function(cueHTML, cueStyle) {
         var linePaddingLeft = getPropertyFromArray("padding-left", cueStyle);
         var linePaddingRight = getPropertyFromArray("padding-right", cueStyle);
         var linePadding = linePaddingLeft.concat(" " + linePaddingRight);
-        var nodeList = Array.prototype.slice.call(cueHTML.children);
-        var element = cueHTML.getElementsByClassName("lineBreak")[0];
-        var idx = nodeList.indexOf(element);
-        var indices = [];
         var spanStringEnd = "</span>";
         var br = "<br>";
         var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
-        while (idx != -1) {
-            indices.push(idx);
-            idx = nodeList.indexOf(element, idx + 1);
-        }
         var outerHTMLBeforeBr = "";
         var outerHTMLAfterBr = "";
         var cueInnerHTML = "";
+        var nodeList = Array.prototype.slice.call(cueHTML.children);
+        var brElement = cueHTML.getElementsByClassName("lineBreak")[0];
+        var idx = nodeList.indexOf(brElement);
+        var indices = [];
+        while (idx != -1) {
+            indices.push(idx);
+            idx = nodeList.indexOf(brElement, idx + 1);
+        }
         if (indices.length) {
             indices.forEach(function(i, index) {
                 if (index === 0) {
                     var styleBefore = "";
                     for (var j = 0; j < i; j++) {
                         outerHTMLBeforeBr += nodeList[j].outerHTML;
-                        if (j === 0 || j === i - 1) {
+                        if (j === 0) {
                             styleBefore = linePadding.concat(nodeList[j].style.cssText);
                         }
                     }
@@ -5931,7 +5957,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 var styleAfter = "";
                 for (var k = i + 1; k < nodeList.length; k++) {
                     outerHTMLAfterBr += nodeList[k].outerHTML;
-                    if (k === i + 1 || k === nodeList.length - 1) {
+                    if (k === nodeList.length - 1) {
                         styleAfter += linePadding.concat(nodeList[k].style.cssText);
                     }
                 }
@@ -5948,8 +5974,108 @@ MediaPlayer.utils.TTMLParser = function() {
                     cueInnerHTML += outerHTMLAfterBr + spanStringEnd + br;
                 }
             });
-            return cueInnerHTML;
+        } else {
+            cueInnerHTML = clonePropertyString + linePadding + '">' + cueHTML.outerHTML + spanStringEnd;
         }
+        return cueInnerHTML;
+    }, constructCue = function(cueElements, cellUnit) {
+        var cue = document.createElement("div");
+        cueElements.forEach(function(el) {
+            if (el.hasOwnProperty("metadata")) {
+                return;
+            }
+            if (el.hasOwnProperty("span")) {
+                var spanElements = [].concat(el["span"]);
+                var spanHTMLElement = document.createElement("span");
+                if (el.hasOwnProperty("span@style")) {
+                    var spanStyle = getProcessedStyle(el["span@style"], cellUnit);
+                    spanHTMLElement.style.cssText = spanStyle.join(" ");
+                }
+                spanElements.forEach(function(spanEl) {
+                    if (spanElements.hasOwnProperty("metadata")) {
+                        return;
+                    }
+                    if (typeof spanEl === "string" || spanEl instanceof String) {
+                        var textNode = document.createTextNode(spanEl);
+                        spanHTMLElement.appendChild(textNode);
+                    } else if ("br" in spanEl) {
+                        spanHTMLElement.appendChild(document.createElement("br"));
+                    }
+                });
+                cue.appendChild(spanHTMLElement);
+            } else if (el.hasOwnProperty("br")) {
+                var brEl = document.createElement("br");
+                brEl.className = "lineBreak";
+                cue.appendChild(brEl);
+            } else {
+                var textNode = document.createElement("span");
+                textNode.innerHTML = el;
+                cue.appendChild(textNode);
+            }
+        });
+        return cue;
+    }, constructCueRegion = function(cue, cellUnit) {
+        var cueRegionProperties = [];
+        var pRegionID = cue["p@region"];
+        var divRegionID = ttml.tt.body["div@region"];
+        var divRegion;
+        var pRegion;
+        if (divRegionID) {
+            divRegion = getProcessedRegion(divRegionID, cellUnit);
+        }
+        if (pRegionID) {
+            pRegion = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
+            if (divRegion) {
+                cueRegionProperties = removeDuplicatesFromArrayAndConcat(divRegion, pRegion);
+            } else {
+                cueRegionProperties = pRegion;
+            }
+        }
+        for (var key in defaultLayoutProperties) {
+            if (defaultLayoutProperties.hasOwnProperty(key)) {
+                if (!arrayContains(key, cueRegionProperties)) {
+                    cueRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
+                }
+            }
+        }
+        return cueRegionProperties;
+    }, constructCueStyle = function(cue, cellUnit) {
+        var cueStyleProperties = [];
+        var pStyleID = cue["p@style"];
+        var bodyStyleID = ttml.tt["body@style"];
+        var divStyleID = ttml.tt.body["div@style"];
+        var bodyStyle;
+        var divStyle;
+        var pStyle;
+        if (bodyStyleID) {
+            bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
+        }
+        if (divStyleID) {
+            divStyle = getProcessedStyle(divStyleID, cellUnit);
+            if (bodyStyle) {
+                divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+            }
+        }
+        if (pStyleID) {
+            pStyle = getProcessedStyle(pStyleID, cellUnit);
+            if (bodyStyle && divStyle) {
+                cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+            } else if (bodyStyle) {
+                cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+            } else if (divStyle) {
+                cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+            } else {
+                cueStyleProperties = pStyle;
+            }
+        }
+        for (var key in defaultStyleProperties) {
+            if (defaultStyleProperties.hasOwnProperty(key)) {
+                if (!arrayContains(key, cueStyleProperties)) {
+                    cueStyleProperties.push(key + ":" + defaultStyleProperties[key]);
+                }
+            }
+        }
+        return cueStyleProperties;
     }, internalParse = function(data) {
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
@@ -5962,16 +6088,11 @@ MediaPlayer.utils.TTMLParser = function() {
             var errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
         }
-        var cellUnitDefault = [ 32, 15 ];
-        var cellResolution;
-        if (ttml.hasOwnProperty("tt@ttp:cellResolution")) {
-            cellResolution = ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
-        } else {
-            cellResolution = cellUnitDefault;
-        }
+        var cellResolution = getCellResolution();
         var videoWidth = document.getElementById("videoPlayer").clientWidth;
         var videoHeight = document.getElementById("videoPlayer").clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
+        defaultStyleProperties["font-size"] = cellUnit[1] + "px;";
         ttmlLayout = [].concat(ttmlLayout);
         ttmlStyling = [].concat(ttmlStyling);
         var nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
@@ -5984,9 +6105,6 @@ MediaPlayer.utils.TTMLParser = function() {
             var errorMsg = "TTML document does not contain any cues";
             throw errorMsg;
         }
-        var bodyStyleID = ttml.tt["body@style"];
-        var divStyleID = ttml.tt.body["div@style"];
-        var divRegionID = ttml.tt.body["div@region"];
         var captionArray = [];
         cues.forEach(function(cue) {
             if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
@@ -6003,140 +6121,39 @@ MediaPlayer.utils.TTMLParser = function() {
                 errorMsg = "TTML document has incorrect timing value";
                 throw errorMsg;
             }
-            var cueStyleProperties = [];
-            var cueRegionProperties = [];
-            var pStyleID = cue["p@style"];
-            var pRegionID = cue["p@region"];
-            if (divRegionID) {
-                cueRegionProperties = getProcessedRegion(divRegionID, cellUnit);
-            }
-            if (pRegionID) {
-                cueRegionProperties = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
-            }
-            var defaultLayoutProperties = {
-                top: "85%;",
-                left: "5%;",
-                width: "90%;",
-                height: "10%;",
-                "align-items": "flex-start;",
-                overflow: "visible;",
-                "-ms-writing-mode": "lr-tb, horizontal-tb;;",
-                "-webkit-writing-mode": "horizontal-tb;",
-                "-moz-writing-mode": "horizontal-tb;",
-                "writing-mode": "horizontal-tb;"
-            };
-            for (var key in defaultLayoutProperties) {
-                if (!arrayContains(key, cueRegionProperties)) {
-                    cueRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
-                }
-            }
-            var bodyStyle;
-            var divStyle;
-            var pStyle;
-            if (bodyStyleID) {
-                bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
-            }
-            if (divStyleID) {
-                divStyle = getProcessedStyle(divStyleID, cellUnit);
-                if (bodyStyle) {
-                    divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
-                }
-            }
-            if (pStyleID) {
-                pStyle = getProcessedStyle(pStyleID, cellUnit);
-                if (bodyStyle && divStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
-                } else if (bodyStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
-                } else if (divStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
-                } else {
-                    cueStyleProperties = pStyle;
-                }
-            }
-            var defaultStyleProperties = {
-                color: "rgb(255,255,255);",
-                direction: "ltr;",
-                "font-family": "monospace, sans-serif;",
-                "font-size": cellUnit[1] + "px;",
-                "font-style": "normal;",
-                "line-height": "normal;",
-                "font-weight": "normal;",
-                "text-align": "start;",
-                "justify-content": "flex-start;",
-                "text-decoration": "none;",
-                "unicode-bidi": "normal;",
-                "white-space": "normal;"
-            };
-            for (var key in defaultStyleProperties) {
-                if (!arrayContains(key, cueStyleProperties)) {
-                    cueStyleProperties.push(key + ":" + defaultStyleProperties[key]);
-                }
-            }
-            var cueHTMLElement = document.createElement("div");
-            cueHTMLElement.className = "paragraph";
-            var cueContainer = document.createElement("div");
-            cueContainer.className = "cueContainer";
+            var cueRegionProperties = constructCueRegion(cue, cellUnit);
+            var cueStyleProperties = constructCueStyle(cue, cellUnit);
+            var cueParagraph = document.createElement("div");
+            cueParagraph.className = "paragraph";
+            var pElements = [].concat(cue.p);
+            var cueDirUniWrapper = constructCue(pElements, cellUnit);
+            cueDirUniWrapper.className = "cueDirUniWrapper";
             if (arrayContains("unicode-bidi", cueStyleProperties)) {
-                cueContainer.style.cssText += getPropertyFromArray("unicode-bidi", cueStyleProperties);
+                cueDirUniWrapper.style.cssText += getPropertyFromArray("unicode-bidi", cueStyleProperties);
                 deletePropertyFromArray("unicode-bidi", cueStyleProperties);
             }
             if (arrayContains("direction", cueStyleProperties)) {
-                cueContainer.style.cssText += getPropertyFromArray("direction", cueStyleProperties);
+                cueDirUniWrapper.style.cssText += getPropertyFromArray("direction", cueStyleProperties);
                 deletePropertyFromArray("direction", cueStyleProperties);
             }
-            var pElements = [].concat(cue.p);
-            pElements.forEach(function(pElement) {
-                if (pElement.hasOwnProperty("metadata")) {
-                    return;
-                }
-                if (pElement.hasOwnProperty("span")) {
-                    var spanElements = [].concat(pElement["span"]);
-                    var spanHTMLElement = document.createElement("span");
-                    if (pElement.hasOwnProperty("span@style")) {
-                        var spanStyle = getProcessedStyle(pElement["span@style"], cellUnit);
-                        spanHTMLElement.style.cssText = spanStyle.join(" ");
-                    }
-                    spanElements.forEach(function(spanEl) {
-                        if (spanElements.hasOwnProperty("metadata")) {
-                            return;
-                        }
-                        if (typeof spanEl === "string" || spanEl instanceof String) {
-                            var textNode = document.createTextNode(spanEl);
-                            spanHTMLElement.appendChild(textNode);
-                        } else if ("br" in spanEl) {
-                            spanHTMLElement.appendChild(document.createElement("br"));
-                        }
-                    });
-                    cueContainer.appendChild(spanHTMLElement);
-                } else if (pElement.hasOwnProperty("br")) {
-                    var brEl = document.createElement("br");
-                    brEl.className = "lineBreak";
-                    cueContainer.appendChild(brEl);
-                } else {
-                    var textNode = document.createElement("span");
-                    textNode.innerHTML = pElement;
-                    cueContainer.appendChild(textNode);
-                }
-            });
             if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                cueContainer.innerHTML = applyLinePadding(cueContainer, cueStyleProperties);
+                cueDirUniWrapper.innerHTML = applyLinePadding(cueDirUniWrapper, cueStyleProperties);
             }
             if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
                 deletePropertyFromArray("padding-left", cueStyleProperties);
                 deletePropertyFromArray("padding-right", cueStyleProperties);
             }
             if (cueStyleProperties) {
-                cueHTMLElement.style.cssText = cueStyleProperties.join(" ");
+                cueParagraph.style.cssText = cueStyleProperties.join(" ");
             }
             if (cueRegionProperties) {
                 cueRegionProperties = cueRegionProperties.join(" ");
             }
-            cueHTMLElement.appendChild(cueContainer);
+            cueParagraph.appendChild(cueDirUniWrapper);
             captionArray.push({
                 start: spanStartTime || pStartTime,
                 end: spanEndTime || pEndTime,
-                cueHTMLElement: cueHTMLElement,
+                cueHTMLElement: cueParagraph,
                 cueRegion: cueRegionProperties,
                 type: "text"
             });
