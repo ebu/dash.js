@@ -165,8 +165,10 @@ MediaPlayer.utils.TTMLParser = function() {
             for(var i = 0;i < primeArray.length; i++){
                 for(var j = 0;j < arrayToAdd.length; j++){
                     // Take only the name of the property
-                    if(primeArray[i].split(':')[0].indexOf(arrayToAdd[j].split(':')[0]) > -1){
+                    if(primeArray[i]){
+                        if(primeArray[i].split(':')[0].indexOf(arrayToAdd[j].split(':')[0]) > -1){
                         primeArray.splice(i, 1);
+                        }
                     }
                 }
             }
@@ -522,6 +524,65 @@ MediaPlayer.utils.TTMLParser = function() {
             return regions;
         },
 
+        applyLinePadding = function(cueHTML, cueStyle) {
+            var linePaddingLeft = getPropertyFromArray('padding-left', cueStyle);
+            var linePaddingRight = getPropertyFromArray('padding-right', cueStyle);
+            var linePadding = linePaddingLeft.concat(" "+linePaddingRight);
+            var nodeList = Array.prototype.slice.call(cueHTML.children);
+            var element  = cueHTML.getElementsByClassName('lineBreak')[0];
+            var idx      = nodeList.indexOf(element);
+            var indices  = [];
+            var spanStringEnd = "<\/span>";
+            var br = "\<br>";
+            var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
+            while (idx != -1) {
+                indices.push(idx);
+                idx = nodeList.indexOf(element, idx + 1);
+            }
+
+            var outerHTMLBeforeBr = "";
+            var outerHTMLAfterBr  = "";
+            var cueInnerHTML = "";
+
+            if (indices.length) {
+                indices.forEach(function (i, index) {
+                    if(index === 0) {
+                        var styleBefore = "";
+                        for (var j = 0; j < i; j++) {
+                            outerHTMLBeforeBr += nodeList[j].outerHTML;
+                            if (j === 0 || j === i - 1) {
+                                styleBefore = linePadding.concat(nodeList[j].style.cssText);
+                            }
+                        }
+                        outerHTMLBeforeBr = clonePropertyString + styleBefore + '">' + outerHTMLBeforeBr;
+                    }
+
+                    var styleAfter = "";
+                    for (var k = i + 1; k < nodeList.length; k++) {
+                        outerHTMLAfterBr += nodeList[k].outerHTML;
+                        if(k === i + 1 || k === nodeList.length - 1) {
+                            styleAfter += linePadding.concat(nodeList[k].style.cssText);
+                        }
+                    }
+
+                    outerHTMLAfterBr = clonePropertyString + styleAfter + '">' + outerHTMLAfterBr;
+
+                    if(outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
+                        cueInnerHTML += outerHTMLBeforeBr + spanStringEnd + br + outerHTMLAfterBr + spanStringEnd;
+                    } else if(outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)){
+                        cueInnerHTML += outerHTMLBeforeBr + spanStringEnd + br + outerHTMLAfterBr + spanStringEnd + br;
+                    } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
+                        cueInnerHTML += outerHTMLBeforeBr  + spanStringEnd;
+                    } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
+                        cueInnerHTML += outerHTMLAfterBr  + spanStringEnd;
+                    } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)) {
+                        cueInnerHTML += outerHTMLAfterBr  + spanStringEnd + br;
+                    }
+                });
+                return cueInnerHTML;
+            }
+        },
+
         /**
          * Parse the raw data and process it to return the HTML element representing the cue.
          * Return the region to be processed and controlled (hide/show) by the caption controller.
@@ -780,11 +841,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Stock the p subtitles in an array (in case there are only one value).
                 var pElements = [].concat(cue.p);
 
-                // Record the indexes of line breaks 'br' in this array.
-                var indexesdBr = [];
-
                 // For each child of the paragraph we add it in the cue depending of its kind (span, br, text).
-                pElements.forEach(function(pElement, indexBr) {
+                pElements.forEach(function(pElement) {
                     // If metadata is present, do not process.
                     if(pElement.hasOwnProperty('metadata')) {
                         return;
@@ -833,7 +891,6 @@ MediaPlayer.utils.TTMLParser = function() {
                      * Create a br element if there is one in the cue.
                      */
                     else if (pElement.hasOwnProperty('br')) {
-                        indexesdBr.push(indexBr);
                         // We append the line break to the cue container.
                         var brEl = document.createElement('br');
                         brEl.className = 'lineBreak';
@@ -847,7 +904,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         // Add the text to an individual span element (to add line padding if it is defined).
                         var textNode = document.createElement('span');
                         textNode.innerHTML = pElement;
-                        
+
                         // We append the element to the cue container.
                         cueContainer.appendChild(textNode);
                     }
@@ -855,59 +912,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
                 // TODO: clean, separate and comment.
                 if(arrayContains('padding-left', cueStyleProperties) && arrayContains('padding-right', cueStyleProperties)) {
-                    var linePaddingLeft = getPropertyFromArray('padding-left', cueStyleProperties);
-                    var linePaddingRight = getPropertyFromArray('padding-right', cueStyleProperties);
-                    var linePadding = linePaddingLeft.concat(linePaddingRight);
-                    var nodeList = Array.prototype.slice.call(cueContainer.children);
-                    var element  = cueContainer.getElementsByClassName('lineBreak')[0];
-                    var idx      = nodeList.indexOf(element);
-                    var indices  = [];
-                    while (idx != -1) {
-                        indices.push(idx);
-                        idx = nodeList.indexOf(element, idx + 1);
-                    }
-
-                    var outerHTMLBeforeBr = "";
-                    var outerHTMLAfterBr  = "";
-                    var cueOuterHTML = "";
-
-                    if (indices.length) {
-                        indices.forEach(function (i, index) {
-                            if(index === 0) {
-                                var styleBefore = "";
-                                for (var j = 0; j < i; j++) {
-                                    outerHTMLBeforeBr += nodeList[j].outerHTML;
-                                    if (j === 0 || j === i - 1) {
-                                        styleBefore = linePadding.concat(nodeList[j].style.cssText);
-                                    }
-                                }
-                                outerHTMLBeforeBr = '<span style="box-decoration-break: clone; ' + styleBefore + '">' + outerHTMLBeforeBr;
-                            }
-
-                            var styleAfter = "";
-                            for (var k = i + 1; k < nodeList.length; k++) {
-                                outerHTMLAfterBr += nodeList[k].outerHTML;
-                                if(k === i + 1 || k === nodeList.length - 1) {
-                                    styleAfter = linePadding.concat(nodeList[k].style.cssText);
-                                }
-                            }
-
-                            outerHTMLAfterBr = '<span style="box-decoration-break: clone; ' + styleAfter + '">' + outerHTMLAfterBr;
-
-                            if(outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
-                                cueOuterHTML += outerHTMLBeforeBr+ '</' + 'span>' + '<br' + '/>' + outerHTMLAfterBr + '</' + 'span>';
-                            } else if(outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)){
-                                cueOuterHTML += outerHTMLBeforeBr+ '</' + 'span>' + '<br' + '/>' + outerHTMLAfterBr + '</' + 'span>' + '<br' + '/>';
-                            } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
-                                cueOuterHTML += outerHTMLBeforeBr  + '</' + 'span>';
-                            } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === (indices.length - 1)) {
-                                cueOuterHTML += outerHTMLAfterBr  + '</' + 'span>';
-                            } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== (indices.length - 1)) {
-                                cueOuterHTML += outerHTMLAfterBr  + '</' + 'span>'  + '<br' + '/>';
-                            }
-                        });
-                        cueContainer.innerHTML = cueOuterHTML;
-                    }
+                    cueContainer.innerHTML = applyLinePadding(cueContainer, cueStyleProperties);
                 }
 
                 /**

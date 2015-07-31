@@ -5667,8 +5667,10 @@ MediaPlayer.utils.TTMLParser = function() {
     }, removeDuplicatesFromArrayAndConcat = function(primeArray, arrayToAdd) {
         for (var i = 0; i < primeArray.length; i++) {
             for (var j = 0; j < arrayToAdd.length; j++) {
-                if (primeArray[i].split(":")[0].indexOf(arrayToAdd[j].split(":")[0]) > -1) {
-                    primeArray.splice(i, 1);
+                if (primeArray[i]) {
+                    if (primeArray[i].split(":")[0].indexOf(arrayToAdd[j].split(":")[0]) > -1) {
+                        primeArray.splice(i, 1);
+                    }
                 }
             }
         }
@@ -5896,6 +5898,58 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         });
         return regions;
+    }, applyLinePadding = function(cueHTML, cueStyle) {
+        var linePaddingLeft = getPropertyFromArray("padding-left", cueStyle);
+        var linePaddingRight = getPropertyFromArray("padding-right", cueStyle);
+        var linePadding = linePaddingLeft.concat(" " + linePaddingRight);
+        var nodeList = Array.prototype.slice.call(cueHTML.children);
+        var element = cueHTML.getElementsByClassName("lineBreak")[0];
+        var idx = nodeList.indexOf(element);
+        var indices = [];
+        var spanStringEnd = "</span>";
+        var br = "<br>";
+        var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
+        while (idx != -1) {
+            indices.push(idx);
+            idx = nodeList.indexOf(element, idx + 1);
+        }
+        var outerHTMLBeforeBr = "";
+        var outerHTMLAfterBr = "";
+        var cueInnerHTML = "";
+        if (indices.length) {
+            indices.forEach(function(i, index) {
+                if (index === 0) {
+                    var styleBefore = "";
+                    for (var j = 0; j < i; j++) {
+                        outerHTMLBeforeBr += nodeList[j].outerHTML;
+                        if (j === 0 || j === i - 1) {
+                            styleBefore = linePadding.concat(nodeList[j].style.cssText);
+                        }
+                    }
+                    outerHTMLBeforeBr = clonePropertyString + styleBefore + '">' + outerHTMLBeforeBr;
+                }
+                var styleAfter = "";
+                for (var k = i + 1; k < nodeList.length; k++) {
+                    outerHTMLAfterBr += nodeList[k].outerHTML;
+                    if (k === i + 1 || k === nodeList.length - 1) {
+                        styleAfter += linePadding.concat(nodeList[k].style.cssText);
+                    }
+                }
+                outerHTMLAfterBr = clonePropertyString + styleAfter + '">' + outerHTMLAfterBr;
+                if (outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
+                    cueInnerHTML += outerHTMLBeforeBr + spanStringEnd + br + outerHTMLAfterBr + spanStringEnd;
+                } else if (outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
+                    cueInnerHTML += outerHTMLBeforeBr + spanStringEnd + br + outerHTMLAfterBr + spanStringEnd + br;
+                } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
+                    cueInnerHTML += outerHTMLBeforeBr + spanStringEnd;
+                } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
+                    cueInnerHTML += outerHTMLAfterBr + spanStringEnd;
+                } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
+                    cueInnerHTML += outerHTMLAfterBr + spanStringEnd + br;
+                }
+            });
+            return cueInnerHTML;
+        }
     }, internalParse = function(data) {
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
@@ -6032,8 +6086,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 deletePropertyFromArray("direction", cueStyleProperties);
             }
             var pElements = [].concat(cue.p);
-            var indexesdBr = [];
-            pElements.forEach(function(pElement, indexBr) {
+            pElements.forEach(function(pElement) {
                 if (pElement.hasOwnProperty("metadata")) {
                     return;
                 }
@@ -6057,7 +6110,6 @@ MediaPlayer.utils.TTMLParser = function() {
                     });
                     cueContainer.appendChild(spanHTMLElement);
                 } else if (pElement.hasOwnProperty("br")) {
-                    indexesdBr.push(indexBr);
                     var brEl = document.createElement("br");
                     brEl.className = "lineBreak";
                     cueContainer.appendChild(brEl);
@@ -6068,54 +6120,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
             });
             if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                var linePaddingLeft = getPropertyFromArray("padding-left", cueStyleProperties);
-                var linePaddingRight = getPropertyFromArray("padding-right", cueStyleProperties);
-                var linePadding = linePaddingLeft.concat(linePaddingRight);
-                var nodeList = Array.prototype.slice.call(cueContainer.children);
-                var element = cueContainer.getElementsByClassName("lineBreak")[0];
-                var idx = nodeList.indexOf(element);
-                var indices = [];
-                while (idx != -1) {
-                    indices.push(idx);
-                    idx = nodeList.indexOf(element, idx + 1);
-                }
-                var outerHTMLBeforeBr = "";
-                var outerHTMLAfterBr = "";
-                var cueOuterHTML = "";
-                if (indices.length) {
-                    indices.forEach(function(i, index) {
-                        if (index === 0) {
-                            var styleBefore = "";
-                            for (var j = 0; j < i; j++) {
-                                outerHTMLBeforeBr += nodeList[j].outerHTML;
-                                if (j === 0 || j === i - 1) {
-                                    styleBefore = linePadding.concat(nodeList[j].style.cssText);
-                                }
-                            }
-                            outerHTMLBeforeBr = '<span style="box-decoration-break: clone; ' + styleBefore + '">' + outerHTMLBeforeBr;
-                        }
-                        var styleAfter = "";
-                        for (var k = i + 1; k < nodeList.length; k++) {
-                            outerHTMLAfterBr += nodeList[k].outerHTML;
-                            if (k === i + 1 || k === nodeList.length - 1) {
-                                styleAfter = linePadding.concat(nodeList[k].style.cssText);
-                            }
-                        }
-                        outerHTMLAfterBr = '<span style="box-decoration-break: clone; ' + styleAfter + '">' + outerHTMLAfterBr;
-                        if (outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
-                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>" + "<br" + "/>" + outerHTMLAfterBr + "</" + "span>";
-                        } else if (outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
-                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>" + "<br" + "/>" + outerHTMLAfterBr + "</" + "span>" + "<br" + "/>";
-                        } else if (outerHTMLBeforeBr && !outerHTMLAfterBr) {
-                            cueOuterHTML += outerHTMLBeforeBr + "</" + "span>";
-                        } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index === indices.length - 1) {
-                            cueOuterHTML += outerHTMLAfterBr + "</" + "span>";
-                        } else if (!outerHTMLBeforeBr && outerHTMLAfterBr && index !== indices.length - 1) {
-                            cueOuterHTML += outerHTMLAfterBr + "</" + "span>" + "<br" + "/>";
-                        }
-                    });
-                    cueContainer.innerHTML = cueOuterHTML;
-                }
+                cueContainer.innerHTML = applyLinePadding(cueContainer, cueStyleProperties);
             }
             if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
                 deletePropertyFromArray("padding-left", cueStyleProperties);
