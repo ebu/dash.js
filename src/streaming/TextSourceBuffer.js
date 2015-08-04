@@ -59,26 +59,17 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                 var controls;
                 if(!this.initializationSegmentReceived){
                     this.initializationSegmentReceived=true;
-                    //label = mediaInfo.id;
-                    //lang = mediaInfo.lang;
-                    //this.textTrackExtensions = self.getTextTrackExtensions();
                     this.customCaptions = self.getCustomCaptions();
                     this.customCaptions.initialize(self.videoModel);
                     controls = self.system.getObject('customControls');
                     controls.createControls(self.videoModel);
-                    //this.textTrackExtensions.addTextTrack(self.videoModel.getElement(), result, label, lang, true);
-                    //self.eventBus.dispatchEvent({type:MediaPlayer.events.TEXT_TRACK_ADDED});
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes);
                 }else{
                     fragmentExt = self.system.getObject("fragmentExt");
                     samplesInfo = fragmentExt.getSamplesInfo(bytes);
                     for(i= 0 ; i<samplesInfo.length ;i++) {
-                        if(!this.firstSubtitleStart){
-                            this.firstSubtitleStart = samplesInfo[0].cts-chunk.start*this.timescale;
-                        }
-                        samplesInfo[i].cts-=this.firstSubtitleStart;
-                        this.buffered.add(samplesInfo[i].cts/this.timescale,(samplesInfo[i].cts+samplesInfo[i].duration)/this.timescale);
+                       this.buffered.add(samplesInfo[i].dts/this.timescale,(samplesInfo[i].dts+samplesInfo[i].duration)/this.timescale);
                         ccContent=window.UTF8.decode(new Uint8Array(bytes.slice(samplesInfo[i].offset, samplesInfo[i].offset+samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try{
@@ -86,7 +77,6 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                             for(var j = 0; j < result.length; j++){
                                 this.customCaptions.addCueToPlaylist(result[j]);
                             }
-                            //this.textTrackExtensions.addCaptions(samplesInfo[i].dts/this.timescale, samplesInfo[i].duration/this.timescale, result);
                         } catch(e) {
                             //empty cue ?
                         }

@@ -30,10 +30,30 @@
  */
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, // Playlist containing all cues received
+    var playlist = [], // Playlist containing all cues received
         video, // video from the VideoModel
-        activeCue, // Active cue playing
-        captionRegion = document.getElementById('captionRegion'); // container of the captionText, represent the region
+        idShowBackground = [],
+        activeCues = [], // Active cue playing
+
+        // Return whether or not an array contains a certain text
+        arrayContains = function(text, array) {
+            for (var i = 0; i < array.length; i++) {
+                if (array[i].indexOf(text) > -1) {
+                    return true;
+                }
+            }
+            return false;
+        },
+
+        // Return the whole value that contains "text"
+        getPropertyFromArray = function(text, array) {
+            for (var i = 0; i < array.length; i++) {
+                if (array[i].indexOf(text) > -1) {
+                    return array[i];
+                }
+            }
+            return null;
+        };
 
     return {
 
@@ -41,7 +61,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             // Initialization of the videoModel, the playlist and we start listening the event we need.
             video = videoModel;
             this.listen();
-            playlist = [];
         },
 
         listen: function() {
@@ -55,59 +74,79 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             playlist.push(cue);
             // Initialization of the first cue.
             if (playlist.length === 1) {
-                activeCue = playlist[0];
-                this.onCaption();
+                cue.regions.forEach(function(region) {
+                    if(arrayContains("show-background", region)) {
+                        if(getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1) === "always") {
+                            var captionRegion = document.createElement('div');
+                            captionRegion.style.cssText = region.join(" ");
+                            captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1);
+                            captionRegion.className = "captionRegion";
+                            document.getElementById('container').insertBefore(captionRegion, document.getElementById('mycontrols'));
+                            idShowBackground.push(getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1));
+                        }
+                    }
+                });
+                activeCues.push(cue);
+                //this.onCaption();
             }
         },
 
         /***** Function to determine the cue that should be played at the video current time. *****/
         onCaption: function() {
-
             // Check if we have a cue to play and if the cc is turned on.
-            if (captionRegion.style.display === 'none' || playlist.length === 0) {
-                return;
-            }
-            var time = video.getCurrentTime();
-            var diff = Math.abs(time - activeCue.start);
-
-            // Check if we need to change the active cue.
-            if (time > activeCue.start && time < activeCue.end && captionRegion.childElementCount > 0) {
+            if (playlist.length === 0) {
                 return;
             }
 
-            // Make sure the region is emptied before we add anything.
-            while (captionRegion.firstChild) {
-                captionRegion.style.cssText = "";
-                captionRegion.removeChild(captionRegion.firstChild);
-            }
-
-            //// Define if the region should be kept or not
-            //// if showBackground = "always":
-            //// he background color of a region is always rendered when performing presentation processing on a visual medium
-            //// if showBackground ="whenActive":
-            //// the background color of a region is rendered only when some content is flowed into the region
-            //if (!activeCue.showBackground) {
-            //    captionRegion.style.cssText = "";
-            //}
             playlist.forEach(function(cue) {
                 // Check that the start of the cue we test is at least after or equal to the current time
                 // So the cue chosen should always be the right one in the timeline, even when seeking
+                var time = video.getCurrentTime();
                 if (time >= cue.start && time <= cue.end) {
-                    var newDiff = Math.abs(time - cue.start);
-                    if (newDiff < diff) {
-                        diff = newDiff;
-                        activeCue = cue;
+                    var duplicate = false;
+                    activeCues.forEach(function(activeCue) {
+                       if(activeCue.cueID === cue.cueID) {
+                           duplicate = true;
+                       }
+                    });
+                    if(!duplicate){
+                        activeCues.push(cue);
                     }
+                }
+            });
 
-                    /*** When the cue is found, we apply its text, style and positioning. ***/
+            activeCues.forEach(function(activeCue, index) {
+                var time = video.getCurrentTime();
+                // Check if we need to change the active cue.
+                if(document.getElementById(activeCue.regionID)) {
+                    if (time > activeCue.start && time < activeCue.end && document.getElementById(activeCue.regionID).firstChild) {
+                        return;
+                    }
+                }
 
-                    // Add the HTML elements to the captionText container.
-                    if (activeCue.cueHTMLElement) {
+                if(time < activeCue.start || time > activeCue.end) {
+                    activeCues.splice(index, 1);
+                    if(!arrayContains(activeCue.regionID, idShowBackground)) {
+                        document.getElementById(activeCue.regionID).style.cssText = "";
+                    }
+                    document.getElementById(activeCue.regionID).innerHTML ="";
+                    return;
+                }
+
+                // Add the HTML elements to the captionText container.
+                if (activeCue.cueHTMLElement) {
+                    if (document.getElementById(activeCue.regionID)) {
+                        document.getElementById(activeCue.regionID).style.cssText = activeCue.cueRegion;
+                        document.getElementById(activeCue.regionID).appendChild(activeCue.cueHTMLElement);
+                    } else {
                         // Append the cue to the HTML caption layer.
-                        captionRegion.appendChild(activeCue.cueHTMLElement);
-
+                        var captionRegion = document.createElement('div');
                         // Apply the positioning to our text.
                         captionRegion.style.cssText = activeCue.cueRegion;
+                        captionRegion.id            = activeCue.regionID;
+                        captionRegion.className     = "captionRegion";
+                        captionRegion.appendChild(activeCue.cueHTMLElement);
+                        document.getElementById('container').insertBefore(captionRegion, document.getElementById('mycontrols'));
                     }
                 }
             });

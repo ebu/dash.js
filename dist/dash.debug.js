@@ -5617,6 +5617,45 @@ MediaPlayer.utils.TTMLParser = function() {
         "text-decoration": "none;",
         "unicode-bidi": "normal;",
         "white-space": "normal;"
+    }, fontFamilies = {
+        monospace: "font-family: monospace;",
+        sansSerif: "font-family: sans-serif;",
+        serif: "font-family: serif;",
+        monospaceSansSerif: "font-family: monospace, sans-serif;",
+        monospaceSerif: "font-family: monospace, serif;",
+        proportionalSansSerif: "font-family: Arial;",
+        proportionalSerif: "font-family: Times New Roman;",
+        "default": "font-family: monospace, sans-serif;"
+    }, textAlign = {
+        right: [ "justify-content: flex-end;", "text-align: right;" ],
+        start: [ "justify-content: flex-start;", "text-align: start;" ],
+        center: [ "justify-content: center;", "text-align: center;" ],
+        end: [ "justify-content: flex-end;", "text-align: end;" ],
+        left: [ "justify-content: flex-start;", "text-align: left;" ]
+    }, multiRowAlign = {
+        start: "text-align: start;",
+        center: "text-align: center;",
+        end: "text-align: end;",
+        auto: ""
+    }, wrapOption = {
+        wrap: "white-space: normal;",
+        noWrap: "white-space: nowrap;"
+    }, unicodeBidi = {
+        normal: "unicode-bidi: normal;",
+        embed: "unicode-bidi: embed;",
+        bidiOverride: "unicode-bidi: bidi-override;"
+    }, displayAlign = {
+        before: "align-items: flex-start;",
+        center: "align-items: center;",
+        after: "align-items: flex-end;"
+    }, writingMode = {
+        lrtb: "-webkit-writing-mode: horizontal-tb;                   writing-mode: horizontal-tb;",
+        rltb: "-webkit-writing-mode: horizontal-tb;                   writing-mode: horizontal-tb;                   direction: rtl;                   unicode-bidi: bidi-override;",
+        tbrl: "-webkit-writing-mode: vertical-rl;                   writing-mode: vertical-rl; /* new syntax */                   -webkit-text-orientation: upright;                   text-orientation: upright;",
+        tblr: "-webkit-writing-mode: vertical-lr;                   writing-mode: vertical-lr; /* new syntax */                   -webkit-text-orientation: upright;                   text-orientation: upright;",
+        lr: "-webkit-writing-mode: horizontal-tb;                 writing-mode: horizontal-tb;",
+        rl: "-webkit-writing-mode: horizontal-tb;                 writing-mode: horizontal-tb;                 direction: rtl;",
+        tb: "-webkit-writing-mode: vertical-rl;                 writing-mode: vertical-rl; /* new syntax */                 -webkit-text-orientation: upright;                 text-orientation: upright;"
     }, parseTimings = function(timingStr) {
         var test = timingRegex.test(timingStr), timeParts, parsedTime, frameRate;
         if (!test) {
@@ -5732,16 +5771,6 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
         if ("font-family" in cueStyle) {
-            var fontFamilies = {
-                monospace: "font-family: monospace;",
-                sansSerif: "font-family: sans-serif;",
-                serif: "font-family: serif;",
-                monospaceSansSerif: "font-family: monospace, sans-serif;",
-                monospaceSerif: "font-family: monospace, serif;",
-                proportionalSansSerif: "font-family: Arial;",
-                proportionalSerif: "font-family: Times New Roman;",
-                "default": "font-family: monospace, sans-serif;"
-            };
             if (cueStyle["font-family"] in fontFamilies) {
                 properties.push(fontFamilies[cueStyle["font-family"]]);
             } else {
@@ -5749,25 +5778,12 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
         if ("text-align" in cueStyle) {
-            var textAlign = {
-                right: [ "justify-content: flex-end;", "text-align: right;" ],
-                start: [ "justify-content: flex-start;", "text-align: start;" ],
-                center: [ "justify-content: center;", "text-align: center;" ],
-                end: [ "justify-content: flex-end;", "text-align: end;" ],
-                left: [ "justify-content: flex-start;", "text-align: left;" ]
-            };
             if (cueStyle["text-align"] in textAlign) {
                 properties.push(textAlign[cueStyle["text-align"]][0]);
                 properties.push(textAlign[cueStyle["text-align"]][1]);
             }
         }
         if ("multi-row-align" in cueStyle) {
-            var multiRowAlign = {
-                start: "text-align: start;",
-                center: "text-align: center;",
-                end: "text-align: end;",
-                auto: ""
-            };
             if (arrayContains("text-align", properties) && cueStyle["multi-row-align"] != "auto") {
                 deletePropertyFromArray("text-align", properties);
             }
@@ -5792,10 +5808,6 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
         if ("wrap-option" in cueStyle) {
-            var wrapOption = {
-                wrap: "white-space: normal;",
-                noWrap: "white-space: nowrap;"
-            };
             if (cueStyle["wrap-option"] in wrapOption) {
                 properties.push(wrapOption[cueStyle["wrap-option"]]);
             } else {
@@ -5803,11 +5815,6 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
         if ("unicode-bidi" in cueStyle) {
-            var unicodeBidi = {
-                normal: "unicode-bidi: normal;",
-                embed: "unicode-bidi: embed;",
-                bidiOverride: "unicode-bidi: bidi-override;"
-            };
             if (cueStyle["unicode-bidi"] in unicodeBidi) {
                 properties.push(unicodeBidi[cueStyle["unicode-bidi"]]);
             } else {
@@ -5868,23 +5875,9 @@ MediaPlayer.utils.TTMLParser = function() {
             properties.push("top: " + coords[1] + ";");
         }
         if ("display-align" in cueRegion) {
-            var displayAlign = {
-                before: "align-items: flex-start;",
-                center: "align-items: center;",
-                after: "align-items: flex-end;"
-            };
             properties.push(displayAlign[cueRegion["display-align"]]);
         }
         if ("writing-mode" in cueRegion) {
-            var writingMode = {
-                lrtb: "-ms-writing-mode: lr-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;",
-                rltb: "-ms-writing-mode: rl-tb;                                   -webkit-writing-mode: horizontal-tb;                                   -moz-writing-mode: horizontal-tb;                                   -ms-writing-mode: horizontal-tb;                                   writing-mode: horizontal-tb;                                   direction: rtl;                                   unicode-bidi: bidi-override;",
-                tbrl: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                    -webkit-writing-mode: vertical-rl;                                   -moz-writing-mode: vertical-rl;                                   -ms-writing-mode: vertical-rl;                                   writing-mode: vertical-rl; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
-                tblr: "-ms-writing-mode: tb-lr; /* old syntax. IE */                                    -webkit-writing-mode: vertical-lr;                                   -moz-writing-mode: vertical-lr;                                   -ms-writing-mode: vertical-lr;                                   writing-mode: vertical-lr; /* new syntax */                                   -webkit-text-orientation: upright;                                   -moz-text-orientation: upright;                                   -ms-text-orientation: upright;                                   text-orientation: upright;",
-                lr: "-ms-writing-mode: lr-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;",
-                rl: "-ms-writing-mode: rl-tb;                                 -webkit-writing-mode: horizontal-tb;                                 -moz-writing-mode: horizontal-tb;                                 -ms-writing-mode: horizontal-tb;                                 writing-mode: horizontal-tb;                                 direction: rtl;",
-                tb: "-ms-writing-mode: tb-rl; /* old syntax. IE */                                  -webkit-writing-mode: vertical-rl;                                 -moz-writing-mode: vertical-rl;                                 -ms-writing-mode: vertical-rl;                                 writing-mode: vertical-rl; /* new syntax */                                 -webkit-text-orientation: upright;                                 -moz-text-orientation: upright;                                 -ms-text-orientation: upright;                                 text-orientation: upright;"
-            };
             properties.push(writingMode[cueRegion["writing-mode"]]);
         }
         if ("style" in cueRegion) {
@@ -5896,6 +5889,12 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         if ("overflow" in cueRegion) {
             properties.push("overflow:" + cueRegion["overflow"] + ";");
+        }
+        if ("show-background" in cueRegion) {
+            properties.push("show-background:" + cueRegion["show-background"]);
+        }
+        if ("id" in cueRegion) {
+            properties.push("regionID:" + cueRegion["id"] + ";");
         }
         return properties;
     }, findRegionFromID = function(ttmlLayout, cueRegionID) {
@@ -6031,13 +6030,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 cueRegionProperties = pRegion;
             }
         }
-        for (var key in defaultLayoutProperties) {
-            if (defaultLayoutProperties.hasOwnProperty(key)) {
-                if (!arrayContains(key, cueRegionProperties)) {
-                    cueRegionProperties.push(key + ":" + defaultLayoutProperties[key]);
-                }
-            }
-        }
+        applyDefaultProperties(cueRegionProperties, defaultLayoutProperties);
         return cueRegionProperties;
     }, constructCueStyle = function(cue, cellUnit) {
         var cueStyleProperties = [];
@@ -6068,14 +6061,16 @@ MediaPlayer.utils.TTMLParser = function() {
                 cueStyleProperties = pStyle;
             }
         }
-        for (var key in defaultStyleProperties) {
-            if (defaultStyleProperties.hasOwnProperty(key)) {
-                if (!arrayContains(key, cueStyleProperties)) {
-                    cueStyleProperties.push(key + ":" + defaultStyleProperties[key]);
+        applyDefaultProperties(cueStyleProperties, defaultStyleProperties);
+        return cueStyleProperties;
+    }, applyDefaultProperties = function(array, defaultProperties) {
+        for (var key in defaultProperties) {
+            if (defaultProperties.hasOwnProperty(key)) {
+                if (!arrayContains(key, array)) {
+                    array.push(key + ":" + defaultProperties[key]);
                 }
             }
         }
-        return cueStyleProperties;
     }, internalParse = function(data) {
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
@@ -6093,69 +6088,88 @@ MediaPlayer.utils.TTMLParser = function() {
         var videoHeight = document.getElementById("videoPlayer").clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         defaultStyleProperties["font-size"] = cellUnit[1] + "px;";
+        var regions = [];
+        for (var i = 0; i < ttmlLayout.length; i++) {
+            regions.push(processRegion(JSON.parse(JSON.stringify(ttmlLayout[i])), cellUnit));
+        }
         ttmlLayout = [].concat(ttmlLayout);
         ttmlStyling = [].concat(ttmlStyling);
         var nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
         if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
             ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
         }
-        var cues = ttml.tt.body.div ? ttml.tt.body.div : ttml.tt.body;
-        cues = [].concat(cues);
-        if (!cues || cues.length === 0) {
-            var errorMsg = "TTML document does not contain any cues";
-            throw errorMsg;
-        }
         var captionArray = [];
-        cues.forEach(function(cue) {
-            if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
-                var pStartTime = parseTimings(cue["p@begin"]);
-                var pEndTime = parseTimings(cue["p@end"]);
-            } else if (cue.p.hasOwnProperty("span@begin") && cue.p.hasOwnProperty("span@end")) {
-                var spanStartTime = parseTimings(cue.p["span@begin"]);
-                var spanEndTime = parseTimings(cue.p["span@end"]);
-            } else {
-                errorMsg = "TTML document has incorrect timing value";
+        var divs = ttml.tt.body;
+        divs = [].concat(divs);
+        divs.forEach(function(div) {
+            var cues = div["div"];
+            cues = [].concat(cues);
+            if (!cues || cues.length === 0) {
+                var errorMsg = "TTML document does not contain any cues";
                 throw errorMsg;
             }
-            if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
-                errorMsg = "TTML document has incorrect timing value";
-                throw errorMsg;
-            }
-            var cueRegionProperties = constructCueRegion(cue, cellUnit);
-            var cueStyleProperties = constructCueStyle(cue, cellUnit);
-            var cueParagraph = document.createElement("div");
-            cueParagraph.className = "paragraph";
-            var pElements = [].concat(cue.p);
-            var cueDirUniWrapper = constructCue(pElements, cellUnit);
-            cueDirUniWrapper.className = "cueDirUniWrapper";
-            if (arrayContains("unicode-bidi", cueStyleProperties)) {
-                cueDirUniWrapper.style.cssText += getPropertyFromArray("unicode-bidi", cueStyleProperties);
-                deletePropertyFromArray("unicode-bidi", cueStyleProperties);
-            }
-            if (arrayContains("direction", cueStyleProperties)) {
-                cueDirUniWrapper.style.cssText += getPropertyFromArray("direction", cueStyleProperties);
-                deletePropertyFromArray("direction", cueStyleProperties);
-            }
-            if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                cueDirUniWrapper.innerHTML = applyLinePadding(cueDirUniWrapper, cueStyleProperties);
-            }
-            if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
-                deletePropertyFromArray("padding-left", cueStyleProperties);
-                deletePropertyFromArray("padding-right", cueStyleProperties);
-            }
-            if (cueStyleProperties) {
-                cueParagraph.style.cssText = cueStyleProperties.join(" ");
-            }
-            if (cueRegionProperties) {
-                cueRegionProperties = cueRegionProperties.join(" ");
-            }
-            cueParagraph.appendChild(cueDirUniWrapper);
-            captionArray.push({
-                start: spanStartTime || pStartTime,
-                end: spanEndTime || pEndTime,
-                cueHTMLElement: cueParagraph,
-                cueRegion: cueRegionProperties,
-                type: "text"
+            cues.forEach(function(cue) {
+                if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
+                    var pStartTime = parseTimings(cue["p@begin"]);
+                    var pEndTime = parseTimings(cue["p@end"]);
+                } else if (cue.p.hasOwnProperty("span@begin") && cue.p.hasOwnProperty("span@end")) {
+                    var spanStartTime = parseTimings(cue.p["span@begin"]);
+                    var spanEndTime = parseTimings(cue.p["span@end"]);
+                } else {
+                    errorMsg = "TTML document has incorrect timing value";
+                    throw errorMsg;
+                }
+                var cueID = "";
+                if (cue.hasOwnProperty("p@id") || cue.hasOwnProperty("p@xml:id")) {
+                    cueID = cue["p@xml:id"] || cue["p@id"];
+                }
+                if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
+                    errorMsg = "TTML document has incorrect timing value";
+                    throw errorMsg;
+                }
+                var cueRegionProperties = constructCueRegion(cue, cellUnit);
+                var cueStyleProperties = constructCueStyle(cue, cellUnit);
+                var cueParagraph = document.createElement("div");
+                cueParagraph.className = "paragraph";
+                var pElements = [].concat(cue.p);
+                var cueDirUniWrapper = constructCue(pElements, cellUnit);
+                cueDirUniWrapper.className = "cueDirUniWrapper";
+                if (arrayContains("unicode-bidi", cueStyleProperties)) {
+                    cueDirUniWrapper.style.cssText += getPropertyFromArray("unicode-bidi", cueStyleProperties);
+                    deletePropertyFromArray("unicode-bidi", cueStyleProperties);
+                }
+                if (arrayContains("direction", cueStyleProperties)) {
+                    cueDirUniWrapper.style.cssText += getPropertyFromArray("direction", cueStyleProperties);
+                    deletePropertyFromArray("direction", cueStyleProperties);
+                }
+                if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                    cueDirUniWrapper.innerHTML = applyLinePadding(cueDirUniWrapper, cueStyleProperties);
+                }
+                if (arrayContains("padding-left", cueStyleProperties) && arrayContains("padding-right", cueStyleProperties)) {
+                    deletePropertyFromArray("padding-left", cueStyleProperties);
+                    deletePropertyFromArray("padding-right", cueStyleProperties);
+                }
+                var regionID = "";
+                if (arrayContains("regionID", cueRegionProperties)) {
+                    regionID = getPropertyFromArray("regionID", cueRegionProperties).slice(getPropertyFromArray("regionID", cueRegionProperties).indexOf(":") + 1, getPropertyFromArray("regionID", cueRegionProperties).length - 1);
+                }
+                if (cueStyleProperties) {
+                    cueParagraph.style.cssText = cueStyleProperties.join(" ");
+                }
+                if (cueRegionProperties) {
+                    cueRegionProperties = cueRegionProperties.join(" ");
+                }
+                cueParagraph.appendChild(cueDirUniWrapper);
+                captionArray.push({
+                    start: spanStartTime || pStartTime,
+                    end: spanEndTime || pEndTime,
+                    cueHTMLElement: cueParagraph,
+                    cueRegion: cueRegionProperties,
+                    regions: regions,
+                    regionID: regionID,
+                    cueID: cueID,
+                    type: "text"
+                });
             });
         });
         return captionArray;
@@ -6196,11 +6210,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     fragmentExt = self.system.getObject("fragmentExt");
                     samplesInfo = fragmentExt.getSamplesInfo(bytes);
                     for (i = 0; i < samplesInfo.length; i++) {
-                        if (!this.firstSubtitleStart) {
-                            this.firstSubtitleStart = samplesInfo[0].cts - chunk.start * this.timescale;
-                        }
-                        samplesInfo[i].cts -= this.firstSubtitleStart;
-                        this.buffered.add(samplesInfo[i].cts / this.timescale, (samplesInfo[i].cts + samplesInfo[i].duration) / this.timescale);
+                        this.buffered.add(samplesInfo[i].dts / this.timescale, (samplesInfo[i].dts + samplesInfo[i].duration) / this.timescale);
                         ccContent = window.UTF8.decode(new Uint8Array(bytes.slice(samplesInfo[i].offset, samplesInfo[i].offset + samplesInfo[i].size)));
                         var parser = this.system.getObject("ttmlParser");
                         try {
@@ -9043,12 +9053,25 @@ MediaPlayer.dependencies.XlinkController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist, video, activeCue, captionRegion = document.getElementById("captionRegion");
+    var playlist = [], video, idShowBackground = [], activeCues = [], arrayContains = function(text, array) {
+        for (var i = 0; i < array.length; i++) {
+            if (array[i].indexOf(text) > -1) {
+                return true;
+            }
+        }
+        return false;
+    }, getPropertyFromArray = function(text, array) {
+        for (var i = 0; i < array.length; i++) {
+            if (array[i].indexOf(text) > -1) {
+                return array[i];
+            }
+        }
+        return null;
+    };
     return {
         initialize: function(videoModel) {
             video = videoModel;
             this.listen();
-            playlist = [];
         },
         listen: function() {
             video.listen("timeupdate", this.onCaption);
@@ -9056,33 +9079,65 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         addCueToPlaylist: function(cue) {
             playlist.push(cue);
             if (playlist.length === 1) {
-                activeCue = playlist[0];
-                this.onCaption();
+                cue.regions.forEach(function(region) {
+                    if (arrayContains("show-background", region)) {
+                        if (getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1) === "always") {
+                            var captionRegion = document.createElement("div");
+                            captionRegion.style.cssText = region.join(" ");
+                            captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1);
+                            captionRegion.className = "captionRegion";
+                            document.getElementById("container").insertBefore(captionRegion, document.getElementById("mycontrols"));
+                            idShowBackground.push(getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1));
+                        }
+                    }
+                });
+                activeCues.push(cue);
             }
         },
         onCaption: function() {
-            if (captionRegion.style.display === "none" || playlist.length === 0) {
+            if (playlist.length === 0) {
                 return;
-            }
-            var time = video.getCurrentTime();
-            var diff = Math.abs(time - activeCue.start);
-            if (time > activeCue.start && time < activeCue.end && captionRegion.childElementCount > 0) {
-                return;
-            }
-            while (captionRegion.firstChild) {
-                captionRegion.style.cssText = "";
-                captionRegion.removeChild(captionRegion.firstChild);
             }
             playlist.forEach(function(cue) {
+                var time = video.getCurrentTime();
                 if (time >= cue.start && time <= cue.end) {
-                    var newDiff = Math.abs(time - cue.start);
-                    if (newDiff < diff) {
-                        diff = newDiff;
-                        activeCue = cue;
+                    var duplicate = false;
+                    activeCues.forEach(function(activeCue) {
+                        if (activeCue.cueID === cue.cueID) {
+                            duplicate = true;
+                        }
+                    });
+                    if (!duplicate) {
+                        activeCues.push(cue);
                     }
-                    if (activeCue.cueHTMLElement) {
-                        captionRegion.appendChild(activeCue.cueHTMLElement);
+                }
+            });
+            activeCues.forEach(function(activeCue, index) {
+                var time = video.getCurrentTime();
+                if (document.getElementById(activeCue.regionID)) {
+                    if (time > activeCue.start && time < activeCue.end && document.getElementById(activeCue.regionID).firstChild) {
+                        return;
+                    }
+                }
+                if (time < activeCue.start || time > activeCue.end) {
+                    activeCues.splice(index, 1);
+                    if (!arrayContains(activeCue.regionID, idShowBackground)) {
+                        document.getElementById(activeCue.regionID).style.cssText = "";
+                    }
+                    document.getElementById(activeCue.regionID).innerHTML = "";
+                    return;
+                }
+                if (activeCue.cueHTMLElement) {
+                    if (document.getElementById(activeCue.regionID)) {
+                        document.getElementById(activeCue.regionID).style.cssText = activeCue.cueRegion;
+                        document.getElementById(activeCue.regionID).appendChild(activeCue.cueHTMLElement);
+                    } else {
+                        var captionRegion = document.createElement("div");
                         captionRegion.style.cssText = activeCue.cueRegion;
+                        captionRegion.id = activeCue.regionID;
+                        captionRegion.className = "captionRegion";
+                        captionRegion.appendChild(activeCue.cueHTMLElement);
+                        document.getElementById("container").insertBefore(captionRegion, document.getElementById("mycontrols"));
                     }
                 }
             });
@@ -12418,7 +12473,7 @@ MediaPlayer.utils.CustomControls = function() {
     "use strict";
     return {
         createControls: function(videoModel) {
-            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), captionButton = document.getElementById("caption"), captionRegion = document.getElementById("captionRegion");
+            var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), captionButton = document.getElementById("caption");
             playbutton.classList.add("icon-pause");
             playbutton.classList.remove("icon-play");
             setTimeout(function() {
@@ -12461,20 +12516,6 @@ MediaPlayer.utils.CustomControls = function() {
             }
             playbutton.addEventListener("click", playpause, false);
             video.addEventListener("click", playpause, false);
-            captionRegion.addEventListener("click", playpause, false);
-            captionButton.addEventListener("click", function() {
-                if (captionRegion.style.display === "none") {
-                    captionRegion.style.display = "table";
-                } else {
-                    captionRegion.style.display = "none";
-                    var elems = document.getElementsByTagName("*"), i;
-                    for (i in elems) {
-                        if ((" " + elems[i].className + " ").indexOf(" " + "text" + " ") > -1) {
-                            elems[i].innerHTML = "";
-                        }
-                    }
-                }
-            }, false);
             mutebutton.addEventListener("click", function() {
                 if (video.muted) {
                     video.muted = false;
