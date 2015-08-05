@@ -5891,7 +5891,7 @@ MediaPlayer.utils.TTMLParser = function() {
             properties.push("overflow:" + cueRegion["overflow"] + ";");
         }
         if ("show-background" in cueRegion) {
-            properties.push("show-background:" + cueRegion["show-background"]);
+            properties.push("show-background:" + cueRegion["show-background"] + ";");
         }
         if ("id" in cueRegion) {
             properties.push("regionID:" + cueRegion["id"] + ";");
@@ -9087,7 +9087,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             if (playlist.length === 1) {
                 cue.regions.forEach(function(region) {
                     if (arrayContains("show-background", region)) {
-                        if (getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1) === "always") {
+                        if (getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(":") + 1, getPropertyFromArray("show-background", region).length - 1) === "always") {
                             var captionRegion = document.createElement("div");
                             captionRegion.style.cssText = region.join(" ");
                             captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1);
@@ -9119,24 +9119,25 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 }
             });
             activeCues.forEach(function(activeCue, index) {
+                var activeCueElement = document.getElementById(activeCue.regionID);
                 var time = video.getCurrentTime();
                 if (document.getElementById(activeCue.regionID)) {
-                    if (time > activeCue.start && time < activeCue.end && document.getElementById(activeCue.regionID).firstChild) {
+                    if (time > activeCue.start && time < activeCue.end && activeCueElement.firstChild) {
                         return;
                     }
                 }
                 if (time < activeCue.start || time > activeCue.end) {
                     activeCues.splice(index, 1);
                     if (!arrayContains(activeCue.regionID, idShowBackground)) {
-                        document.getElementById(activeCue.regionID).style.cssText = "";
+                        activeCueElement.style.cssText = "";
                     }
-                    document.getElementById(activeCue.regionID).innerHTML = "";
+                    activeCueElement.innerHTML = "";
                     return;
                 }
                 if (activeCue.cueHTMLElement) {
-                    if (document.getElementById(activeCue.regionID)) {
-                        document.getElementById(activeCue.regionID).style.cssText = activeCue.cueRegion;
-                        document.getElementById(activeCue.regionID).appendChild(activeCue.cueHTMLElement);
+                    if (activeCueElement) {
+                        activeCueElement.appendChild(activeCue.cueHTMLElement);
+                        activeCueElement.style.cssText = activeCue.cueRegion;
                     } else {
                         var captionRegion = document.createElement("div");
                         captionRegion.style.cssText = activeCue.cueRegion;

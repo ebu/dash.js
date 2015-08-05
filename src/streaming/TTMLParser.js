@@ -484,7 +484,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 properties.push('overflow:' + cueRegion['overflow'] + ';');
             }
             if ('show-background' in cueRegion) {
-                properties.push('show-background:' + cueRegion['show-background']);
+                properties.push('show-background:' + cueRegion['show-background'] + ';');
             }
             if ('id' in cueRegion) {
                 properties.push('regionID:' + cueRegion['id'] + ';');

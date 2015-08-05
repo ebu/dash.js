@@ -76,7 +76,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             if (playlist.length === 1) {
                 cue.regions.forEach(function(region) {
                     if(arrayContains("show-background", region)) {
-                        if(getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1) === "always") {
+                        if(getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("show-background", region).length - 1) === "always") {
                             var captionRegion = document.createElement('div');
                             captionRegion.style.cssText = region.join(" ");
                             captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1);
@@ -87,7 +87,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                 });
                 activeCues.push(cue);
-                //this.onCaption();
             }
         },
 
@@ -116,10 +115,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             });
 
             activeCues.forEach(function(activeCue, index) {
+                var activeCueElement = document.getElementById(activeCue.regionID);
                 var time = video.getCurrentTime();
                 // Check if we need to change the active cue.
                 if(document.getElementById(activeCue.regionID)) {
-                    if (time > activeCue.start && time < activeCue.end && document.getElementById(activeCue.regionID).firstChild) {
+                    if (time > activeCue.start && time < activeCue.end && activeCueElement.firstChild) {
                         return;
                     }
                 }
@@ -127,17 +127,17 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 if(time < activeCue.start || time > activeCue.end) {
                     activeCues.splice(index, 1);
                     if(!arrayContains(activeCue.regionID, idShowBackground)) {
-                        document.getElementById(activeCue.regionID).style.cssText = "";
+                        activeCueElement.style.cssText = "";
                     }
-                    document.getElementById(activeCue.regionID).innerHTML ="";
+                    activeCueElement.innerHTML ="";
                     return;
                 }
 
                 // Add the HTML elements to the captionText container.
                 if (activeCue.cueHTMLElement) {
-                    if (document.getElementById(activeCue.regionID)) {
-                        document.getElementById(activeCue.regionID).style.cssText = activeCue.cueRegion;
-                        document.getElementById(activeCue.regionID).appendChild(activeCue.cueHTMLElement);
+                    if (activeCueElement) {
+                        activeCueElement.appendChild(activeCue.cueHTMLElement);
+                        activeCueElement.style.cssText = activeCue.cueRegion;
                     } else {
                         // Append the cue to the HTML caption layer.
                         var captionRegion = document.createElement('div');
