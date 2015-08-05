@@ -6029,6 +6029,8 @@ MediaPlayer.utils.TTMLParser = function() {
             } else {
                 cueRegionProperties = pRegion;
             }
+        } else if (divRegion) {
+            cueRegionProperties = divRegion;
         }
         applyDefaultProperties(cueRegionProperties, defaultLayoutProperties);
         return cueRegionProperties;
@@ -6060,6 +6062,10 @@ MediaPlayer.utils.TTMLParser = function() {
             } else {
                 cueStyleProperties = pStyle;
             }
+        } else if (bodyStyle && !divStyle) {
+            cueStyleProperties = bodyStyle;
+        } else if (!bodyStyle && divStyle) {
+            cueStyleProperties = divStyle;
         }
         applyDefaultProperties(cueStyleProperties, defaultStyleProperties);
         return cueStyleProperties;

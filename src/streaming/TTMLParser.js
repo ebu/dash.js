@@ -720,6 +720,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 } else {
                     cueRegionProperties = pRegion;
                 }
+            } else if (divRegion) {
+                cueRegionProperties = divRegion;
             }
 
             // Add initial/default values to what's not defined in the layout:
@@ -766,6 +768,10 @@ MediaPlayer.utils.TTMLParser = function() {
                 } else {
                     cueStyleProperties = pStyle;
                 }
+            } else if (bodyStyle && !divStyle) {
+                cueStyleProperties = bodyStyle;
+            } else if (!bodyStyle && divStyle) {
+                cueStyleProperties = divStyle;
             }
 
             // Add initial/default values to what's not defined in the styling:
