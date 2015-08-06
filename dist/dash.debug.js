@@ -5726,7 +5726,7 @@ MediaPlayer.utils.TTMLParser = function() {
         return null;
     }, deletePropertyFromArray = function(property, array) {
         array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
-    }, removeDuplicatesFromArrayAndConcat = function(primeArray, arrayToAdd) {
+    }, mergeArrays = function(primeArray, arrayToAdd) {
         for (var i = 0; i < primeArray.length; i++) {
             for (var j = 0; j < arrayToAdd.length; j++) {
                 if (primeArray[i]) {
@@ -5974,7 +5974,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
             });
         } else {
-            cueInnerHTML = clonePropertyString + linePadding + '">' + cueHTML.outerHTML + spanStringEnd;
+            var style = "";
+            for (var k = 0; k < nodeList.length; k++) {
+                style += nodeList[k].style.cssText;
+            }
+            cueInnerHTML = clonePropertyString + linePadding + style + ";" + '">' + cueHTML.innerHTML + spanStringEnd;
         }
         return cueInnerHTML;
     }, constructCue = function(cueElements, cellUnit) {
@@ -6025,7 +6029,7 @@ MediaPlayer.utils.TTMLParser = function() {
         if (pRegionID) {
             pRegion = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
             if (divRegion) {
-                cueRegionProperties = removeDuplicatesFromArrayAndConcat(divRegion, pRegion);
+                cueRegionProperties = mergeArrays(divRegion, pRegion);
             } else {
                 cueRegionProperties = pRegion;
             }
@@ -6048,17 +6052,17 @@ MediaPlayer.utils.TTMLParser = function() {
         if (divStyleID) {
             divStyle = getProcessedStyle(divStyleID, cellUnit);
             if (bodyStyle) {
-                divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+                divStyle = mergeArrays(bodyStyle, divStyle);
             }
         }
         if (pStyleID) {
             pStyle = getProcessedStyle(pStyleID, cellUnit);
             if (bodyStyle && divStyle) {
-                cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                cueStyleProperties = mergeArrays(divStyle, pStyle);
             } else if (bodyStyle) {
-                cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+                cueStyleProperties = mergeArrays(bodyStyle, pStyle);
             } else if (divStyle) {
-                cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                cueStyleProperties = mergeArrays(divStyle, pStyle);
             } else {
                 cueStyleProperties = pStyle;
             }
@@ -6078,6 +6082,7 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
     }, internalParse = function(data) {
+        var self = this;
         ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
         if (ttNS) {
@@ -6090,8 +6095,8 @@ MediaPlayer.utils.TTMLParser = function() {
             throw errorMsg;
         }
         var cellResolution = getCellResolution();
-        var videoWidth = document.getElementById("videoPlayer").clientWidth;
-        var videoHeight = document.getElementById("videoPlayer").clientHeight;
+        var videoWidth = self.videoModel.getElement().clientWidth;
+        var videoHeight = self.videoModel.getElement().clientHeight;
         var cellUnit = [ videoWidth / cellResolution[0], videoHeight / cellResolution[1] ];
         defaultStyleProperties["font-size"] = cellUnit[1] + "px;";
         var regions = [];
@@ -6174,6 +6179,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     regions: regions,
                     regionID: regionID,
                     cueID: cueID,
+                    cellUnit: cellUnit,
                     type: "text"
                 });
             });
@@ -6181,7 +6187,8 @@ MediaPlayer.utils.TTMLParser = function() {
         return captionArray;
     };
     return {
-        parse: internalParse
+        parse: internalParse,
+        videoModel: undefined
     };
 };
 
@@ -9073,7 +9080,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
         }
         return null;
-    };
+    }, container = document.getElementById("container"), controls = document.getElementById("mycontrols");
     return {
         initialize: function(videoModel) {
             video = videoModel;
@@ -9087,13 +9094,15 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             if (playlist.length === 1) {
                 cue.regions.forEach(function(region) {
                     if (arrayContains("show-background", region)) {
-                        if (getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(":") + 1, getPropertyFromArray("show-background", region).length - 1) === "always") {
+                        var showBackgroundValue = getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(":") + 1, getPropertyFromArray("show-background", region).length - 1);
+                        if (showBackgroundValue === "always") {
                             var captionRegion = document.createElement("div");
                             captionRegion.style.cssText = region.join(" ");
-                            captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1);
+                            var regionID = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1);
+                            captionRegion.id = regionID;
                             captionRegion.className = "captionRegion";
-                            document.getElementById("container").insertBefore(captionRegion, document.getElementById("mycontrols"));
-                            idShowBackground.push(getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(":") + 1, getPropertyFromArray("regionID", region).length - 1));
+                            container.insertBefore(captionRegion, controls);
+                            idShowBackground.push(regionID);
                         }
                     }
                 });
@@ -9122,11 +9131,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 var activeCueElement = document.getElementById(activeCue.regionID);
                 var time = video.getCurrentTime();
                 if (document.getElementById(activeCue.regionID)) {
-                    if (time > activeCue.start && time < activeCue.end && activeCueElement.firstChild) {
+                    if (time >= activeCue.start && time <= activeCue.end && activeCueElement.firstChild) {
                         return;
                     }
                 }
-                if (time < activeCue.start || time > activeCue.end) {
+                if (time <= activeCue.start || time >= activeCue.end) {
                     activeCues.splice(index, 1);
                     if (!arrayContains(activeCue.regionID, idShowBackground)) {
                         activeCueElement.style.cssText = "";
@@ -9144,7 +9153,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         captionRegion.id = activeCue.regionID;
                         captionRegion.className = "captionRegion";
                         captionRegion.appendChild(activeCue.cueHTMLElement);
-                        document.getElementById("container").insertBefore(captionRegion, document.getElementById("mycontrols"));
+                        container.insertBefore(captionRegion, controls);
                     }
                 }
             });

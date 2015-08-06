@@ -53,7 +53,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 }
             }
             return null;
-        };
+        },
+
+        container = document.getElementById('container'),
+        controls = document.getElementById('mycontrols');
 
     return {
 
@@ -66,7 +69,6 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         listen: function() {
             // Check every 200ms which cue should be played.
             video.listen('timeupdate', this.onCaption);
-
         },
 
         addCueToPlaylist: function(cue) {
@@ -76,13 +78,21 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             if (playlist.length === 1) {
                 cue.regions.forEach(function(region) {
                     if(arrayContains("show-background", region)) {
-                        if(getPropertyFromArray("show-background", region).slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("show-background", region).length - 1) === "always") {
+                        var showBackgroundValue = getPropertyFromArray("show-background", region)
+                            .slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("show-background",
+                                region).length - 1);
+                        if(showBackgroundValue === "always") {
                             var captionRegion = document.createElement('div');
                             captionRegion.style.cssText = region.join(" ");
-                            captionRegion.id = getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1);
+
+                            var regionID = getPropertyFromArray("regionID", region)
+                                .slice(getPropertyFromArray("regionID", region).indexOf(':') + 1,
+                                getPropertyFromArray("regionID", region).length - 1);
+
+                            captionRegion.id = regionID;
                             captionRegion.className = "captionRegion";
-                            document.getElementById('container').insertBefore(captionRegion, document.getElementById('mycontrols'));
-                            idShowBackground.push(getPropertyFromArray("regionID", region).slice(getPropertyFromArray("regionID", region).indexOf(':') + 1, getPropertyFromArray("regionID", region).length - 1));
+                            container.insertBefore(captionRegion, controls);
+                            idShowBackground.push(regionID);
                         }
                     }
                 });
@@ -119,12 +129,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 var time = video.getCurrentTime();
                 // Check if we need to change the active cue.
                 if(document.getElementById(activeCue.regionID)) {
-                    if (time > activeCue.start && time < activeCue.end && activeCueElement.firstChild) {
+                    if (time >= activeCue.start && time <= activeCue.end && activeCueElement.firstChild) {
                         return;
                     }
                 }
 
-                if(time < activeCue.start || time > activeCue.end) {
+                if(time <= activeCue.start || time >= activeCue.end) {
                     activeCues.splice(index, 1);
                     if(!arrayContains(activeCue.regionID, idShowBackground)) {
                         activeCueElement.style.cssText = "";
@@ -146,7 +156,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         captionRegion.id            = activeCue.regionID;
                         captionRegion.className     = "captionRegion";
                         captionRegion.appendChild(activeCue.cueHTMLElement);
-                        document.getElementById('container').insertBefore(captionRegion, document.getElementById('mycontrols'));
+                        container.insertBefore(captionRegion, controls);
                     }
                 }
             });

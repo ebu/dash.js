@@ -248,7 +248,7 @@ MediaPlayer.utils.TTMLParser = function() {
             array.splice(array.indexOf(getPropertyFromArray(property, array)), 1);
         },
 
-        removeDuplicatesFromArrayAndConcat = function(primeArray, arrayToAdd) {
+        mergeArrays = function(primeArray, arrayToAdd) {
             for (var i = 0; i < primeArray.length; i++) {
                 for (var j = 0; j < arrayToAdd.length; j++) {
                     // Take only the name of the property
@@ -615,7 +615,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 });
             } else {
                 // If there is no line break in the subtitle, we simply wrap cue in a span indicating the linePadding.
-                cueInnerHTML = clonePropertyString + linePadding + '">' + cueHTML.outerHTML + spanStringEnd;
+                var style = "";
+                for (var k = 0; k < nodeList.length; k++) {
+                    style += nodeList[k].style.cssText;
+                }
+                cueInnerHTML = clonePropertyString + linePadding + style + ";" + '">' + cueHTML.innerHTML + spanStringEnd;
             }
             return cueInnerHTML;
         },
@@ -716,7 +720,7 @@ MediaPlayer.utils.TTMLParser = function() {
             if (pRegionID) {
                 pRegion = cueRegionProperties.concat(getProcessedRegion(pRegionID, cellUnit));
                 if (divRegion) {
-                    cueRegionProperties = removeDuplicatesFromArrayAndConcat(divRegion, pRegion);
+                    cueRegionProperties = mergeArrays(divRegion, pRegion);
                 } else {
                     cueRegionProperties = pRegion;
                 }
@@ -752,7 +756,7 @@ MediaPlayer.utils.TTMLParser = function() {
             if (divStyleID) {
                 divStyle = getProcessedStyle(divStyleID, cellUnit);
                 if (bodyStyle) {
-                    divStyle = removeDuplicatesFromArrayAndConcat(bodyStyle, divStyle);
+                    divStyle = mergeArrays(bodyStyle, divStyle);
                 }
             }
 
@@ -760,11 +764,11 @@ MediaPlayer.utils.TTMLParser = function() {
             if (pStyleID) {
                 pStyle = getProcessedStyle(pStyleID, cellUnit);
                 if (bodyStyle && divStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                    cueStyleProperties = mergeArrays(divStyle, pStyle);
                 } else if (bodyStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(bodyStyle, pStyle);
+                    cueStyleProperties = mergeArrays(bodyStyle, pStyle);
                 } else if (divStyle) {
-                    cueStyleProperties = removeDuplicatesFromArrayAndConcat(divStyle, pStyle);
+                    cueStyleProperties = mergeArrays(divStyle, pStyle);
                 } else {
                     cueStyleProperties = pStyle;
                 }
@@ -803,6 +807,8 @@ MediaPlayer.utils.TTMLParser = function() {
          */
 
         internalParse = function(data) {
+            var self = this;
+
             // Parse the TTML in a JSON object.
             ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
 
@@ -828,9 +834,8 @@ MediaPlayer.utils.TTMLParser = function() {
             var cellResolution = getCellResolution();
 
             // Recover the video width and height displayed by the player.
-            // TODO: Make it dynamic by the controller.
-            var videoWidth = document.getElementById('videoPlayer').clientWidth;
-            var videoHeight = document.getElementById('videoPlayer').clientHeight;
+            var videoWidth = self.videoModel.getElement().clientWidth;
+            var videoHeight = self.videoModel.getElement().clientHeight;
 
             // Compute the CellResolution unit in order to process properties using sizing (fontSize, linePadding, etc).
             var cellUnit = [videoWidth / cellResolution[0], videoHeight / cellResolution[1]];
@@ -984,6 +989,7 @@ MediaPlayer.utils.TTMLParser = function() {
                         regions: regions,
                         regionID: regionID,
                         cueID: cueID,
+                        cellUnit: cellUnit,
                         type: "text"
                     });
                 });
@@ -993,6 +999,7 @@ MediaPlayer.utils.TTMLParser = function() {
         };
 
     return {
-        parse: internalParse
+        parse: internalParse,
+        videoModel: undefined
     };
 };
