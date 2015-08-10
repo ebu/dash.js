@@ -6199,6 +6199,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
         videoModel: undefined,
         eventBus: undefined,
         errHandler: undefined,
+        streamController: undefined,
         initialize: function(type, bufferController) {
             mimeType = type;
             mediaInfo = bufferController.streamProcessor.getCurrentTrack().mediaInfo;
@@ -6216,7 +6217,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function() {
                     this.customCaptions = self.getCustomCaptions();
                     this.customCaptions.initialize(self.videoModel);
                     controls = self.system.getObject("customControls");
-                    controls.createControls(self.videoModel);
+                    controls.createControls(self.videoModel, self.streamController);
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes);
                 } else {
@@ -9066,7 +9067,7 @@ MediaPlayer.dependencies.XlinkController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist = [], video, idShowBackground = [], activeCues = [], arrayContains = function(text, array) {
+    var playlist = [], video, idShowBackground = [], activeCues = [], playButton = document.getElementById("playpause"), container = document.getElementById("container"), seek = document.getElementById("seekbar"), controls = document.getElementById("mycontrols"), arrayContains = function(text, array) {
         for (var i = 0; i < array.length; i++) {
             if (array[i].indexOf(text) > -1) {
                 return true;
@@ -9080,7 +9081,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
         }
         return null;
-    }, container = document.getElementById("container"), controls = document.getElementById("mycontrols");
+    };
     return {
         initialize: function(videoModel) {
             video = videoModel;
@@ -9154,6 +9155,19 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         captionRegion.className = "captionRegion";
                         captionRegion.appendChild(activeCue.cueHTMLElement);
                         container.insertBefore(captionRegion, controls);
+                        captionRegion.addEventListener("click", function() {
+                            if (video.getElement().paused) {
+                                video.getElement().play();
+                                playButton.classList.add("icon-pause");
+                                playButton.classList.remove("icon-play");
+                                seek.classList.add("light");
+                            } else {
+                                video.getElement().pause();
+                                playButton.classList.add("icon-play");
+                                playButton.classList.remove("icon-pause");
+                                seek.classList.remove("light");
+                            }
+                        }, false);
                     }
                 }
             });
@@ -12488,10 +12502,15 @@ MediaPlayer.utils.Capabilities.prototype = {
 MediaPlayer.utils.CustomControls = function() {
     "use strict";
     return {
-        createControls: function(videoModel) {
+        createControls: function(videoModel, streamController) {
             var video = videoModel.getElement(), controls = document.getElementById("mycontrols"), container = document.getElementById("container"), playbutton = document.getElementById("playpause"), mutebutton = document.getElementById("mute"), fullscreenbutton = document.getElementById("fullscreen"), seek = document.getElementById("seekbar"), volume = document.getElementById("volumebar"), vval = volume.value, progressbar = document.getElementById("progressbar"), bufferbar = document.getElementById("bufferbar"), captionButton = document.getElementById("caption");
-            playbutton.classList.add("icon-pause");
-            playbutton.classList.remove("icon-play");
+            if (streamController.getAutoPlay()) {
+                playbutton.classList.add("icon-pause");
+                playbutton.classList.remove("icon-play");
+            } else {
+                playbutton.classList.add("icon-play");
+                playbutton.classList.remove("icon-pause");
+            }
             setTimeout(function() {
                 controls.classList.add("controls-user-inactive");
                 controls.classList.remove("controls-user-active");
@@ -12532,6 +12551,19 @@ MediaPlayer.utils.CustomControls = function() {
             }
             playbutton.addEventListener("click", playpause, false);
             video.addEventListener("click", playpause, false);
+            captionButton.addEventListener("click", function() {
+                var regions = document.getElementsByClassName("captionRegion");
+                if (regions) {
+                    console.warn(regions);
+                    [].forEach.call(regions, function(captionRegion) {
+                        if (captionRegion.style.display === "none") {
+                            captionRegion.style.display = "table";
+                        } else {
+                            captionRegion.style.display = "none";
+                        }
+                    });
+                }
+            }, false);
             mutebutton.addEventListener("click", function() {
                 if (video.muted) {
                     video.muted = false;

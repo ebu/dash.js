@@ -34,7 +34,7 @@ MediaPlayer.utils.CustomControls = function () {
 
     return {
 
-        createControls: function (videoModel) {
+        createControls: function (videoModel, streamController) {
             var video            = videoModel.getElement(),
                 controls         = document.getElementById('mycontrols'),
                 container        = document.getElementById('container'),
@@ -46,10 +46,15 @@ MediaPlayer.utils.CustomControls = function () {
                 vval             = volume.value,
                 progressbar      = document.getElementById('progressbar'),
                 bufferbar        = document.getElementById('bufferbar'),
-                captionButton          = document.getElementById('caption');
+                captionButton    = document.getElementById('caption');
 
-            playbutton.classList.add('icon-pause');
-            playbutton.classList.remove('icon-play');
+            if(streamController.getAutoPlay()){
+                playbutton.classList.add('icon-pause');
+                playbutton.classList.remove('icon-play');
+            } else {
+                playbutton.classList.add('icon-play');
+                playbutton.classList.remove('icon-pause');
+            }
 
             setTimeout(function(){
                 controls.classList.add('controls-user-inactive');
@@ -98,25 +103,20 @@ MediaPlayer.utils.CustomControls = function () {
 
             playbutton.addEventListener('click', playpause, false);
             video.addEventListener('click', playpause, false);
-            //captionRegion.addEventListener('click', playpause, false);
-            //
-            //captionButton.addEventListener('click', function() {
-            //    document.getElementsByClassName("captionRegion").forEach(function(captionRegion) {
-            //        if(captionRegion.style.display = 'none') {
-            //            captionRegion.style.display = 'table';
-            //        } else {
-            //            document.getElementsByClassName("captionRegion").forEach(function(captionRegion) {
-            //                captionRegion.style.display = 'none';
-            //            });
-            //            var elems = document.getElementsByTagName('*'), i;
-            //            for (i in elems) {
-            //                if((' ' + elems[i].className + ' ').indexOf(' ' + "text" + ' ') > -1) {
-            //                    elems[i].innerHTML = '';
-            //                }
-            //            }
-            //        }
-            //    });
-            //}, false);
+
+            captionButton.addEventListener('click', function() {
+                var regions = document.getElementsByClassName("captionRegion");
+                if(regions) {
+                    console.warn(regions);
+                    [].forEach.call(regions, function(captionRegion) {
+                        if(captionRegion.style.display === 'none') {
+                            captionRegion.style.display = 'table';
+                        } else {
+                            captionRegion.style.display = 'none';
+                        }
+                    });
+                }
+            }, false);
 
             mutebutton.addEventListener('click', function () {
                 if (video.muted) {

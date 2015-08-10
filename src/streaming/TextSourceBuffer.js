@@ -38,6 +38,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
         videoModel: undefined,
         eventBus:undefined,
         errHandler: undefined,
+        streamController: undefined,
 
         initialize: function (type, bufferController) {
             mimeType = type;
@@ -62,7 +63,7 @@ MediaPlayer.dependencies.TextSourceBuffer = function () {
                     this.customCaptions = self.getCustomCaptions();
                     this.customCaptions.initialize(self.videoModel);
                     controls = self.system.getObject('customControls');
-                    controls.createControls(self.videoModel);
+                    controls.createControls(self.videoModel, self.streamController);
                     fragmentExt = self.system.getObject("fragmentExt");
                     this.timescale = fragmentExt.getMediaTimescaleFromMoov(bytes);
                 }else{

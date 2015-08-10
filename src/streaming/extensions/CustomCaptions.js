@@ -34,6 +34,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         video, // video from the VideoModel
         idShowBackground = [],
         activeCues = [], // Active cue playing
+        playButton       = document.getElementById('playpause'),
+        container = document.getElementById('container'),
+        seek             = document.getElementById('seekbar'),
+        controls = document.getElementById('mycontrols'),
 
         // Return whether or not an array contains a certain text
         arrayContains = function(text, array) {
@@ -53,10 +57,7 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 }
             }
             return null;
-        },
-
-        container = document.getElementById('container'),
-        controls = document.getElementById('mycontrols');
+        };
 
     return {
 
@@ -114,9 +115,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 if (time >= cue.start && time <= cue.end) {
                     var duplicate = false;
                     activeCues.forEach(function(activeCue) {
-                       if(activeCue.cueID === cue.cueID) {
-                           duplicate = true;
-                       }
+                        if(activeCue.cueID === cue.cueID) {
+                            duplicate = true;
+                        }
                     });
                     if(!duplicate){
                         activeCues.push(cue);
@@ -157,6 +158,20 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         captionRegion.className     = "captionRegion";
                         captionRegion.appendChild(activeCue.cueHTMLElement);
                         container.insertBefore(captionRegion, controls);
+                        captionRegion.addEventListener('click', function() {
+                            if (video.getElement().paused) {
+                                video.getElement().play();
+                                playButton.classList.add('icon-pause');
+                                playButton.classList.remove('icon-play');
+                                seek.classList.add('light');
+                            }
+                            else {
+                                video.getElement().pause();
+                                playButton.classList.add('icon-play');
+                                playButton.classList.remove('icon-pause');
+                                seek.classList.remove('light');
+                            }
+                        },false);
                     }
                 }
             });
