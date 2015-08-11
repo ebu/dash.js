@@ -40,6 +40,9 @@ MediaPlayer.utils.TTMLParser = function() {
         ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
+        fontSize = {},
+        lineHeight = {},
+        linePadding = {},
         defaultLayoutProperties = {
             'top': '85%;',
             'left': '5%;',
@@ -294,6 +297,9 @@ MediaPlayer.utils.TTMLParser = function() {
             if ('line-padding' in cueStyle) {
                 var valuePadding = parseFloat(cueStyle['line-padding'].slice(cueStyle['line-padding'].indexOf(":") + 1,
                     cueStyle['line-padding'].indexOf('c')));
+                if ('id' in cueStyle) {
+                    linePadding[cueStyle['id']] = valuePadding;
+                }
                 var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
                 properties.push("padding-left:" + valuePaddingInPx);
                 properties.push("padding-right:" + valuePaddingInPx);
@@ -302,6 +308,9 @@ MediaPlayer.utils.TTMLParser = function() {
             if ('font-size' in cueStyle) {
                 var valueFtSize = parseFloat(cueStyle['font-size'].slice(cueStyle['font-size'].indexOf(":") + 1,
                     cueStyle['font-size'].indexOf('%')));
+                if ('id' in cueStyle) {
+                    fontSize[cueStyle['id']] = valueFtSize;
+                }
                 var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
                 properties.push('font-size:' + valueFtSizeInPx);
             }
@@ -310,10 +319,13 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (cueStyle['line-height'] === 'normal') {
                     properties.push('line-heigth: normal;');
                 } else {
-                    var valueFtSize = parseFloat(cueStyle['line-heigt'].slice(cueStyle['line-heigt'].indexOf(":") + 1,
+                    var valueLHSize = parseFloat(cueStyle['line-heigt'].slice(cueStyle['line-heigt'].indexOf(":") + 1,
                         cueStyle['line-heigt'].indexOf('%')));
-                    var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
-                    properties.push(key + ':' + valueFtSizeInPx);
+                    if ('id' in cueStyle) {
+                        lineHeight[cueStyle['id']] = valueLHSize;
+                    }
+                    var valueLHSizeInPx = valueLHSize / 100 * cellUnit[1] + "px;";
+                    properties.push(key + ':' + valueLHSizeInPx);
                 }
             }
             // Font-family can be specified by a generic family name or a custom family name.
@@ -541,11 +553,6 @@ MediaPlayer.utils.TTMLParser = function() {
             var linePaddingRight = getPropertyFromArray('padding-right', cueStyle);
             var linePadding = linePaddingLeft.concat(" " + linePaddingRight);
 
-            // Strings for the cue innerHTML construction.
-            var spanStringEnd = "<\/span>";
-            var br = "\<br>";
-            var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
-
             // Declaration of the HTML elements to be used in the cue innerHTML construction.
             var outerHTMLBeforeBr = "";
             var outerHTMLAfterBr = "";
@@ -564,6 +571,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 indices.push(idx);
                 idx = nodeList.indexOf(brElement, idx + 1);
             }
+
+            // Strings for the cue innerHTML construction.
+            var spanStringEnd = "<\/span>";
+            var br = "\<br>";
+            var clonePropertyString = '<span' + ' class="spanPadding" ' + 'style="-webkit-box-decoration-break: clone; ';
 
             // If br elements are found:
             if (indices.length) {
@@ -619,7 +631,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 for (var k = 0; k < nodeList.length; k++) {
                     style += nodeList[k].style.cssText;
                 }
-                cueInnerHTML = clonePropertyString + linePadding + style + ";" + '">' + cueHTML.innerHTML + spanStringEnd;
+                cueInnerHTML = clonePropertyString + linePadding + style + '">' + cueHTML.innerHTML + spanStringEnd;
             }
             return cueInnerHTML;
         },
@@ -653,6 +665,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Extract the style of the span.
                     if (el.hasOwnProperty('span@style')) {
                         var spanStyle = getProcessedStyle(el['span@style'], cellUnit);
+                        spanHTMLElement.className = el['span@style'];
                         spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
 
@@ -746,10 +759,12 @@ MediaPlayer.utils.TTMLParser = function() {
             var bodyStyle;
             var divStyle;
             var pStyle;
+            var styleIDs = "";
 
             // If the body element reference a style.
             if (bodyStyleID) {
                 bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
+                styleIDs = "paragraph " + bodyStyleID;
             }
 
             // If the div element reference a style.
@@ -757,6 +772,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 divStyle = getProcessedStyle(divStyleID, cellUnit);
                 if (bodyStyle) {
                     divStyle = mergeArrays(bodyStyle, divStyle);
+                    styleIDs += " " + divStyleID;
+                } else {
+                    styleIDs = "paragraph " + divStyleID;
                 }
             }
 
@@ -765,12 +783,16 @@ MediaPlayer.utils.TTMLParser = function() {
                 pStyle = getProcessedStyle(pStyleID, cellUnit);
                 if (bodyStyle && divStyle) {
                     cueStyleProperties = mergeArrays(divStyle, pStyle);
+                    styleIDs += " " + pStyleID;
                 } else if (bodyStyle) {
                     cueStyleProperties = mergeArrays(bodyStyle, pStyle);
+                    styleIDs += " " + pStyleID;
                 } else if (divStyle) {
                     cueStyleProperties = mergeArrays(divStyle, pStyle);
+                    styleIDs += " " + pStyleID;
                 } else {
                     cueStyleProperties = pStyle;
+                    styleIDs = "paragraph " + pStyleID;
                 }
             } else if (bodyStyle && !divStyle) {
                 cueStyleProperties = bodyStyle;
@@ -778,10 +800,11 @@ MediaPlayer.utils.TTMLParser = function() {
                 cueStyleProperties = divStyle;
             }
 
+
             // Add initial/default values to what's not defined in the styling:
             applyDefaultProperties(cueStyleProperties, defaultStyleProperties);
 
-            return cueStyleProperties;
+            return [cueStyleProperties, styleIDs];
         },
 
         applyDefaultProperties = function(array, defaultProperties) {
@@ -883,8 +906,11 @@ MediaPlayer.utils.TTMLParser = function() {
                  *
                  * ***/
 
-                // Caption array is the final result return containing all the cues' information.
+                    // Caption array is the final result return containing all the cues' information.
                 cues.forEach(function(cue) {
+                    lineHeight = {};
+                    linePadding = {};
+                    fontSize = {};
                     // Obtain the start and end time of the cue.
                     if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
                         var pStartTime = parseTimings(cue['p@begin']);
@@ -898,7 +924,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     }
 
                     var cueID = "";
-                    if(cue.hasOwnProperty('p@id') || cue.hasOwnProperty('p@xml:id')) {
+                    if (cue.hasOwnProperty('p@id') || cue.hasOwnProperty('p@xml:id')) {
                         cueID = cue['p@xml:id'] || cue['p@id'];
                     }
                     // Error if timing is not specified.
@@ -922,10 +948,12 @@ MediaPlayer.utils.TTMLParser = function() {
                     /**
                      * /!\ Create the cue HTML Element containing the whole cue.
                      */
+                    var styleIDs = cueStyleProperties[1];
+                    cueStyleProperties = cueStyleProperties[0];
 
-                        // Final cue HTML element.
+                    // Final cue HTML element.
                     var cueParagraph = document.createElement('div');
-                    cueParagraph.className = 'paragraph';
+                    cueParagraph.className = styleIDs;
 
                     // Stock the element in the subtitle (in p) in an array (in case there are only one value).
                     var pElements = [].concat(cue.p);
@@ -965,7 +993,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Remove the ID of the region from being added at the "paragraph" element level.
                     var regionID = "";
                     if (arrayContains('regionID', cueRegionProperties)) {
-                        regionID = getPropertyFromArray('regionID', cueRegionProperties).slice(getPropertyFromArray('regionID', cueRegionProperties).indexOf(':') + 1, getPropertyFromArray("regionID", cueRegionProperties).length - 1);
+                        var wholeRegionID = getPropertyFromArray('regionID', cueRegionProperties);
+                        regionID = wholeRegionID.slice(wholeRegionID.indexOf(':') + 1, wholeRegionID.length - 1);
                     }
 
                     // We link the p style to the finale cueParagraph element.
@@ -989,7 +1018,12 @@ MediaPlayer.utils.TTMLParser = function() {
                         regions: regions,
                         regionID: regionID,
                         cueID: cueID,
-                        cellUnit: cellUnit,
+                        cellResolution: cellResolution,
+                        fontSize: {
+                            defaultFontSize: '100'
+                        } || fontSize,
+                        lineHeight: lineHeight,
+                        linePadding: linePadding,
                         type: "text"
                     });
                 });

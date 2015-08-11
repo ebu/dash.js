@@ -5594,7 +5594,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, defaultLayoutProperties = {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, fontSize = {}, lineHeight = {}, linePadding = {}, defaultLayoutProperties = {
         top: "85%;",
         left: "5%;",
         width: "90%;",
@@ -5752,12 +5752,18 @@ MediaPlayer.utils.TTMLParser = function() {
         }
         if ("line-padding" in cueStyle) {
             var valuePadding = parseFloat(cueStyle["line-padding"].slice(cueStyle["line-padding"].indexOf(":") + 1, cueStyle["line-padding"].indexOf("c")));
+            if ("id" in cueStyle) {
+                linePadding[cueStyle["id"]] = valuePadding;
+            }
             var valuePaddingInPx = valuePadding * cellUnit[0] + "px;";
             properties.push("padding-left:" + valuePaddingInPx);
             properties.push("padding-right:" + valuePaddingInPx);
         }
         if ("font-size" in cueStyle) {
             var valueFtSize = parseFloat(cueStyle["font-size"].slice(cueStyle["font-size"].indexOf(":") + 1, cueStyle["font-size"].indexOf("%")));
+            if ("id" in cueStyle) {
+                fontSize[cueStyle["id"]] = valueFtSize;
+            }
             var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
             properties.push("font-size:" + valueFtSizeInPx);
         }
@@ -5765,9 +5771,12 @@ MediaPlayer.utils.TTMLParser = function() {
             if (cueStyle["line-height"] === "normal") {
                 properties.push("line-heigth: normal;");
             } else {
-                var valueFtSize = parseFloat(cueStyle["line-heigt"].slice(cueStyle["line-heigt"].indexOf(":") + 1, cueStyle["line-heigt"].indexOf("%")));
-                var valueFtSizeInPx = valueFtSize / 100 * cellUnit[1] + "px;";
-                properties.push(key + ":" + valueFtSizeInPx);
+                var valueLHSize = parseFloat(cueStyle["line-heigt"].slice(cueStyle["line-heigt"].indexOf(":") + 1, cueStyle["line-heigt"].indexOf("%")));
+                if ("id" in cueStyle) {
+                    lineHeight[cueStyle["id"]] = valueLHSize;
+                }
+                var valueLHSizeInPx = valueLHSize / 100 * cellUnit[1] + "px;";
+                properties.push(key + ":" + valueLHSizeInPx);
             }
         }
         if ("font-family" in cueStyle) {
@@ -5927,9 +5936,6 @@ MediaPlayer.utils.TTMLParser = function() {
         var linePaddingLeft = getPropertyFromArray("padding-left", cueStyle);
         var linePaddingRight = getPropertyFromArray("padding-right", cueStyle);
         var linePadding = linePaddingLeft.concat(" " + linePaddingRight);
-        var spanStringEnd = "</span>";
-        var br = "<br>";
-        var clonePropertyString = '<span style="-webkit-box-decoration-break: clone; ';
         var outerHTMLBeforeBr = "";
         var outerHTMLAfterBr = "";
         var cueInnerHTML = "";
@@ -5941,6 +5947,9 @@ MediaPlayer.utils.TTMLParser = function() {
             indices.push(idx);
             idx = nodeList.indexOf(brElement, idx + 1);
         }
+        var spanStringEnd = "</span>";
+        var br = "<br>";
+        var clonePropertyString = "<span" + ' class="spanPadding" ' + 'style="-webkit-box-decoration-break: clone; ';
         if (indices.length) {
             indices.forEach(function(i, index) {
                 if (index === 0) {
@@ -5978,7 +5987,7 @@ MediaPlayer.utils.TTMLParser = function() {
             for (var k = 0; k < nodeList.length; k++) {
                 style += nodeList[k].style.cssText;
             }
-            cueInnerHTML = clonePropertyString + linePadding + style + ";" + '">' + cueHTML.innerHTML + spanStringEnd;
+            cueInnerHTML = clonePropertyString + linePadding + style + '">' + cueHTML.innerHTML + spanStringEnd;
         }
         return cueInnerHTML;
     }, constructCue = function(cueElements, cellUnit) {
@@ -5992,6 +6001,7 @@ MediaPlayer.utils.TTMLParser = function() {
                 var spanHTMLElement = document.createElement("span");
                 if (el.hasOwnProperty("span@style")) {
                     var spanStyle = getProcessedStyle(el["span@style"], cellUnit);
+                    spanHTMLElement.className = el["span@style"];
                     spanHTMLElement.style.cssText = spanStyle.join(" ");
                 }
                 spanElements.forEach(function(spanEl) {
@@ -6046,25 +6056,34 @@ MediaPlayer.utils.TTMLParser = function() {
         var bodyStyle;
         var divStyle;
         var pStyle;
+        var styleIDs = "";
         if (bodyStyleID) {
             bodyStyle = getProcessedStyle(bodyStyleID, cellUnit);
+            styleIDs = "paragraph " + bodyStyleID;
         }
         if (divStyleID) {
             divStyle = getProcessedStyle(divStyleID, cellUnit);
             if (bodyStyle) {
                 divStyle = mergeArrays(bodyStyle, divStyle);
+                styleIDs += " " + divStyleID;
+            } else {
+                styleIDs = "paragraph " + divStyleID;
             }
         }
         if (pStyleID) {
             pStyle = getProcessedStyle(pStyleID, cellUnit);
             if (bodyStyle && divStyle) {
                 cueStyleProperties = mergeArrays(divStyle, pStyle);
+                styleIDs += " " + pStyleID;
             } else if (bodyStyle) {
                 cueStyleProperties = mergeArrays(bodyStyle, pStyle);
+                styleIDs += " " + pStyleID;
             } else if (divStyle) {
                 cueStyleProperties = mergeArrays(divStyle, pStyle);
+                styleIDs += " " + pStyleID;
             } else {
                 cueStyleProperties = pStyle;
+                styleIDs = "paragraph " + pStyleID;
             }
         } else if (bodyStyle && !divStyle) {
             cueStyleProperties = bodyStyle;
@@ -6072,7 +6091,7 @@ MediaPlayer.utils.TTMLParser = function() {
             cueStyleProperties = divStyle;
         }
         applyDefaultProperties(cueStyleProperties, defaultStyleProperties);
-        return cueStyleProperties;
+        return [ cueStyleProperties, styleIDs ];
     }, applyDefaultProperties = function(array, defaultProperties) {
         for (var key in defaultProperties) {
             if (defaultProperties.hasOwnProperty(key)) {
@@ -6120,6 +6139,9 @@ MediaPlayer.utils.TTMLParser = function() {
                 throw errorMsg;
             }
             cues.forEach(function(cue) {
+                lineHeight = {};
+                linePadding = {};
+                fontSize = {};
                 if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
                     var pStartTime = parseTimings(cue["p@begin"]);
                     var pEndTime = parseTimings(cue["p@end"]);
@@ -6140,8 +6162,10 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
                 var cueRegionProperties = constructCueRegion(cue, cellUnit);
                 var cueStyleProperties = constructCueStyle(cue, cellUnit);
+                var styleIDs = cueStyleProperties[1];
+                cueStyleProperties = cueStyleProperties[0];
                 var cueParagraph = document.createElement("div");
-                cueParagraph.className = "paragraph";
+                cueParagraph.className = styleIDs;
                 var pElements = [].concat(cue.p);
                 var cueDirUniWrapper = constructCue(pElements, cellUnit);
                 cueDirUniWrapper.className = "cueDirUniWrapper";
@@ -6162,7 +6186,8 @@ MediaPlayer.utils.TTMLParser = function() {
                 }
                 var regionID = "";
                 if (arrayContains("regionID", cueRegionProperties)) {
-                    regionID = getPropertyFromArray("regionID", cueRegionProperties).slice(getPropertyFromArray("regionID", cueRegionProperties).indexOf(":") + 1, getPropertyFromArray("regionID", cueRegionProperties).length - 1);
+                    var wholeRegionID = getPropertyFromArray("regionID", cueRegionProperties);
+                    regionID = wholeRegionID.slice(wholeRegionID.indexOf(":") + 1, wholeRegionID.length - 1);
                 }
                 if (cueStyleProperties) {
                     cueParagraph.style.cssText = cueStyleProperties.join(" ");
@@ -6179,7 +6204,12 @@ MediaPlayer.utils.TTMLParser = function() {
                     regions: regions,
                     regionID: regionID,
                     cueID: cueID,
-                    cellUnit: cellUnit,
+                    cellResolution: cellResolution,
+                    fontSize: {
+                        defaultFontSize: "100"
+                    } || fontSize,
+                    lineHeight: lineHeight,
+                    linePadding: linePadding,
                     type: "text"
                 });
             });
@@ -9067,7 +9097,7 @@ MediaPlayer.dependencies.XlinkController.eventList = {
 
 MediaPlayer.dependencies.CustomCaptions = function() {
     "use strict";
-    var playlist = [], video, idShowBackground = [], activeCues = [], playButton = document.getElementById("playpause"), container = document.getElementById("container"), seek = document.getElementById("seekbar"), controls = document.getElementById("mycontrols"), arrayContains = function(text, array) {
+    var playlist = [], video, idShowBackground = [], activeCues = [], playButton = document.getElementById("playpause"), container = document.getElementById("container"), seekBar = document.getElementById("seekbar"), controls = document.getElementById("mycontrols"), scalingEvent = new CustomEvent("scaling"), actualWidth, actualHeight, arrayContains = function(text, array) {
         for (var i = 0; i < array.length; i++) {
             if (array[i].indexOf(text) > -1) {
                 return true;
@@ -9085,6 +9115,9 @@ MediaPlayer.dependencies.CustomCaptions = function() {
     return {
         initialize: function(videoModel) {
             video = videoModel;
+            document.addEventListener("scaling", this.onScaling, false);
+            actualWidth = video.getElement().clientWidth;
+            actualHeight = video.getElement().clientHeight;
             this.listen();
         },
         listen: function() {
@@ -9110,6 +9143,52 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 activeCues.push(cue);
             }
         },
+        onScaling: function() {
+            var videoWidth = video.getElement().clientWidth;
+            var videoHeight = video.getElement().clientHeight;
+            activeCues.forEach(function(activeCue) {
+                var cellUnit = [ videoWidth / activeCue.cellResolution[0], videoHeight / activeCue.cellResolution[1] ];
+                if (activeCue.linePadding) {
+                    for (var key in activeCue.linePadding) {
+                        if (activeCue.linePadding.hasOwnProperty(key)) {
+                            var valueLinePadding = activeCue.linePadding[key];
+                            var replaceValue = (valueLinePadding * cellUnit[0]).toString();
+                            var elements = document.getElementsByClassName("spanPadding");
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-left\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-right\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                            }
+                        }
+                    }
+                }
+                for (var key in activeCue.fontSize) {
+                    if (activeCue.fontSize.hasOwnProperty(key)) {
+                        var valueFontSize = activeCue.fontSize[key] / 100;
+                        var replaceValue = (valueFontSize * cellUnit[1]).toString();
+                        if (key !== "defaultFontSize") {
+                            var elements = document.getElementsByClassName(key);
+                        } else {
+                            var elements = document.getElementsByClassName("paragraph");
+                        }
+                        for (var i = 0; i < elements.length; i++) {
+                            elements[i].style.cssText = elements[i].style.cssText.replace(/(font-size\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                        }
+                    }
+                }
+                if (activeCue.lineHeight) {
+                    for (var key in activeCue.lineHeight) {
+                        if (activeCue.lineHeight.hasOwnProperty(key)) {
+                            var valueLineHeight = activeCue.lineHeight[key] / 100;
+                            var replaceValue = (valueLineHeight * cellUnit[1]).toString();
+                            var elements = document.getElementsByClassName(key);
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(line-height\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                            }
+                        }
+                    }
+                }
+            });
+        },
         onCaption: function() {
             if (playlist.length === 0) {
                 return;
@@ -9128,6 +9207,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                     }
                 }
             });
+            if (actualHeight !== video.getElement().clientHeight) {
+                document.dispatchEvent(scalingEvent);
+                actualHeight = video.getElement().clientHeight;
+                actualWidth = video.getElement().clientWidth;
+            }
             activeCues.forEach(function(activeCue, index) {
                 var activeCueElement = document.getElementById(activeCue.regionID);
                 var time = video.getCurrentTime();
@@ -9160,12 +9244,12 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                                 video.getElement().play();
                                 playButton.classList.add("icon-pause");
                                 playButton.classList.remove("icon-play");
-                                seek.classList.add("light");
+                                seekBar.classList.add("light");
                             } else {
                                 video.getElement().pause();
                                 playButton.classList.add("icon-play");
                                 playButton.classList.remove("icon-pause");
-                                seek.classList.remove("light");
+                                seekBar.classList.remove("light");
                             }
                         }, false);
                     }

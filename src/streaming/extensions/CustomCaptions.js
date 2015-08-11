@@ -34,10 +34,13 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         video, // video from the VideoModel
         idShowBackground = [],
         activeCues = [], // Active cue playing
-        playButton       = document.getElementById('playpause'),
+        playButton = document.getElementById('playpause'),
         container = document.getElementById('container'),
-        seek             = document.getElementById('seekbar'),
+        seekBar = document.getElementById('seekbar'),
         controls = document.getElementById('mycontrols'),
+        scalingEvent = new CustomEvent('scaling'),
+        actualWidth,
+        actualHeight,
 
         // Return whether or not an array contains a certain text
         arrayContains = function(text, array) {
@@ -64,6 +67,10 @@ MediaPlayer.dependencies.CustomCaptions = function() {
         initialize: function(videoModel) {
             // Initialization of the videoModel, the playlist and we start listening the event we need.
             video = videoModel;
+            document.addEventListener('scaling', this.onScaling, false);
+            actualWidth = video.getElement().clientWidth;
+            actualHeight = video.getElement().clientHeight;
+
             this.listen();
         },
 
@@ -78,11 +85,11 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             // Initialization of the first cue.
             if (playlist.length === 1) {
                 cue.regions.forEach(function(region) {
-                    if(arrayContains("show-background", region)) {
+                    if (arrayContains("show-background", region)) {
                         var showBackgroundValue = getPropertyFromArray("show-background", region)
                             .slice(getPropertyFromArray("show-background", region).indexOf(':') + 1, getPropertyFromArray("show-background",
                                 region).length - 1);
-                        if(showBackgroundValue === "always") {
+                        if (showBackgroundValue === "always") {
                             var captionRegion = document.createElement('div');
                             captionRegion.style.cssText = region.join(" ");
 
@@ -101,6 +108,57 @@ MediaPlayer.dependencies.CustomCaptions = function() {
             }
         },
 
+        onScaling: function() {
+            // Recover the video width and height displayed by the player.
+            var videoWidth = video.getElement().clientWidth;
+            var videoHeight = video.getElement().clientHeight;
+            activeCues.forEach(function(activeCue) {
+                var cellUnit = [videoWidth / activeCue.cellResolution[0], videoHeight / activeCue.cellResolution[1]];
+                if (activeCue.linePadding) {
+                    for (var key in activeCue.linePadding) {
+                        if (activeCue.linePadding.hasOwnProperty(key)) {
+                            var valueLinePadding = activeCue.linePadding[key];
+                            var replaceValue = (valueLinePadding * cellUnit[0]).toString();
+                            // Compute the CellResolution unit in order to process properties using sizing (fontSize, linePadding, etc).
+                            var elements = document.getElementsByClassName('spanPadding');
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-left\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-right\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                            }
+                        }
+                    }
+                }
+
+                for (var key in activeCue.fontSize) {
+                    if (activeCue.fontSize.hasOwnProperty(key)) {
+                        var valueFontSize = activeCue.fontSize[key] / 100;
+                        var replaceValue = (valueFontSize * cellUnit[1]).toString();
+                        if (key !== 'defaultFontSize') {
+                            var elements = document.getElementsByClassName(key);
+                        } else {
+                            var elements = document.getElementsByClassName('paragraph');
+                        }
+                        for (var i = 0; i < elements.length; i++) {
+                            elements[i].style.cssText = elements[i].style.cssText.replace(/(font-size\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                        }
+                    }
+                }
+
+                if (activeCue.lineHeight) {
+                    for (var key in activeCue.lineHeight) {
+                        if (activeCue.lineHeight.hasOwnProperty(key)) {
+                            var valueLineHeight = activeCue.lineHeight[key] / 100;
+                            var replaceValue = (valueLineHeight * cellUnit[1]).toString();
+                            var elements = document.getElementsByClassName(key);
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(line-height\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                            }
+                        }
+                    }
+                }
+            });
+        },
+
         /***** Function to determine the cue that should be played at the video current time. *****/
         onCaption: function() {
             // Check if we have a cue to play and if the cc is turned on.
@@ -115,32 +173,38 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                 if (time >= cue.start && time <= cue.end) {
                     var duplicate = false;
                     activeCues.forEach(function(activeCue) {
-                        if(activeCue.cueID === cue.cueID) {
+                        if (activeCue.cueID === cue.cueID) {
                             duplicate = true;
                         }
                     });
-                    if(!duplicate){
+                    if (!duplicate) {
                         activeCues.push(cue);
                     }
                 }
             });
 
+            if (actualHeight !== video.getElement().clientHeight) {
+                document.dispatchEvent(scalingEvent);
+                actualHeight = video.getElement().clientHeight;
+                actualWidth = video.getElement().clientWidth;
+            }
+
             activeCues.forEach(function(activeCue, index) {
                 var activeCueElement = document.getElementById(activeCue.regionID);
                 var time = video.getCurrentTime();
                 // Check if we need to change the active cue.
-                if(document.getElementById(activeCue.regionID)) {
+                if (document.getElementById(activeCue.regionID)) {
                     if (time >= activeCue.start && time <= activeCue.end && activeCueElement.firstChild) {
                         return;
                     }
                 }
 
-                if(time <= activeCue.start || time >= activeCue.end) {
+                if (time <= activeCue.start || time >= activeCue.end) {
                     activeCues.splice(index, 1);
-                    if(!arrayContains(activeCue.regionID, idShowBackground)) {
+                    if (!arrayContains(activeCue.regionID, idShowBackground)) {
                         activeCueElement.style.cssText = "";
                     }
-                    activeCueElement.innerHTML ="";
+                    activeCueElement.innerHTML = "";
                     return;
                 }
 
@@ -154,24 +218,24 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         var captionRegion = document.createElement('div');
                         // Apply the positioning to our text.
                         captionRegion.style.cssText = activeCue.cueRegion;
-                        captionRegion.id            = activeCue.regionID;
-                        captionRegion.className     = "captionRegion";
+                        captionRegion.id = activeCue.regionID;
+                        captionRegion.className = "captionRegion";
                         captionRegion.appendChild(activeCue.cueHTMLElement);
                         container.insertBefore(captionRegion, controls);
+
                         captionRegion.addEventListener('click', function() {
                             if (video.getElement().paused) {
                                 video.getElement().play();
                                 playButton.classList.add('icon-pause');
                                 playButton.classList.remove('icon-play');
-                                seek.classList.add('light');
-                            }
-                            else {
+                                seekBar.classList.add('light');
+                            } else {
                                 video.getElement().pause();
                                 playButton.classList.add('icon-play');
                                 playButton.classList.remove('icon-pause');
-                                seek.classList.remove('light');
+                                seekBar.classList.remove('light');
                             }
-                        },false);
+                        }, false);
                     }
                 }
             });
