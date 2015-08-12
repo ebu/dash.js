@@ -14,11 +14,11 @@ The core modifications can be found in the following javascript classes:
 - CustomControls (new): Created in order to manage the overlay arrangement between the video, the subtitles and the controls.
 
 To test it out:
-- Create your EBU-TT-D document (https://tech.ebu.ch/docs/tech/tech3380.pdf)
+- Create your EBU-TT-D document (https://tech.ebu.ch/docs/tech/tech3380.pdf) (needs to be the duration of the video).
 - Package it in an ISOBMFF format as the DASH specification requires (you can use MP4Box for example: gpac.wp.mines-telecom.fr/2014/08/23/ebu-ttd-support-in-gpac/)
 - Produce a manifest (you can also use MP4Box for this)
 - Launch a server at the root of the project where dash.js can send HTTP requests to get the media chunks
-- Launch index.html (samples/ebu-subtitling-demo) after setting the source value to your MPD address
+- Launch your index.html, referencing the manifest and the dash.all.js file.
 
 For any questions, contact Solène Buet (EPFL) at the EBU.
 
