@@ -715,12 +715,12 @@ MediaPlayer.utils.TTMLParser = function() {
             return cue;
         },
 
-        constructCueRegion = function(cue, cellUnit) {
+        constructCueRegion = function(cue, div, cellUnit) {
             var cueRegionProperties = []; // properties to be put in the "captionRegion" HTML element
             // Obtain the region ID(s) assigned to the cue.
             var pRegionID = cue['p@region'];
             // If div has a region.
-            var divRegionID = ttml.tt.body['div@region'];
+            var divRegionID = div['div@region'];
 
             var divRegion;
             var pRegion;
@@ -938,7 +938,7 @@ MediaPlayer.utils.TTMLParser = function() {
                      * Find the region defined for the cue.
                      */
                         // properties to be put in the "captionRegion" HTML element.
-                    var cueRegionProperties = constructCueRegion(cue, cellUnit);
+                    var cueRegionProperties = constructCueRegion(cue, div, cellUnit);
                     /**
                      * Find the style defined for the cue.
                      */

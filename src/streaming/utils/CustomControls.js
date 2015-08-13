@@ -107,7 +107,6 @@ MediaPlayer.utils.CustomControls = function () {
             captionButton.addEventListener('click', function() {
                 var regions = document.getElementsByClassName("captionRegion");
                 if(regions) {
-                    console.warn(regions);
                     [].forEach.call(regions, function(captionRegion) {
                         if(captionRegion.style.display === 'none') {
                             captionRegion.style.display = 'table';
@@ -169,7 +168,7 @@ MediaPlayer.utils.CustomControls = function () {
 
             //change video time when e changes
             seek.addEventListener('change', function () {
-                var time          = video.duration * (seek.value / 100);
+                var time          = streamController.getActiveStreamInfo().duration * (seek.value / 100);
                 video.currentTime = time;
             }, false);
 
@@ -185,7 +184,7 @@ MediaPlayer.utils.CustomControls = function () {
 
             //change seek position as video plays
             video.addEventListener('timeupdate', function () {
-                var value  = (100 / video.duration) * video.currentTime;
+                var value  = (100 / streamController.getActiveStreamInfo().duration) * video.currentTime;
                 seek.value = value;
             }, false);
 

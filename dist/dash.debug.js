@@ -6027,10 +6027,10 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         });
         return cue;
-    }, constructCueRegion = function(cue, cellUnit) {
+    }, constructCueRegion = function(cue, div, cellUnit) {
         var cueRegionProperties = [];
         var pRegionID = cue["p@region"];
-        var divRegionID = ttml.tt.body["div@region"];
+        var divRegionID = div["div@region"];
         var divRegion;
         var pRegion;
         if (divRegionID) {
@@ -6160,7 +6160,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
-                var cueRegionProperties = constructCueRegion(cue, cellUnit);
+                var cueRegionProperties = constructCueRegion(cue, div, cellUnit);
                 var cueStyleProperties = constructCueStyle(cue, cellUnit);
                 var styleIDs = cueStyleProperties[1];
                 cueStyleProperties = cueStyleProperties[0];
@@ -12638,7 +12638,6 @@ MediaPlayer.utils.CustomControls = function() {
             captionButton.addEventListener("click", function() {
                 var regions = document.getElementsByClassName("captionRegion");
                 if (regions) {
-                    console.warn(regions);
                     [].forEach.call(regions, function(captionRegion) {
                         if (captionRegion.style.display === "none") {
                             captionRegion.style.display = "table";
@@ -12688,7 +12687,7 @@ MediaPlayer.utils.CustomControls = function() {
                 }
             }, false);
             seek.addEventListener("change", function() {
-                var time = video.duration * (seek.value / 100);
+                var time = streamController.getActiveStreamInfo().duration * (seek.value / 100);
                 video.currentTime = time;
             }, false);
             seek.addEventListener("mousedown", function() {
@@ -12700,7 +12699,7 @@ MediaPlayer.utils.CustomControls = function() {
                 playbutton.classList.add("icon-pause");
             }, false);
             video.addEventListener("timeupdate", function() {
-                var value = 100 / video.duration * video.currentTime;
+                var value = 100 / streamController.getActiveStreamInfo().duration * video.currentTime;
                 seek.value = value;
             }, false);
             video.addEventListener("timeupdate", function() {
