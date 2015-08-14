@@ -36,7 +36,7 @@ MediaPlayer.utils.TTMLParser = function() {
      * */
     var SECONDS_IN_HOUR = 60 * 60, // Expression of an hour in seconds
         SECONDS_IN_MIN = 60, // Expression of a minute in seconds
-        timingRegex = /^([0-9][0-9]+):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, // Regex defining the time
+        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, // Regex defining the time
         ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
@@ -66,8 +66,7 @@ MediaPlayer.utils.TTMLParser = function() {
             'justify-content': 'flex-start;',
             'text-decoration': 'none;',
             'unicode-bidi': 'normal;',
-            'white-space': 'normal;',
-            'width': '100%;'
+            'white-space': 'normal;'
         },
         fontFamilies = {
             monospace: 'font-family: monospace;',
@@ -666,7 +665,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     // Extract the style of the span.
                     if (el.hasOwnProperty('span@style')) {
                         var spanStyle = getProcessedStyle(el['span@style'], cellUnit);
-                        spanHTMLElement.className = "spanPadding " + el['span@style'];
+                        spanHTMLElement.className = el['span@style'];
                         spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
 
@@ -1019,15 +1018,13 @@ MediaPlayer.utils.TTMLParser = function() {
                         regions: regions,
                         regionID: regionID,
                         cueID: cueID,
-                        videoHeight: videoHeight,
-                        videoWidth: videoWidth,
                         cellResolution: cellResolution,
                         fontSize: {
                             defaultFontSize: '100'
                         } || fontSize,
                         lineHeight: lineHeight,
                         linePadding: linePadding,
-                        type: "text_and_style"
+                        type: "text"
                     });
                 });
             });
