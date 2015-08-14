@@ -36,7 +36,7 @@ MediaPlayer.utils.TTMLParser = function() {
      * */
     var SECONDS_IN_HOUR = 60 * 60, // Expression of an hour in seconds
         SECONDS_IN_MIN = 60, // Expression of a minute in seconds
-        timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, // Regex defining the time
+        timingRegex = /^([0-9][0-9]+):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, // Regex defining the time
         ttml, // contains the whole ttml document received
         ttmlStyling, // contains the styling information from the document
         ttmlLayout, // contains the positioning information from the document
@@ -66,7 +66,8 @@ MediaPlayer.utils.TTMLParser = function() {
             'justify-content': 'flex-start;',
             'text-decoration': 'none;',
             'unicode-bidi': 'normal;',
-            'white-space': 'normal;'
+            'white-space': 'normal;',
+            'width': '100%;'
         },
         fontFamilies = {
             monospace: 'font-family: monospace;',
@@ -152,7 +153,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
             // In case a frameRate is provided, we adjust the parsed time.
             if (timeParts[3]) {
-                frameRate = ttml['tt@ttp:frameRate'];
+                frameRate = ttml.tt.framRate;
                 if (frameRate && !isNaN(frameRate)) {
                     parsedTime += parseFloat(timeParts[3]) / frameRate;
                 } else {
@@ -178,7 +179,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // Obtain the namespace prefix.
             var r = Object.keys(json)
                 .filter(function(k) {
-                    return (k.split(":")[0] === "tt@xmlns" || k.split(":")[1] === "tt@xmlns") && json[k] === ns;
+                    return (k.split(":")[0] === "xmlns" || k.split(":")[1] === "xmlns") && json[k] === ns;
                 }).map(function(k) {
                     return k.split(":")[2] || k.split(":")[1];
                 });
@@ -281,10 +282,9 @@ MediaPlayer.utils.TTMLParser = function() {
             for (var key in cueStyle) {
                 if (cueStyle.hasOwnProperty(key)) {
                     //Clean the properties from the parsing.
-                    var newKey = key.replace("style@tts:", "");
-                    newKey = newKey.replace("style@xml:", "");
-                    newKey = newKey.replace("style@ebutts:", "");
-                    newKey = newKey.replace("style@", "");
+                    var newKey = key.replace("ebutts:", "");
+                    newKey = newKey.replace("xml:", "");
+                    newKey = newKey.replace("tts:", "");
 
                     // Clean the properties' names.
                     newKey = camelCaseToDash(newKey);
@@ -413,7 +413,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // For every styles available, search the corresponding style in ttmlStyling.
             for (var j = 0; j < ttmlStyling.length; j++) {
                 var currStyle = ttmlStyling[j];
-                if (currStyle['style@xml:id'] === cueStyleID || currStyle['style@id'] === cueStyleID) {
+                if (currStyle['xml:id'] === cueStyleID || currStyle['id'] === cueStyleID) {
                     // Return the style corresponding to the ID in parameter.
                     return currStyle;
                 }
@@ -451,10 +451,8 @@ MediaPlayer.utils.TTMLParser = function() {
             // Clean up from the xml2json parsing:
             for (var key in cueRegion) {
                 //Clean the properties from the parsing.
-                var newKey = key.replace("region@tts:", "");
-                newKey = newKey.replace("region@xml:", "");
-                newKey = newKey.replace("region@id:", "");
-                newKey = newKey.replace("region@", "");
+                var newKey = key.replace("tts:", "");
+                newKey = newKey.replace("xml:", "");
 
                 // Clean the properties' names.
                 newKey = camelCaseToDash(newKey);
@@ -511,7 +509,7 @@ MediaPlayer.utils.TTMLParser = function() {
             // For every region available, search the corresponding style in ttmlLayout.
             for (var j = 0; j < ttmlLayout.length; j++) {
                 var currReg = ttmlLayout[j];
-                if (currReg['region@xml:id'] === cueRegionID || currReg['region@id'] === cueRegionID) {
+                if (currReg['xml:id'] === cueRegionID || currReg['id'] === cueRegionID) {
                     // Return the region corresponding to the ID in parameter.
                     return currReg;
                 }
@@ -539,8 +537,8 @@ MediaPlayer.utils.TTMLParser = function() {
         //Return the cellResolution defined by the TTML document.
         getCellResolution = function() {
             var defaultCellResolution = [32, 15]; // Default cellResolution.
-            if (ttml.hasOwnProperty("tt@ttp:cellResolution")) {
-                return ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+            if (ttml.tt.hasOwnProperty("ttp:cellResolution")) {
+                return ttml.tt["ttp:cellResolution"].split(" ").map(parseFloat);
             } else {
                 return defaultCellResolution;
             }
@@ -657,15 +655,14 @@ MediaPlayer.utils.TTMLParser = function() {
                 if (el.hasOwnProperty('span')) {
 
                     // Stock the span subtitles in an array (in case there are only one value).
-                    var spanElements = [].concat(el['span']);
+                    var spanElements = el.span.__children;
 
                     // Create the span element.
                     var spanHTMLElement = document.createElement('span');
-
                     // Extract the style of the span.
-                    if (el.hasOwnProperty('span@style')) {
-                        var spanStyle = getProcessedStyle(el['span@style'], cellUnit);
-                        spanHTMLElement.className = el['span@style'];
+                    if (el.span.hasOwnProperty('style')) {
+                        var spanStyle = getProcessedStyle(el.span.style, cellUnit);
+                        spanHTMLElement.className = "spanPadding " + el.span.style;
                         spanHTMLElement.style.cssText = spanStyle.join(" ");
                     }
 
@@ -677,8 +674,8 @@ MediaPlayer.utils.TTMLParser = function() {
                             return;
                         }
                         // If the element is a string
-                        if (typeof spanEl === 'string' || spanEl instanceof String) {
-                            var textNode = document.createTextNode(spanEl);
+                        if (spanEl.hasOwnProperty('#text')) {
+                            var textNode = document.createTextNode(spanEl['#text']);
                             spanHTMLElement.appendChild(textNode);
                             // If the element is a 'br' tag
                         } else if ('br' in spanEl) {
@@ -703,10 +700,10 @@ MediaPlayer.utils.TTMLParser = function() {
                 /**
                  * Add the text that is not in any inline element
                  */
-                else {
+                else if (el.hasOwnProperty('#text')) {
                     // Add the text to an individual span element (to add line padding if it is defined).
                     var textNode = document.createElement('span');
-                    textNode.innerHTML = el;
+                    textNode.innerHTML = el['#text'];
 
                     // We append the element to the cue container.
                     cue.appendChild(textNode);
@@ -718,9 +715,9 @@ MediaPlayer.utils.TTMLParser = function() {
         constructCueRegion = function(cue, div, cellUnit) {
             var cueRegionProperties = []; // properties to be put in the "captionRegion" HTML element
             // Obtain the region ID(s) assigned to the cue.
-            var pRegionID = cue['p@region'];
+            var pRegionID = cue.region;
             // If div has a region.
-            var divRegionID = div['div@region'];
+            var divRegionID = div.region;
 
             var divRegion;
             var pRegion;
@@ -750,11 +747,11 @@ MediaPlayer.utils.TTMLParser = function() {
         constructCueStyle = function(cue, cellUnit) {
             var cueStyleProperties = []; // properties to be put in the "paragraph" HTML element
             // Obtain the style ID(s) assigned to the cue.
-            var pStyleID = cue['p@style'];
+            var pStyleID = cue.style;
             // If body has a style.
-            var bodyStyleID = ttml.tt['body@style'];
+            var bodyStyleID = ttml.tt.body['style'];
             // If div has a style.
-            var divStyleID = ttml.tt.body['div@style'];
+            var divStyleID = ttml.tt.body.div['style'];
 
             var bodyStyle;
             var divStyle;
@@ -830,10 +827,11 @@ MediaPlayer.utils.TTMLParser = function() {
          */
 
         internalParse = function(data) {
-            var self = this;
+            var self = this,
+                converter = new X2JSMOD([], "", false);
 
-            // Parse the TTML in a JSON object.
-            ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+                // Parse the TTML in a JSON object.
+            ttml = converter.xml_str2json(data);
 
             // Get the namespace if there is one defined in the JSON object.
             var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
@@ -844,8 +842,8 @@ MediaPlayer.utils.TTMLParser = function() {
             }
 
             // Extract styling and layout from the document.
-            ttmlLayout = ttml.tt.head.layout;
-            ttmlStyling = ttml.tt.head.styling;
+            ttmlLayout = ttml.tt.head.layout.region_asArray;
+            ttmlStyling = ttml.tt.head.styling.style_asArray;
 
             // Check if the document is conform to the specification.
             if (!passStructuralConstraints()) {
@@ -869,26 +867,19 @@ MediaPlayer.utils.TTMLParser = function() {
                 regions.push(processRegion(JSON.parse(JSON.stringify(ttmlLayout[i])), cellUnit));
             }
 
-            // Stock ttmlLayout and ttmlStyling in an array (in case there are only one value).
-            ttmlLayout = [].concat(ttmlLayout);
-            ttmlStyling = [].concat(ttmlStyling);
-
             // Get the namespace prefixe.
             var nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
 
             // Set the framerate.
-            if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
-                ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
+            if (ttml.tt.hasOwnProperty(nsttp + ":frameRate")) {
+                ttml.frameRate = parseInt(ttml.tt[nsttp + ":frameRate"], 10);
             }
             var captionArray = [];
             // Extract the div
-            var divs = ttml.tt.body;
-            divs = [].concat(divs);
+            var divs = ttml.tt.body_asArray;
 
             divs.forEach(function(div) {
-                var cues = div['div'];
-                // Stock the cues in an array (in case there are only one value).
-                cues = [].concat(cues);
+                var cues = div.div.p_asArray;
 
                 // Check if cues is not empty or undefined.
                 if (!cues || cues.length === 0) {
@@ -912,20 +903,20 @@ MediaPlayer.utils.TTMLParser = function() {
                     linePadding = {};
                     fontSize = {};
                     // Obtain the start and end time of the cue.
-                    if (cue.hasOwnProperty('p@begin') && cue.hasOwnProperty('p@end')) {
-                        var pStartTime = parseTimings(cue['p@begin']);
-                        var pEndTime = parseTimings(cue['p@end']);
-                    } else if (cue.p.hasOwnProperty('span@begin') && cue.p.hasOwnProperty('span@end')) {
-                        var spanStartTime = parseTimings(cue.p['span@begin']);
-                        var spanEndTime = parseTimings(cue.p['span@end']);
+                    if (cue.hasOwnProperty('begin') && cue.hasOwnProperty('end')) {
+                        var pStartTime = parseTimings(cue['begin']);
+                        var pEndTime = parseTimings(cue['end']);
+                    } else if (cue.span.hasOwnProperty('begin') && cue.span.hasOwnProperty('end')) {
+                        var spanStartTime = parseTimings(cue.p['begin']);
+                        var spanEndTime = parseTimings(cue.p['end']);
                     } else {
                         errorMsg = "TTML document has incorrect timing value";
                         throw errorMsg;
                     }
 
                     var cueID = "";
-                    if (cue.hasOwnProperty('p@id') || cue.hasOwnProperty('p@xml:id')) {
-                        cueID = cue['p@xml:id'] || cue['p@id'];
+                    if (cue.hasOwnProperty('id') || cue.hasOwnProperty('xml:id')) {
+                        cueID = cue['xml:id'] || cue['id'];
                     }
                     // Error if timing is not specified.
                     // TODO: check with the specification what is allowed.
@@ -937,12 +928,13 @@ MediaPlayer.utils.TTMLParser = function() {
                     /**
                      * Find the region defined for the cue.
                      */
-                        // properties to be put in the "captionRegion" HTML element.
-                    var cueRegionProperties = constructCueRegion(cue, div, cellUnit);
+                    // properties to be put in the "captionRegion" HTML element.
+                    var cueRegionProperties = constructCueRegion(cue, div.div, cellUnit);
+
                     /**
                      * Find the style defined for the cue.
                      */
-                        // properties to be put in the "paragraph" HTML element.
+                    // properties to be put in the "paragraph" HTML element.
                     var cueStyleProperties = constructCueStyle(cue, cellUnit);
 
                     /**
@@ -956,7 +948,7 @@ MediaPlayer.utils.TTMLParser = function() {
                     cueParagraph.className = styleIDs;
 
                     // Stock the element in the subtitle (in p) in an array (in case there are only one value).
-                    var pElements = [].concat(cue.p);
+                    var pElements = cue.__children;
 
                     // Create an wrapper containing the cue information about unicodeBidi and direction
                     // as they need to be defined on at this level.
@@ -1018,6 +1010,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         regions: regions,
                         regionID: regionID,
                         cueID: cueID,
+                        videoHeight: videoHeight,
+                        videoWidth: videoWidth,
                         cellResolution: cellResolution,
                         fontSize: {
                             defaultFontSize: '100'

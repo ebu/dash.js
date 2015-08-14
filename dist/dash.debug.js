@@ -257,6 +257,279 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
     };
 }
 
+function X2JSMOD(matchers, attrPrefix, ignoreRoot) {
+    if (attrPrefix === null || attrPrefix === undefined) {
+        attrPrefix = "_";
+    }
+    if (ignoreRoot === null || ignoreRoot === undefined) {
+        ignoreRoot = false;
+    }
+    var VERSION = "1.0.11";
+    var escapeMode = false;
+    var DOMNodeTypes = {
+        ELEMENT_NODE: 1,
+        TEXT_NODE: 3,
+        CDATA_SECTION_NODE: 4,
+        COMMENT_NODE: 8,
+        DOCUMENT_NODE: 9
+    };
+    function getNodeLocalName(node) {
+        var nodeLocalName = node.localName;
+        if (nodeLocalName == null) nodeLocalName = node.baseName;
+        if (nodeLocalName == null || nodeLocalName == "") nodeLocalName = node.nodeName;
+        return nodeLocalName;
+    }
+    function getNodePrefix(node) {
+        return node.prefix;
+    }
+    function escapeXmlChars(str) {
+        if (typeof str == "string") return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#x27;").replace(/\//g, "&#x2F;"); else return str;
+    }
+    function unescapeXmlChars(str) {
+        return str.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#x2F;/g, "/");
+    }
+    function parseDOMChildren(node) {
+        if (node.nodeType == DOMNodeTypes.DOCUMENT_NODE) {
+            var result, child = node.firstChild, i, len;
+            for (i = 0, len = node.childNodes.length; i < len; i += 1) {
+                if (node.childNodes[i].nodeType !== DOMNodeTypes.COMMENT_NODE) {
+                    child = node.childNodes[i];
+                    break;
+                }
+            }
+            if (ignoreRoot) {
+                result = parseDOMChildren(child);
+            } else {
+                result = {};
+                var childName = getNodeLocalName(child);
+                result[childName] = parseDOMChildren(child);
+            }
+            return result;
+        } else if (node.nodeType == DOMNodeTypes.ELEMENT_NODE) {
+            var result = new Object();
+            result.__cnt = 0;
+            var children = [];
+            var nodeChildren = node.childNodes;
+            for (var cidx = 0; cidx < nodeChildren.length; cidx++) {
+                var child = nodeChildren.item(cidx);
+                var childName = getNodeLocalName(child);
+                result.__cnt++;
+                if (result[childName] == null) {
+                    var c = parseDOMChildren(child);
+                    if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c)) {} else {
+                        var o = {};
+                        o[childName] = c;
+                        children.push(o);
+                    }
+                    result[childName] = c;
+                    result[childName + "_asArray"] = new Array(1);
+                    result[childName + "_asArray"][0] = result[childName];
+                } else {
+                    if (result[childName] != null) {
+                        if (!(result[childName] instanceof Array)) {
+                            var tmpObj = result[childName];
+                            result[childName] = new Array();
+                            result[childName][0] = tmpObj;
+                            result[childName + "_asArray"] = result[childName];
+                        }
+                    }
+                    var aridx = 0;
+                    while (result[childName][aridx] != null) aridx++;
+                    var c = parseDOMChildren(child);
+                    if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c)) {} else {
+                        var o = {};
+                        o[childName] = c;
+                        children.push(o);
+                    }
+                    result[childName][aridx] = c;
+                }
+            }
+            result.__children = children;
+            for (var aidx = 0; aidx < node.attributes.length; aidx++) {
+                var attr = node.attributes.item(aidx);
+                result.__cnt++;
+                var value2 = attr.value;
+                for (var m = 0, ml = matchers.length; m < ml; m++) {
+                    var matchobj = matchers[m];
+                    if (matchobj.test.call(this, attr)) value2 = matchobj.converter.call(this, attr.value);
+                }
+                result[attrPrefix + attr.name] = value2;
+            }
+            var nodePrefix = getNodePrefix(node);
+            if (nodePrefix != null && nodePrefix != "") {
+                result.__cnt++;
+                result.__prefix = nodePrefix;
+            }
+            if (result.__cnt == 1 && result["#text"] != null) {
+                result = result["#text"];
+            }
+            if (result["#text"] != null) {
+                result.__text = result["#text"];
+                if (escapeMode) result.__text = unescapeXmlChars(result.__text);
+                delete result["#text"];
+                delete result["#text_asArray"];
+            }
+            if (result["#cdata-section"] != null) {
+                result.__cdata = result["#cdata-section"];
+                delete result["#cdata-section"];
+                delete result["#cdata-section_asArray"];
+            }
+            if (result.__text != null || result.__cdata != null) {
+                result.toString = function() {
+                    return (this.__text != null ? this.__text : "") + (this.__cdata != null ? this.__cdata : "");
+                };
+            }
+            return result;
+        } else if (node.nodeType == DOMNodeTypes.TEXT_NODE || node.nodeType == DOMNodeTypes.CDATA_SECTION_NODE) {
+            return node.nodeValue;
+        } else if (node.nodeType == DOMNodeTypes.COMMENT_NODE) {
+            return null;
+        }
+    }
+    function startTag(jsonObj, element, attrList, closed) {
+        var resultStr = "<" + (jsonObj != null && jsonObj.__prefix != null ? jsonObj.__prefix + ":" : "") + element;
+        if (attrList != null) {
+            for (var aidx = 0; aidx < attrList.length; aidx++) {
+                var attrName = attrList[aidx];
+                var attrVal = jsonObj[attrName];
+                resultStr += " " + attrName.substr(1) + "='" + attrVal + "'";
+            }
+        }
+        if (!closed) resultStr += ">"; else resultStr += "/>";
+        return resultStr;
+    }
+    function endTag(jsonObj, elementName) {
+        return "</" + (jsonObj.__prefix != null ? jsonObj.__prefix + ":" : "") + elementName + ">";
+    }
+    function endsWith(str, suffix) {
+        return str.indexOf(suffix, str.length - suffix.length) !== -1;
+    }
+    function jsonXmlSpecialElem(jsonObj, jsonObjField) {
+        if (endsWith(jsonObjField.toString(), "_asArray") || jsonObjField.toString().indexOf("_") == 0 || jsonObj[jsonObjField] instanceof Function) return true; else return false;
+    }
+    function jsonXmlElemCount(jsonObj) {
+        var elementsCnt = 0;
+        if (jsonObj instanceof Object) {
+            for (var it in jsonObj) {
+                if (jsonXmlSpecialElem(jsonObj, it)) continue;
+                elementsCnt++;
+            }
+        }
+        return elementsCnt;
+    }
+    function parseJSONAttributes(jsonObj) {
+        var attrList = [];
+        if (jsonObj instanceof Object) {
+            for (var ait in jsonObj) {
+                if (ait.toString().indexOf("__") == -1 && ait.toString().indexOf("_") == 0) {
+                    attrList.push(ait);
+                }
+            }
+        }
+        return attrList;
+    }
+    function parseJSONTextAttrs(jsonTxtObj) {
+        var result = "";
+        if (jsonTxtObj.__cdata != null) {
+            result += "<![CDATA[" + jsonTxtObj.__cdata + "]]>";
+        }
+        if (jsonTxtObj.__text != null) {
+            if (escapeMode) result += escapeXmlChars(jsonTxtObj.__text); else result += jsonTxtObj.__text;
+        }
+        return result;
+    }
+    function parseJSONTextObject(jsonTxtObj) {
+        var result = "";
+        if (jsonTxtObj instanceof Object) {
+            result += parseJSONTextAttrs(jsonTxtObj);
+        } else if (jsonTxtObj != null) {
+            if (escapeMode) result += escapeXmlChars(jsonTxtObj); else result += jsonTxtObj;
+        }
+        return result;
+    }
+    function parseJSONArray(jsonArrRoot, jsonArrObj, attrList) {
+        var result = "";
+        if (jsonArrRoot.length == 0) {
+            result += startTag(jsonArrRoot, jsonArrObj, attrList, true);
+        } else {
+            for (var arIdx = 0; arIdx < jsonArrRoot.length; arIdx++) {
+                result += startTag(jsonArrRoot[arIdx], jsonArrObj, parseJSONAttributes(jsonArrRoot[arIdx]), false);
+                result += parseJSONObject(jsonArrRoot[arIdx]);
+                result += endTag(jsonArrRoot[arIdx], jsonArrObj);
+            }
+        }
+        return result;
+    }
+    function parseJSONObject(jsonObj) {
+        var result = "";
+        var elementsCnt = jsonXmlElemCount(jsonObj);
+        if (elementsCnt > 0) {
+            for (var it in jsonObj) {
+                if (jsonXmlSpecialElem(jsonObj, it)) continue;
+                var subObj = jsonObj[it];
+                var attrList = parseJSONAttributes(subObj);
+                if (subObj == null || subObj == undefined) {
+                    result += startTag(subObj, it, attrList, true);
+                } else if (subObj instanceof Object) {
+                    if (subObj instanceof Array) {
+                        result += parseJSONArray(subObj, it, attrList);
+                    } else {
+                        var subObjElementsCnt = jsonXmlElemCount(subObj);
+                        if (subObjElementsCnt > 0 || subObj.__text != null || subObj.__cdata != null) {
+                            result += startTag(subObj, it, attrList, false);
+                            result += parseJSONObject(subObj);
+                            result += endTag(subObj, it);
+                        } else {
+                            result += startTag(subObj, it, attrList, true);
+                        }
+                    }
+                } else {
+                    result += startTag(subObj, it, attrList, false);
+                    result += parseJSONTextObject(subObj);
+                    result += endTag(subObj, it);
+                }
+            }
+        }
+        result += parseJSONTextObject(jsonObj);
+        return result;
+    }
+    this.parseXmlString = function(xmlDocStr) {
+        var xmlDoc;
+        if (window.DOMParser) {
+            var parser = new window.DOMParser();
+            xmlDoc = parser.parseFromString(xmlDocStr, "text/xml");
+        } else {
+            if (xmlDocStr.indexOf("<?") == 0) {
+                xmlDocStr = xmlDocStr.substr(xmlDocStr.indexOf("?>") + 2);
+            }
+            xmlDoc = new ActiveXObject("Microsoft.XMLDOM");
+            xmlDoc.async = "false";
+            xmlDoc.loadXML(xmlDocStr);
+        }
+        return xmlDoc;
+    };
+    this.xml2json = function(xmlDoc) {
+        return parseDOMChildren(xmlDoc);
+    };
+    this.xml_str2json = function(xmlDocStr) {
+        var xmlDoc = this.parseXmlString(xmlDocStr);
+        return this.xml2json(xmlDoc);
+    };
+    this.json2xml_str = function(jsonObj) {
+        return parseJSONObject(jsonObj);
+    };
+    this.json2xml = function(jsonObj) {
+        var xmlDocStr = this.json2xml_str(jsonObj);
+        return this.parseXmlString(xmlDocStr);
+    };
+    this.getVersion = function() {
+        return VERSION;
+    };
+    this.escapeMode = function(enabled) {
+        escapeMode = enabled;
+    };
+}
+
 function ObjectIron(map) {
     var lookup;
     lookup = [];
@@ -5594,7 +5867,7 @@ MediaPlayer.dependencies.StreamProcessor.prototype = {
 
 MediaPlayer.utils.TTMLParser = function() {
     "use strict";
-    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^(0[0-9]|1[0-9]|2[0-3]):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, fontSize = {}, lineHeight = {}, linePadding = {}, defaultLayoutProperties = {
+    var SECONDS_IN_HOUR = 60 * 60, SECONDS_IN_MIN = 60, timingRegex = /^([0-9][0-9]+):([0-5][0-9]):([0-5][0-9])|(60)(\.([0-9])+)?$/, ttml, ttmlStyling, ttmlLayout, fontSize = {}, lineHeight = {}, linePadding = {}, defaultLayoutProperties = {
         top: "85%;",
         left: "5%;",
         width: "90%;",
@@ -5616,7 +5889,8 @@ MediaPlayer.utils.TTMLParser = function() {
         "justify-content": "flex-start;",
         "text-decoration": "none;",
         "unicode-bidi": "normal;",
-        "white-space": "normal;"
+        "white-space": "normal;",
+        width: "100%;"
     }, fontFamilies = {
         monospace: "font-family: monospace;",
         sansSerif: "font-family: sans-serif;",
@@ -5664,7 +5938,7 @@ MediaPlayer.utils.TTMLParser = function() {
         timeParts = timingStr.split(":");
         parsedTime = parseFloat(timeParts[0]) * SECONDS_IN_HOUR + parseFloat(timeParts[1]) * SECONDS_IN_MIN + parseFloat(timeParts[2]);
         if (timeParts[3]) {
-            frameRate = ttml["tt@ttp:frameRate"];
+            frameRate = ttml.tt.framRate;
             if (frameRate && !isNaN(frameRate)) {
                 parsedTime += parseFloat(timeParts[3]) / frameRate;
             } else {
@@ -5677,7 +5951,7 @@ MediaPlayer.utils.TTMLParser = function() {
         return hasTt && hasHead && hasLayout && hasStyling && hasBody;
     }, getNamespacePrefix = function(json, ns) {
         var r = Object.keys(json).filter(function(k) {
-            return (k.split(":")[0] === "tt@xmlns" || k.split(":")[1] === "tt@xmlns") && json[k] === ns;
+            return (k.split(":")[0] === "xmlns" || k.split(":")[1] === "xmlns") && json[k] === ns;
         }).map(function(k) {
             return k.split(":")[2] || k.split(":")[1];
         });
@@ -5741,10 +6015,9 @@ MediaPlayer.utils.TTMLParser = function() {
         var properties = [];
         for (var key in cueStyle) {
             if (cueStyle.hasOwnProperty(key)) {
-                var newKey = key.replace("style@tts:", "");
-                newKey = newKey.replace("style@xml:", "");
-                newKey = newKey.replace("style@ebutts:", "");
-                newKey = newKey.replace("style@", "");
+                var newKey = key.replace("ebutts:", "");
+                newKey = newKey.replace("xml:", "");
+                newKey = newKey.replace("tts:", "");
                 newKey = camelCaseToDash(newKey);
                 cueStyle[newKey] = cueStyle[key];
                 delete cueStyle[key];
@@ -5846,7 +6119,7 @@ MediaPlayer.utils.TTMLParser = function() {
     }, findStyleFromID = function(ttmlStyling, cueStyleID) {
         for (var j = 0; j < ttmlStyling.length; j++) {
             var currStyle = ttmlStyling[j];
-            if (currStyle["style@xml:id"] === cueStyleID || currStyle["style@id"] === cueStyleID) {
+            if (currStyle["xml:id"] === cueStyleID || currStyle["id"] === cueStyleID) {
                 return currStyle;
             }
         }
@@ -5865,10 +6138,8 @@ MediaPlayer.utils.TTMLParser = function() {
     }, processRegion = function(cueRegion, cellUnit) {
         var properties = [];
         for (var key in cueRegion) {
-            var newKey = key.replace("region@tts:", "");
-            newKey = newKey.replace("region@xml:", "");
-            newKey = newKey.replace("region@id:", "");
-            newKey = newKey.replace("region@", "");
+            var newKey = key.replace("tts:", "");
+            newKey = newKey.replace("xml:", "");
             newKey = camelCaseToDash(newKey);
             cueRegion[newKey] = cueRegion[key];
             delete cueRegion[key];
@@ -5909,7 +6180,7 @@ MediaPlayer.utils.TTMLParser = function() {
     }, findRegionFromID = function(ttmlLayout, cueRegionID) {
         for (var j = 0; j < ttmlLayout.length; j++) {
             var currReg = ttmlLayout[j];
-            if (currReg["region@xml:id"] === cueRegionID || currReg["region@id"] === cueRegionID) {
+            if (currReg["xml:id"] === cueRegionID || currReg["id"] === cueRegionID) {
                 return currReg;
             }
         }
@@ -5927,8 +6198,8 @@ MediaPlayer.utils.TTMLParser = function() {
         return regions;
     }, getCellResolution = function() {
         var defaultCellResolution = [ 32, 15 ];
-        if (ttml.hasOwnProperty("tt@ttp:cellResolution")) {
-            return ttml["tt@ttp:cellResolution"].split(" ").map(parseFloat);
+        if (ttml.tt.hasOwnProperty("ttp:cellResolution")) {
+            return ttml.tt["ttp:cellResolution"].split(" ").map(parseFloat);
         } else {
             return defaultCellResolution;
         }
@@ -5997,19 +6268,19 @@ MediaPlayer.utils.TTMLParser = function() {
                 return;
             }
             if (el.hasOwnProperty("span")) {
-                var spanElements = [].concat(el["span"]);
+                var spanElements = el.span.__children;
                 var spanHTMLElement = document.createElement("span");
-                if (el.hasOwnProperty("span@style")) {
-                    var spanStyle = getProcessedStyle(el["span@style"], cellUnit);
-                    spanHTMLElement.className = el["span@style"];
+                if (el.span.hasOwnProperty("style")) {
+                    var spanStyle = getProcessedStyle(el.span.style, cellUnit);
+                    spanHTMLElement.className = "spanPadding " + el.span.style;
                     spanHTMLElement.style.cssText = spanStyle.join(" ");
                 }
                 spanElements.forEach(function(spanEl) {
                     if (spanElements.hasOwnProperty("metadata")) {
                         return;
                     }
-                    if (typeof spanEl === "string" || spanEl instanceof String) {
-                        var textNode = document.createTextNode(spanEl);
+                    if (spanEl.hasOwnProperty("#text")) {
+                        var textNode = document.createTextNode(spanEl["#text"]);
                         spanHTMLElement.appendChild(textNode);
                     } else if ("br" in spanEl) {
                         spanHTMLElement.appendChild(document.createElement("br"));
@@ -6020,17 +6291,17 @@ MediaPlayer.utils.TTMLParser = function() {
                 var brEl = document.createElement("br");
                 brEl.className = "lineBreak";
                 cue.appendChild(brEl);
-            } else {
+            } else if (el.hasOwnProperty("#text")) {
                 var textNode = document.createElement("span");
-                textNode.innerHTML = el;
+                textNode.innerHTML = el["#text"];
                 cue.appendChild(textNode);
             }
         });
         return cue;
     }, constructCueRegion = function(cue, div, cellUnit) {
         var cueRegionProperties = [];
-        var pRegionID = cue["p@region"];
-        var divRegionID = div["div@region"];
+        var pRegionID = cue.region;
+        var divRegionID = div.region;
         var divRegion;
         var pRegion;
         if (divRegionID) {
@@ -6050,9 +6321,9 @@ MediaPlayer.utils.TTMLParser = function() {
         return cueRegionProperties;
     }, constructCueStyle = function(cue, cellUnit) {
         var cueStyleProperties = [];
-        var pStyleID = cue["p@style"];
-        var bodyStyleID = ttml.tt["body@style"];
-        var divStyleID = ttml.tt.body["div@style"];
+        var pStyleID = cue.style;
+        var bodyStyleID = ttml.tt.body["style"];
+        var divStyleID = ttml.tt.body.div["style"];
         var bodyStyle;
         var divStyle;
         var pStyle;
@@ -6101,14 +6372,14 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
     }, internalParse = function(data) {
-        var self = this;
-        ttml = JSON.parse(xml2json_hi(parseXml(data), ""));
+        var self = this, converter = new X2JSMOD([], "", false);
+        ttml = converter.xml_str2json(data);
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
         if (ttNS) {
             removeNamespacePrefix(ttml, ttNS);
         }
-        ttmlLayout = ttml.tt.head.layout;
-        ttmlStyling = ttml.tt.head.styling;
+        ttmlLayout = ttml.tt.head.layout.region_asArray;
+        ttmlStyling = ttml.tt.head.styling.style_asArray;
         if (!passStructuralConstraints()) {
             var errorMsg = "TTML document has incorrect structure";
             throw errorMsg;
@@ -6122,18 +6393,14 @@ MediaPlayer.utils.TTMLParser = function() {
         for (var i = 0; i < ttmlLayout.length; i++) {
             regions.push(processRegion(JSON.parse(JSON.stringify(ttmlLayout[i])), cellUnit));
         }
-        ttmlLayout = [].concat(ttmlLayout);
-        ttmlStyling = [].concat(ttmlStyling);
         var nsttp = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml#parameter");
-        if (ttml.hasOwnProperty("tt@" + nsttp + ":frameRate")) {
-            ttml.frameRate = parseInt(ttml["tt@" + nsttp + ":frameRate"], 10);
+        if (ttml.tt.hasOwnProperty(nsttp + ":frameRate")) {
+            ttml.frameRate = parseInt(ttml.tt[nsttp + ":frameRate"], 10);
         }
         var captionArray = [];
-        var divs = ttml.tt.body;
-        divs = [].concat(divs);
+        var divs = ttml.tt.body_asArray;
         divs.forEach(function(div) {
-            var cues = div["div"];
-            cues = [].concat(cues);
+            var cues = div.div.p_asArray;
             if (!cues || cues.length === 0) {
                 var errorMsg = "TTML document does not contain any cues";
                 throw errorMsg;
@@ -6142,31 +6409,31 @@ MediaPlayer.utils.TTMLParser = function() {
                 lineHeight = {};
                 linePadding = {};
                 fontSize = {};
-                if (cue.hasOwnProperty("p@begin") && cue.hasOwnProperty("p@end")) {
-                    var pStartTime = parseTimings(cue["p@begin"]);
-                    var pEndTime = parseTimings(cue["p@end"]);
-                } else if (cue.p.hasOwnProperty("span@begin") && cue.p.hasOwnProperty("span@end")) {
-                    var spanStartTime = parseTimings(cue.p["span@begin"]);
-                    var spanEndTime = parseTimings(cue.p["span@end"]);
+                if (cue.hasOwnProperty("begin") && cue.hasOwnProperty("end")) {
+                    var pStartTime = parseTimings(cue["begin"]);
+                    var pEndTime = parseTimings(cue["end"]);
+                } else if (cue.span.hasOwnProperty("begin") && cue.span.hasOwnProperty("end")) {
+                    var spanStartTime = parseTimings(cue.p["begin"]);
+                    var spanEndTime = parseTimings(cue.p["end"]);
                 } else {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
                 var cueID = "";
-                if (cue.hasOwnProperty("p@id") || cue.hasOwnProperty("p@xml:id")) {
-                    cueID = cue["p@xml:id"] || cue["p@id"];
+                if (cue.hasOwnProperty("id") || cue.hasOwnProperty("xml:id")) {
+                    cueID = cue["xml:id"] || cue["id"];
                 }
                 if ((isNaN(pStartTime) || isNaN(pEndTime)) && (isNaN(spanStartTime) || isNaN(spanEndTime))) {
                     errorMsg = "TTML document has incorrect timing value";
                     throw errorMsg;
                 }
-                var cueRegionProperties = constructCueRegion(cue, div, cellUnit);
+                var cueRegionProperties = constructCueRegion(cue, div.div, cellUnit);
                 var cueStyleProperties = constructCueStyle(cue, cellUnit);
                 var styleIDs = cueStyleProperties[1];
                 cueStyleProperties = cueStyleProperties[0];
                 var cueParagraph = document.createElement("div");
                 cueParagraph.className = styleIDs;
-                var pElements = [].concat(cue.p);
+                var pElements = cue.__children;
                 var cueDirUniWrapper = constructCue(pElements, cellUnit);
                 cueDirUniWrapper.className = "cueDirUniWrapper";
                 if (arrayContains("unicode-bidi", cueStyleProperties)) {
@@ -6204,6 +6471,8 @@ MediaPlayer.utils.TTMLParser = function() {
                     regions: regions,
                     regionID: regionID,
                     cueID: cueID,
+                    videoHeight: videoHeight,
+                    videoWidth: videoWidth,
                     cellResolution: cellResolution,
                     fontSize: {
                         defaultFontSize: "100"
