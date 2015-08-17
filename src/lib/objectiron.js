@@ -20,11 +20,11 @@
  * var parent,
  *     child,
  *     properties = [
-                    {
-                        name: 'profiles',
-                        merge: false
-                    }
-                ];
+ {
+ name: 'profiles',
+ merge: false
+ }
+ ];
  *
  * parent = {};
  * parent.name = "ParentNode";
@@ -95,8 +95,8 @@ function ObjectIron(map) {
                     if (child.hasOwnProperty(property.name)) {
                         // check to see if we should merge
                         if (property.merge) {
-                           parentValue = parent[property.name];
-                           childValue = child[property.name];
+                            parentValue = parent[property.name];
+                            childValue = child[property.name];
 
                             // complex objects; merge properties
                             if (typeof parentValue === 'object' && typeof childValue === 'object') {
@@ -182,7 +182,7 @@ function ObjectIron(map) {
 
             // iterate over the objects and look for any of the items we care about
             for (pp in source) {
-                if (source.hasOwnProperty(pp)) {
+                if (source.hasOwnProperty(pp) && pp != "__children") {
                     pi = lookup.indexOf(pp);
                     if (pi !== -1) {
                         item = map[pi];

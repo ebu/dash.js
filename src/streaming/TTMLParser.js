@@ -828,7 +828,7 @@ MediaPlayer.utils.TTMLParser = function() {
 
         internalParse = function(data) {
             var self = this,
-                converter = new X2JSMOD([], "", false);
+                converter = new X2JS([], "", false);
 
                 // Parse the TTML in a JSON object.
             ttml = converter.xml_str2json(data);
@@ -1013,9 +1013,8 @@ MediaPlayer.utils.TTMLParser = function() {
                         videoHeight: videoHeight,
                         videoWidth: videoWidth,
                         cellResolution: cellResolution,
-                        fontSize: {
-                            defaultFontSize: '100'
-                        } || fontSize,
+                        fontSize:  fontSize ||
+                        {defaultFontSize: '100'},
                         lineHeight: lineHeight,
                         linePadding: linePadding,
                         type: "text"

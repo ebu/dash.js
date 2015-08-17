@@ -16,14 +16,14 @@
  */
 
 function X2JS(matchers, attrPrefix, ignoreRoot) {
-    if (attrPrefix === null || attrPrefix === undefined) {
-        attrPrefix = "_";
-    }
-    
-    if (ignoreRoot === null || ignoreRoot === undefined) {
-        ignoreRoot = false;
-    }
-    
+	if (attrPrefix === null || attrPrefix === undefined) {
+		attrPrefix = "_";
+	}
+
+	if (ignoreRoot === null || ignoreRoot === undefined) {
+		ignoreRoot = false;
+	}
+
 	var VERSION = "1.0.11";
 	var escapeMode = false;
 
@@ -34,20 +34,20 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 		COMMENT_NODE       : 8,
 		DOCUMENT_NODE 	   : 9
 	};
-	
+
 	function getNodeLocalName( node ) {
-		var nodeLocalName = node.localName;			
+		var nodeLocalName = node.localName;
 		if(nodeLocalName == null) // Yeah, this is IE!! 
 			nodeLocalName = node.baseName;
 		if(nodeLocalName == null || nodeLocalName=="") // =="" is IE too
 			nodeLocalName = node.nodeName;
 		return nodeLocalName;
 	}
-	
+
 	function getNodePrefix(node) {
 		return node.prefix;
 	}
-		
+
 	function escapeXmlChars(str) {
 		if(typeof(str) == "string")
 			return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#x27;').replace(/\//g, '&#x2F;');
@@ -57,48 +57,58 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 
 	function unescapeXmlChars(str) {
 		return str.replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '"').replace(/&#x27;/g, "'").replace(/&#x2F;/g, '\/')
-	}	
+	}
 
 	function parseDOMChildren( node ) {
 		if(node.nodeType == DOMNodeTypes.DOCUMENT_NODE) {
 			var result,
 			    child = node.firstChild,
 			    i,
-			    len; 
-			
+			    len;
+
 			// get the first node that isn't a comment
 			for(i = 0, len = node.childNodes.length; i < len; i += 1) {
-			   if (node.childNodes[i].nodeType !== DOMNodeTypes.COMMENT_NODE) {
-			       child = node.childNodes[i];
-			       break;
-			   } 
+				if (node.childNodes[i].nodeType !== DOMNodeTypes.COMMENT_NODE) {
+					child = node.childNodes[i];
+					break;
+				}
 			}
-			
+
 			if ( ignoreRoot ) {
-			    result = parseDOMChildren(child);
+				result = parseDOMChildren(child);
 			} else {
-			    result = {};
-			    var childName = getNodeLocalName(child);
-                result[childName] = parseDOMChildren(child);
+				result = {};
+				var childName = getNodeLocalName(child);
+				result[childName] = parseDOMChildren(child);
 			}
-			
+
 			return result;
 		}
 		else
 		if(node.nodeType == DOMNodeTypes.ELEMENT_NODE) {
 			var result = new Object;
 			result.__cnt=0;
-			
+
+			var children = [];
+
 			var nodeChildren = node.childNodes;
-			
+
 			// Children nodes
 			for(var cidx=0; cidx <nodeChildren.length; cidx++) {
 				var child = nodeChildren.item(cidx); // nodeChildren[cidx];
 				var childName = getNodeLocalName(child);
-				
+
 				result.__cnt++;
 				if(result[childName] == null) {
-					result[childName] = parseDOMChildren(child);
+					var c = parseDOMChildren(child);
+					if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c) ) {
+
+					} else {
+						var o = {};
+						o[childName] = c;
+						children.push(o);
+					}
+					result[childName] = c;
 					result[childName+"_asArray"] = new Array(1);
 					result[childName+"_asArray"][0] = result[childName];
 				}
@@ -108,46 +118,57 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 							var tmpObj = result[childName];
 							result[childName] = new Array();
 							result[childName][0] = tmpObj;
-							
+
 							result[childName+"_asArray"] = result[childName];
 						}
 					}
 					var aridx = 0;
 					while(result[childName][aridx]!=null) aridx++;
-					(result[childName])[aridx] = parseDOMChildren(child);
-				}			
+
+					var c = parseDOMChildren(child);
+					if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c) ) {
+
+					} else {
+						var o        = {};
+						o[childName] = c;
+						children.push(o);
+					}
+					(result[childName])[aridx] = c;
+				}
 			}
-			
+
+			result.__children = children;
+
 			// Attributes
 			for(var aidx=0; aidx <node.attributes.length; aidx++) {
 				var attr = node.attributes.item(aidx); // [aidx];
 				result.__cnt++;
-				
+
 				var value2 = attr.value;
 				for(var m=0, ml=matchers.length; m < ml; m++) {
-				    var matchobj = matchers[m];
-				    if (matchobj.test.call(this, attr))
-				        value2 = matchobj.converter.call(this, attr.value);
+					var matchobj = matchers[m];
+					if (matchobj.test.call(this, attr))
+						value2 = matchobj.converter.call(this, attr.value);
 				}
-				
+
 				result[attrPrefix+attr.name]=value2;
 			}
-			
+
 			// Node namespace prefix
 			var nodePrefix = getNodePrefix(node);
 			if(nodePrefix!=null && nodePrefix!="") {
 				result.__cnt++;
 				result.__prefix=nodePrefix;
 			}
-			
+
 			if( result.__cnt == 1 && result["#text"]!=null  ) {
 				result = result["#text"];
-			} 
-			
+			}
+
 			if(result["#text"]!=null) {
 				result.__text = result["#text"];
 				if(escapeMode)
-					result.__text = unescapeXmlChars(result.__text)
+					result.__text = unescapeXmlChars(result.__text);
 				delete result["#text"];
 				delete result["#text_asArray"];
 			}
@@ -156,7 +177,7 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 				delete result["#cdata-section"];
 				delete result["#cdata-section_asArray"];
 			}
-			
+
 			if(result.__text!=null || result.__cdata!=null) {
 				result.toString = function() {
 					return (this.__text!=null? this.__text:'')+( this.__cdata!=null ? this.__cdata:'');
@@ -167,13 +188,13 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 		else
 		if(node.nodeType == DOMNodeTypes.TEXT_NODE || node.nodeType == DOMNodeTypes.CDATA_SECTION_NODE) {
 			return node.nodeValue;
-		}	
+		}
 		else
 		if(node.nodeType == DOMNodeTypes.COMMENT_NODE) {
-		    return null;
+			return null;
 		}
 	}
-	
+
 	function startTag(jsonObj, element, attrList, closed) {
 		var resultStr = "<"+ ( (jsonObj!=null && jsonObj.__prefix!=null)? (jsonObj.__prefix+":"):"") + element;
 		if(attrList!=null) {
@@ -189,36 +210,36 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 			resultStr+="/>";
 		return resultStr;
 	}
-	
+
 	function endTag(jsonObj,elementName) {
 		return "</"+ (jsonObj.__prefix!=null? (jsonObj.__prefix+":"):"")+elementName+">";
 	}
-	
+
 	function endsWith(str, suffix) {
-	    return str.indexOf(suffix, str.length - suffix.length) !== -1;
+		return str.indexOf(suffix, str.length - suffix.length) !== -1;
 	}
-	
+
 	function jsonXmlSpecialElem ( jsonObj, jsonObjField ) {
-		if(endsWith(jsonObjField.toString(),("_asArray")) 
-				|| jsonObjField.toString().indexOf("_")==0 
-				|| (jsonObj[jsonObjField] instanceof Function) )
+		if(endsWith(jsonObjField.toString(),("_asArray"))
+			|| jsonObjField.toString().indexOf("_")==0
+			|| (jsonObj[jsonObjField] instanceof Function) )
 			return true;
 		else
 			return false;
 	}
-	
+
 	function jsonXmlElemCount ( jsonObj ) {
 		var elementsCnt = 0;
 		if(jsonObj instanceof Object ) {
 			for( var it in jsonObj  ) {
 				if(jsonXmlSpecialElem ( jsonObj, it) )
-					continue;			
+					continue;
 				elementsCnt++;
 			}
 		}
 		return elementsCnt;
 	}
-	
+
 	function parseJSONAttributes ( jsonObj ) {
 		var attrList = [];
 		if(jsonObj instanceof Object ) {
@@ -230,15 +251,15 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 		}
 		return attrList;
 	}
-	
+
 	function parseJSONTextAttrs ( jsonTxtObj ) {
 		var result ="";
-		
-		if(jsonTxtObj.__cdata!=null) {										
-			result+="<![CDATA["+jsonTxtObj.__cdata+"]]>";					
+
+		if(jsonTxtObj.__cdata!=null) {
+			result+="<![CDATA["+jsonTxtObj.__cdata+"]]>";
 		}
-		
-		if(jsonTxtObj.__text!=null) {			
+
+		if(jsonTxtObj.__text!=null) {
 			if(escapeMode)
 				result+=escapeXmlChars(jsonTxtObj.__text);
 			else
@@ -246,7 +267,7 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 		}
 		return result
 	}
-	
+
 	function parseJSONTextObject ( jsonTxtObj ) {
 		var result ="";
 
@@ -254,18 +275,18 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 			result+=parseJSONTextAttrs ( jsonTxtObj )
 		}
 		else
-			if(jsonTxtObj!=null) {
-				if(escapeMode)
-					result+=escapeXmlChars(jsonTxtObj);
-				else
-					result+=jsonTxtObj;
-			}
-		
+		if(jsonTxtObj!=null) {
+			if(escapeMode)
+				result+=escapeXmlChars(jsonTxtObj);
+			else
+				result+=jsonTxtObj;
+		}
+
 		return result;
 	}
-	
+
 	function parseJSONArray ( jsonArrRoot, jsonArrObj, attrList ) {
-		var result = ""; 
+		var result = "";
 		if(jsonArrRoot.length == 0) {
 			result+=startTag(jsonArrRoot, jsonArrObj, attrList, true);
 		}
@@ -273,35 +294,35 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 			for(var arIdx = 0; arIdx < jsonArrRoot.length; arIdx++) {
 				result+=startTag(jsonArrRoot[arIdx], jsonArrObj, parseJSONAttributes(jsonArrRoot[arIdx]), false);
 				result+=parseJSONObject(jsonArrRoot[arIdx]);
-				result+=endTag(jsonArrRoot[arIdx],jsonArrObj);						
+				result+=endTag(jsonArrRoot[arIdx],jsonArrObj);
 			}
 		}
 		return result;
 	}
-	
+
 	function parseJSONObject ( jsonObj ) {
-		var result = "";	
+		var result = "";
 
 		var elementsCnt = jsonXmlElemCount ( jsonObj );
-		
+
 		if(elementsCnt > 0) {
 			for( var it in jsonObj ) {
-				
+
 				if(jsonXmlSpecialElem ( jsonObj, it) )
-					continue;			
-				
-				var subObj = jsonObj[it];						
-				
+					continue;
+
+				var subObj = jsonObj[it];
+
 				var attrList = parseJSONAttributes( subObj )
-				
+
 				if(subObj == null || subObj == undefined) {
 					result+=startTag(subObj, it, attrList, true)
 				}
 				else
 				if(subObj instanceof Object) {
-					
-					if(subObj instanceof Array) {					
-						result+=parseJSONArray( subObj, it, attrList )					
+
+					if(subObj instanceof Array) {
+						result+=parseJSONArray( subObj, it, attrList )
 					}
 					else {
 						var subObjElementsCnt = jsonXmlElemCount ( subObj );
@@ -323,14 +344,14 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 			}
 		}
 		result+=parseJSONTextObject(jsonObj);
-		
+
 		return result;
 	}
-	
+
 	this.parseXmlString = function(xmlDocStr) {
 		var xmlDoc;
 		if (window.DOMParser) {
-			var parser=new window.DOMParser();			
+			var parser=new window.DOMParser();
 			xmlDoc = parser.parseFromString( xmlDocStr, "text/xml" );
 		}
 		else {
@@ -348,9 +369,9 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 	this.xml2json = function (xmlDoc) {
 		return parseDOMChildren ( xmlDoc );
 	}
-	
+
 	this.xml_str2json = function (xmlDocStr) {
-		var xmlDoc = this.parseXmlString(xmlDocStr);	
+		var xmlDoc = this.parseXmlString(xmlDocStr);
 		return this.xml2json(xmlDoc);
 	}
 
@@ -362,11 +383,11 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
 		var xmlDocStr = this.json2xml_str (jsonObj);
 		return this.parseXmlString(xmlDocStr);
 	}
-	
+
 	this.getVersion = function () {
 		return VERSION;
-	}		
-	
+	}
+
 	this.escapeMode = function(enabled) {
 		escapeMode = enabled;
 	}

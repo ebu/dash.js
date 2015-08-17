@@ -49,13 +49,20 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
         } else if (node.nodeType == DOMNodeTypes.ELEMENT_NODE) {
             var result = new Object();
             result.__cnt = 0;
+            var children = [];
             var nodeChildren = node.childNodes;
             for (var cidx = 0; cidx < nodeChildren.length; cidx++) {
                 var child = nodeChildren.item(cidx);
                 var childName = getNodeLocalName(child);
                 result.__cnt++;
                 if (result[childName] == null) {
-                    result[childName] = parseDOMChildren(child);
+                    var c = parseDOMChildren(child);
+                    if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c)) {} else {
+                        var o = {};
+                        o[childName] = c;
+                        children.push(o);
+                    }
+                    result[childName] = c;
                     result[childName + "_asArray"] = new Array(1);
                     result[childName + "_asArray"][0] = result[childName];
                 } else {
@@ -69,9 +76,16 @@ function X2JS(matchers, attrPrefix, ignoreRoot) {
                     }
                     var aridx = 0;
                     while (result[childName][aridx] != null) aridx++;
-                    result[childName][aridx] = parseDOMChildren(child);
+                    var c = parseDOMChildren(child);
+                    if (childName == "#text" && !/[^ \f\n\r\t\v]/.test(c)) {} else {
+                        var o = {};
+                        o[childName] = c;
+                        children.push(o);
+                    }
+                    result[childName][aridx] = c;
                 }
             }
+            result.__children = children;
             for (var aidx = 0; aidx < node.attributes.length; aidx++) {
                 var attr = node.attributes.item(aidx);
                 result.__cnt++;
@@ -617,7 +631,7 @@ function ObjectIron(map) {
             }
         }
         for (pp in source) {
-            if (source.hasOwnProperty(pp)) {
+            if (source.hasOwnProperty(pp) && pp != "__children") {
                 pi = lookup.indexOf(pp);
                 if (pi !== -1) {
                     item = map[pi];
@@ -6372,7 +6386,7 @@ MediaPlayer.utils.TTMLParser = function() {
             }
         }
     }, internalParse = function(data) {
-        var self = this, converter = new X2JSMOD([], "", false);
+        var self = this, converter = new X2JS([], "", false);
         ttml = converter.xml_str2json(data);
         var ttNS = getNamespacePrefix(ttml, "http://www.w3.org/ns/ttml");
         if (ttNS) {
@@ -6474,9 +6488,9 @@ MediaPlayer.utils.TTMLParser = function() {
                     videoHeight: videoHeight,
                     videoWidth: videoWidth,
                     cellResolution: cellResolution,
-                    fontSize: {
+                    fontSize: fontSize || {
                         defaultFontSize: "100"
-                    } || fontSize,
+                    },
                     lineHeight: lineHeight,
                     linePadding: linePadding,
                     type: "text"
@@ -9422,25 +9436,27 @@ MediaPlayer.dependencies.CustomCaptions = function() {
                         if (activeCue.linePadding.hasOwnProperty(key)) {
                             var valueLinePadding = activeCue.linePadding[key];
                             var replaceValue = (valueLinePadding * cellUnit[0]).toString();
-                            var elements = document.getElementsByClassName("spanPadding");
+                            var elementsSpan = document.getElementsByClassName("spanPadding");
                             for (var i = 0; i < elements.length; i++) {
-                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-left\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
-                                elements[i].style.cssText = elements[i].style.cssText.replace(/(padding-right\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                                elementsSpan[i].style.cssText = elementsSpan[i].style.cssText.replace(/(padding-left\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                                elementsSpan[i].style.cssText = elementsSpan[i].style.cssText.replace(/(padding-right\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
                             }
                         }
                     }
                 }
-                for (var key in activeCue.fontSize) {
-                    if (activeCue.fontSize.hasOwnProperty(key)) {
-                        var valueFontSize = activeCue.fontSize[key] / 100;
-                        var replaceValue = (valueFontSize * cellUnit[1]).toString();
-                        if (key !== "defaultFontSize") {
-                            var elements = document.getElementsByClassName(key);
-                        } else {
-                            var elements = document.getElementsByClassName("paragraph");
-                        }
-                        for (var i = 0; i < elements.length; i++) {
-                            elements[i].style.cssText = elements[i].style.cssText.replace(/(font-size\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                if (activeCue.fontSize) {
+                    for (var key in activeCue.fontSize) {
+                        if (activeCue.fontSize.hasOwnProperty(key)) {
+                            var valueFontSize = activeCue.fontSize[key] / 100;
+                            var replaceValue = (valueFontSize * cellUnit[1]).toString();
+                            if (key !== "defaultFontSize") {
+                                var elements = document.getElementsByClassName(key);
+                            } else {
+                                var elements = document.getElementsByClassName("paragraph");
+                            }
+                            for (var i = 0; i < elements.length; i++) {
+                                elements[i].style.cssText = elements[i].style.cssText.replace(/(font-size\s*:\s*)[\d.,]+(?=\s*px)/gi, "$1" + replaceValue);
+                            }
                         }
                     }
                 }
