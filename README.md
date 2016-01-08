@@ -14,13 +14,13 @@ The core modifications can be found in the following javascript classes:
 - CustomControls (new): Created in order to manage the overlay arrangement between the video, the subtitles and the controls.
 
 To test it out:
-- Create your EBU-TT-D document (https://tech.ebu.ch/docs/tech/tech3380.pdf) (needs to be the duration of the video).
+- Create your EBU-TT-D document (https://tech.ebu.ch/publications/tech3380) (needs to be the duration of the video).
 - Package it in an ISOBMFF format as the DASH specification requires (you can use MP4Box for example: gpac.wp.mines-telecom.fr/2014/08/23/ebu-ttd-support-in-gpac/)
 - Produce a manifest (you can also use MP4Box for this)
 - Launch a server at the root of the project where dash.js can send HTTP requests to get the media chunks
 - Launch your index.html, referencing the manifest and the dash.all.js file.
 
-For any questions, contact Solène Buet (EPFL) at the EBU.
+For any questions, contact Solène Buet directly or the EBU via tech@ebu.ch
 
 # dash.js
 <img src="https://cloud.githubusercontent.com/assets/2762250/7824984/985c3e76-03bc-11e5-807b-1402bde4fe56.png" width="400">
